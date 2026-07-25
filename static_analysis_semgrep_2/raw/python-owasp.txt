@@ -1,0 +1,69 @@
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 122 files tracked by git with 530 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin      Rules                                                                
+ ─────────────────────────────        ───────────────────                                                               
+  <multilang>       6     122          Community     530                                                                
+  python          143     100                                                                                           
+  js               65       4                                                                                           
+  json              3       3                                                                                           
+  dockerfile        4       1                                                                                           
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 3 (3 blocking)
+ • Rules run: 221
+ • Targets scanned: 122
+ • Parsed lines: ~100.0%
+ • Scan skipped: 
+   ◦ Files matching .semgrepignore patterns: 24
+ • Scan was limited to files tracked by git
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 221 rules on 122 files: 3 findings.
+                   
+                   
+┌─────────────────┐
+│ 3 Code Findings │
+└─────────────────┘
+                                                                                       
+    /home/f0ntz/Documents/ParaDevs-XIAOLEE-StellarAdapt/XiaoLee/backend/ai/mcp_tools.py
+   ❯❯❱ python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+          ❰❰ Blocking ❱❱
+          sqlalchemy.text passes the constructed SQL statement to the database mostly unchanged. This means  
+          that the usual SQL injection protections are not applied and this function is vulnerable to SQL    
+          injection if user input can reach here. Use normal SQLAlchemy operators (such as `or_()`, `and_()`,
+          etc.) to construct SQL.                                                                            
+          Details: https://sg.run/yP1O                                                                       
+                                                                                                             
+          2140┆ .where(text(f"user_id = {user.id}"))
+                                                                                                            
+    /home/f0ntz/Documents/ParaDevs-XIAOLEE-StellarAdapt/XiaoLee/backend/server/routes/stellar_auth_routes.py
+    ❯❱ python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
+          ❰❰ Blocking ❱❱
+          Detected a python logger call with a potential hardcoded secret "[SEP-10] STELLAR_SERVER_SECRET not
+          set — using ephemeral keypair %s" being logged. This may lead to secret credentials being exposed. 
+          Make sure that the logger is not logging  sensitive information.                                   
+          Details: https://sg.run/ydNx                                                                       
+                                                                                                             
+          176┆ LOG.warning(
+          177┆     "[SEP-10] STELLAR_SERVER_SECRET not set — using ephemeral keypair %s",
+          178┆     server_kp.public_key,
+          179┆ )
+            ⋮┆----------------------------------------
+    ❯❱ python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
+          ❰❰ Blocking ❱❱
+          Detected a python logger call with a potential hardcoded secret "[SEP-10] token issued | account=%s"
+          being logged. This may lead to secret credentials being exposed. Make sure that the logger is not   
+          logging  sensitive information.                                                                     
+          Details: https://sg.run/ydNx                                                                        
+                                                                                                              
+          276┆ LOG.info("[SEP-10] token issued | account=%s", client_account_id)
+

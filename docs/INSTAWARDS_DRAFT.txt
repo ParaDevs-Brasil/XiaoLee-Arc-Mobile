@@ -1,0 +1,326 @@
+XiaoLee — Instawards Statement of Work
+AI Conversational DeFi Layer on Stellar: x402 Micropayments + On-Chain Campaign Rewards
+========================================================================================
+
+
+1. Project & Team Information
+------------------------------
+
+Project Name:                    XiaoLee
+Team Name:                       XiaoLee / ParaDevs
+Primary Contact (Name + Email):  [PREENCHER — nome + email do responsável]
+Ambassador Chapter:              Brazil
+Ambassador Chapter Lead:         Caio Mattos
+Date Submitted:                  2026-05-22
+Suggested Sprint Start Date:     2026-06-01
+
+
+2. Instawards Overview & Intent
+---------------------------------
+
+2.1 Instawards Purpose (for Builder Context)
+
+This Instaward funds a focused 30-day engineering sprint to deliver two
+production-ready Stellar integrations into XiaoLee — an AI conversational
+DeFi layer already live on Railway with 74 security tests passing and 11
+development sprints completed on Solana:
+
+  1. x402 micropayments — HTTP-native XLM/USDC payments per AI query,
+     live on Stellar Testnet.
+
+  2. On-chain campaign reward settlement — Soroban xiaolee_core contract
+     handling $XLEE distribution, verifiable on Stellar Testnet.
+
+XiaoLee already has a working backend (FastAPI, 65+ tests), frontend
+(Next.js 15), campaign engine, and Stellar auth (SEP-10). The missing
+piece is connecting the AI interface to Stellar's settlement layer —
+which is exactly what this Instaward delivers.
+
+
+3. Problem Statement & Objective
+----------------------------------
+
+Problem Being Addressed
+
+Creator campaign platforms face a fundamental trust gap: brands pay
+creators based on social engagement, but there is no trustless, auditable
+settlement layer. Today's process relies on manual verification, off-chain
+records, and direct wallet transfers — creating disputes, delayed payments,
+and zero on-chain auditability.
+
+Simultaneously, AI-native products that charge per query lack a
+frictionless micropayment rail. Credit cards have high minimums and fees.
+Subscriptions don't match usage-based pricing. There is no HTTP-native
+payment primitive for AI queries — until x402 on Stellar.
+
+XiaoLee addresses both problems: it is the interface between a user's
+natural language request and Stellar's settlement infrastructure. But
+without the Soroban contract live and x402 integrated, the product cannot
+charge for queries or settle campaign rewards on-chain.
+
+What is currently blocking progress:
+  - Soroban xiaolee_core is 60% implemented — contract logic written,
+    deploy on Testnet pending.
+  - x402 endpoint exists in the codebase but is not connected to real
+    Stellar payment verification.
+  - Campaign claim flow writes to PostgreSQL but does not invoke the
+    Soroban contract.
+
+Why this is worth solving now:
+  - The 37 Graus / SDF program creates a direct path to EtherFuse
+    (on/off ramp), the Stellar DEX, and the Brazilian market
+    (150M Pix users).
+  - XiaoLee is the only conversational DeFi interface with Pix-native
+    onboarding positioned for the LATAM creator economy.
+  - Both deliverables are 80% done — this Instaward closes the last 20%
+    needed for a live Testnet demo.
+
+Objective of This Instaward
+
+At the end of 30 days, XiaoLee will have:
+
+  1. A live Soroban xiaolee_core contract on Stellar Testnet handling
+     $XLEE reward distribution with verifiable on-chain transaction hashes.
+
+  2. A working x402 micropayment endpoint accepting XLM/USDC per AI query
+     with real Stellar transaction verification.
+
+
+4. Scope of Work (30-Day Deliverables)
+----------------------------------------
+
+Important guidance: This scope must be achievable within 30 calendar days.
+
+4.1 In-Scope Deliverables
+
++-------------------------------+--------------------------------------------+--------------------------------------------+
+| Deliverable                   | Description (What will be built?)          | Why This Matters                           |
++-------------------------------+--------------------------------------------+--------------------------------------------+
+| Deliverable 1                 | Deploy the xiaolee_core Soroban contract   | Trustless, auditable campaign reward       |
+| Soroban xiaolee_core          | on Stellar Testnet. Implement initialize,  | settlement. Anyone can verify on-chain     |
+| on Testnet                    | initialize_user, record_reward,            | that $XLEE was distributed correctly —     |
+|                               | pause_protocol. Emit $XLEE via SAC to      | no dependency on XiaoLee's database.       |
+|                               | campaign participants. Wire backend         |                                            |
+|                               | StellarAdapter.record_reward() to invoke   |                                            |
+|                               | the contract on every verified claim.      |                                            |
++-------------------------------+--------------------------------------------+--------------------------------------------+
+| Deliverable 2                 | Connect /v1/ai/query to real Stellar       | XiaoLee becomes the first AI agent that   |
+| x402 Micropayments Live       | payment verification: accept X-Payment     | charges per query via HTTP-native Stellar  |
+|                               | header with tx_hash, verify on Horizon     | micropayments. Demonstrates x402 as a     |
+|                               | that XLM/USDC was sent to XiaoLee's        | sustainable AI monetization model on       |
+|                               | wallet, use UsedPayment anti-replay table  | Stellar.                                   |
+|                               | (already implemented), return AI response  |                                            |
+|                               | only after on-chain confirmation.          |                                            |
+|                               | Includes GET /v1/ai/query/payment-info     |                                            |
+|                               | returning current price + destination.     |                                            |
++-------------------------------+--------------------------------------------+--------------------------------------------+
+| Deliverable 3 (optional)      | Demo video (< 3 min): user connects        | Verifiable evidence for SCF/Instawards     |
+| Demo + Documentation          | Freighter, joins campaign, completes       | reviewers. Clear entry point for           |
+|                               | tasks, $XLEE lands on Testnet with tx      | ecosystem builders who want to extend      |
+|                               | hash, pays AI query via x402 XLM.         | XiaoLee or fork the pattern.               |
+|                               | README updated. Architecture diagram:      |                                            |
+|                               | Freighter → SEP-10 → StellarAdapter        |                                            |
+|                               | → Soroban → SAC.                           |                                            |
++-------------------------------+--------------------------------------------+--------------------------------------------+
+
+Out-of-Scope (Explicitly Not Included):
+  - Mainnet deployment (planned for 37 Graus Phase 3)
+  - EtherFuse Pix on/off ramp integration (Phase 2 of 37 Graus roadmap)
+  - Aquarius AMM integration
+  - Mobile app
+  - Production SRE / advanced alerting
+  - Cross-chain integrations
+
+4.2 Deliverable-Aligned Budget Request
+
+Requested Budget Amount: USD 5,000
+
++--------------------------------------------------+----------+-------------------------------------------------+
+| Item                                             | Amount   | Rationale                                       |
++--------------------------------------------------+----------+-------------------------------------------------+
+| Engineering — Soroban contract + backend wiring  | $2,500   | Finalize xiaolee_core Rust contract, deploy on  |
+|                                                  |          | Testnet, wire StellarAdapter.record_reward() to |
+|                                                  |          | invoke the contract, integration tests.          |
++--------------------------------------------------+----------+-------------------------------------------------+
+| Engineering — x402 payment verification          | $1,500   | Connect /v1/ai/query to Horizon verification,   |
+|                                                  |          | payment info endpoint, anti-replay integration,  |
+|                                                  |          | load tests (50 concurrent, p95 < 500ms).         |
++--------------------------------------------------+----------+-------------------------------------------------+
+| Documentation + demo production                  |   $500   | Architecture doc, demo video recording/editing, |
+|                                                  |          | README update with Stellar setup.                |
++--------------------------------------------------+----------+-------------------------------------------------+
+| Buffer / infra (Railway, Testnet ops)            |   $500   | Testnet account funding, Railway hosting during  |
+|                                                  |          | sprint, tooling.                                 |
++--------------------------------------------------+----------+-------------------------------------------------+
+| TOTAL                                            | $5,000   | Within Instawards cap                           |
++--------------------------------------------------+----------+-------------------------------------------------+
+
+
+5. 30-Day Execution Plan & Timeline
+-------------------------------------
+
+5.1 Weekly Breakdown
+
++--------+------------------------------------------------+------------------------------------------------+
+| Week   | Planned Work                                   | Expected Output                                |
++--------+------------------------------------------------+------------------------------------------------+
+| Week 1 | Finalize Soroban contract: initialize,         | Soroban contract compiles and passes local     |
+|        | initialize_user, record_reward with            | unit tests. xiaolee_core binary ready for      |
+|        | require_auth(), pause_protocol. Local tests    | Testnet deploy.                                |
+|        | with soroban-cli. Emit $XLEE via SAC mock.     |                                                |
++--------+------------------------------------------------+------------------------------------------------+
+| Week 2 | Deploy xiaolee_core on Stellar Testnet. Emit   | First real record_reward transaction on        |
+|        | $XLEE asset, deploy SAC. Wire                  | Stellar Testnet with verifiable tx hash.       |
+|        | StellarAdapter.record_reward() to invoke       | Campaign claim triggers Soroban invocation.    |
+|        | contract. Test full campaign → claim →         |                                                |
+|        | on-chain flow end-to-end.                      |                                                |
++--------+------------------------------------------------+------------------------------------------------+
+| Week 3 | Connect x402 endpoint to real Horizon          | x402 endpoint live on Testnet: pays XLM →     |
+|        | verification. Implement GET                    | Horizon verifies → AI responds. Anti-replay    |
+|        | /v1/ai/query/payment-info. Run anti-replay     | confirmed via UsedPayment table.               |
+|        | + concurrency tests. Load test: 50             |                                                |
+|        | concurrent x402 requests, p95 < 500ms.         |                                                |
++--------+------------------------------------------------+------------------------------------------------+
+| Week 4 | Record demo video. Update README with          | Demo video, updated docs, GitHub commit        |
+|        | Stellar setup instructions. Write              | history as evidence trail.                     |
+|        | architecture doc. Final security review.       |                                                |
+|        | Submit evidence.                               |                                                |
++--------+------------------------------------------------+------------------------------------------------+
+
+
+6. Evidence of Completion (Required)
+--------------------------------------
+
+Important guidance: Evidence should be clear, verifiable, and easy to
+review by the Ambassador Chapter Lead with minimal technical expertise.
+
+6.1 Planned Evidence to Be Submitted
+
++-------------------------------+--------------------------------+------------------------------------------------+
+| Deliverable                   | Evidence Type                  | Description                                    |
++-------------------------------+--------------------------------+------------------------------------------------+
+| Deliverable 1                 | GitHub repo + Testnet          | Contract source code in /xiaolee_core          |
+| Soroban on Testnet            | contract ID + transaction      | (Rust/Soroban). Testnet contract ID (C...).    |
+|                               | hashes                         | At least 3 record_reward tx hashes on          |
+|                               |                                | Stellar Testnet Explorer showing $XLEE         |
+|                               |                                | transferred to participant wallets after        |
+|                               |                                | campaign claim.                                |
++-------------------------------+--------------------------------+------------------------------------------------+
+| Deliverable 2                 | API endpoint demo + Horizon    | curl command showing X-Payment: {"tx_hash":    |
+| x402 Live                     | tx hash + curl output          | "..."} accepted by /v1/ai/query, Horizon       |
+|                               |                                | explorer link proving XLM was received by      |
+|                               |                                | XiaoLee wallet, AI response returned after     |
+|                               |                                | payment.                                       |
++-------------------------------+--------------------------------+------------------------------------------------+
+| Deliverable 3                 | Video link + GitHub PR         | Video (< 3 min) on YouTube/Loom showing        |
+| Demo + Docs                   |                                | Freighter connect → campaign join → claim      |
+|                               |                                | with Testnet tx hash → x402 payment →          |
+|                               |                                | AI response. GitHub PR with updated README     |
+|                               |                                | and architecture diagram.                      |
++-------------------------------+--------------------------------+------------------------------------------------+
+
+6.2 Evidence Verification Checklist (For Ambassador Use)
+
+For each deliverable, the Ambassador Chapter Lead will assess whether
+evidence is present and sufficient.
+
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+| Deliverable                          | Evidence Present | Evidence Partial | Evidence Missing | Comments                           |
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+| Soroban contract deployed            |       [ ]        |       [ ]        |       [ ]        | Contract ID + tx hashes visible on |
+|                                      |                  |                  |                  | Stellar Expert Testnet             |
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+| record_reward emits $XLEE            |       [ ]        |       [ ]        |       [ ]        | Token balance change verifiable in |
+|                                      |                  |                  |                  | Freighter or Stellar Expert        |
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+| x402 endpoint accepts XLM           |       [ ]        |       [ ]        |       [ ]        | Horizon tx hash + curl output      |
+|                                      |                  |                  |                  | showing 200 OK after payment       |
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+| Anti-replay working                  |       [ ]        |       [ ]        |       [ ]        | Second request with same tx_hash   |
+|                                      |                  |                  |                  | returns 409 Conflict               |
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+| Demo video complete                  |       [ ]        |       [ ]        |       [ ]        | Full flow from Freighter connect   |
+|                                      |                  |                  |                  | to AI response via x402            |
++--------------------------------------+------------------+------------------+------------------+------------------------------------+
+
+
+7. Next-Step Alignment
+-----------------------
+
+7.1 Anticipated Next Step After Completion
+
+After this Instaward is successfully completed, the most likely next step is:
+
+  [x] Apply to SCF Build Award
+  [ ] Continue development independently
+  [ ] Apply for a follow-on Instaward (if eligible)
+  [ ] Seek other ecosystem support
+  [ ] Other:
+
+After this Instaward, XiaoLee will have:
+  - A live Soroban contract with on-chain reward distribution
+  - A working x402 micropayment model generating revenue per AI query
+  - Real Testnet traction (campaign completions, swap volume, x402 payments)
+
+The SCF Build Award application will focus on:
+  - EtherFuse integration (Pix ↔ Stellar stablecoins — Phase 2 of 37 Graus)
+  - Mainnet deploy of xiaolee_core
+  - GTM: 3 active LATAM creators, 1,000 users, 50 Pix transactions
+
+
+8. Instawards Constraints Acknowledgement
+------------------------------------------
+
+By submitting this SOW, the Builder acknowledges:
+
+  [x] This scope will be completed within 30 days or less.
+  [x] Instawards support execution, not open-ended exploration.
+  [x] A project may receive no more than two follow-on Instawards.
+  [x] Each Instaward is capped at $5,000.
+  [x] Total Instawards funding may not exceed $15,000.
+
+
+9. Submission Confirmation
+---------------------------
+
+Once finalized, this Statement of Work will be submitted by the Ambassador
+Chapter Lead via the Instawards Airtable submission form for review and
+approval.
+
+
+========================================================================================
+APPENDIX — Project Context (internal reference)
+========================================================================================
+
+What Is Already Built (does not require funding):
+
++------------------------------------------+-----------------------------------------------+
+| Component                                | Status                                        |
++------------------------------------------+-----------------------------------------------+
+| Backend FastAPI (Python 3.12)            | 100% — 65+ tests, CI green                   |
+| Frontend Next.js 15 (TypeScript)         | 100% — Live on Railway                        |
+| SEP-10 auth (Freighter + JWT)            | 100% — Tested with stellar-sdk                |
+| Campaign engine (join / verify / claim)  | 100% — PostgreSQL + Alembic                   |
+| Anti-replay x402 (UsedPayment table)     | 100% — TOCTOU-safe via db.flush()             |
+| HMAC webhooks (Helius, Telegram, X)      | 100% — compare_digest, fail-closed            |
+| Observability (Prometheus + Grafana)     | 100% — 8 dashboards                           |
+| Security audit (23 CVEs resolved)        | 100% — Sprint 2026-05 complete                |
+| Soroban xiaolee_core (Rust)              |  60% — Logic written, Testnet deploy pending  |
+| x402 payment verification (Horizon)      |  70% — Endpoint exists, real verify pending   |
+| StellarAdapter.record_reward()           |  50% — Interface defined, Soroban call pending|
++------------------------------------------+-----------------------------------------------+
+
+Why Stellar / Why Now:
+
+  - EtherFuse (official 37 Graus partner) = direct access to the
+    Pix <> Stellar rail for 150M Brazilian users.
+
+  - x402 = the only HTTP-native micropayment protocol for AI queries.
+    XiaoLee is the ideal use case.
+
+  - Soroban = on-chain auditability for creator campaigns —
+    a competitive differentiator vs. any centralized creator
+    marketing platform.
+
+  - 37 Graus = SDF program with $20k in prizes, direct mentorship,
+    Rio residency on 08–11/06 — a unique strategic window.

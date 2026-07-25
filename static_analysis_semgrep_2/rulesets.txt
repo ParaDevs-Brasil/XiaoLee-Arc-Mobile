@@ -1,0 +1,13 @@
+p/security-audit
+p/secrets
+p/python
+p/fastapi
+p/owasp-top-ten
+p/cwe-top-25
+https://github.com/trailofbits/semgrep-rules (python)
+p/javascript
+p/typescript
+p/react
+p/nextjs
+https://github.com/trailofbits/semgrep-rules (js)
+p/dockerfile

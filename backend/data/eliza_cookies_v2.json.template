@@ -1,0 +1,30 @@
+[
+  {
+    "key": "auth_token",
+    "name": "auth_token",
+    "value": "REPLACE_WITH_auth_token_COOKIE_VALUE",
+    "domain": ".twitter.com",
+    "path": "/"
+  },
+  {
+    "key": "ct0",
+    "name": "ct0",
+    "value": "REPLACE_WITH_ct0_COOKIE_VALUE",
+    "domain": ".twitter.com",
+    "path": "/"
+  },
+  {
+    "key": "twid",
+    "name": "twid",
+    "value": "REPLACE_WITH_twid_COOKIE_VALUE",
+    "domain": ".twitter.com",
+    "path": "/"
+  },
+  {
+    "key": "kdt",
+    "name": "kdt",
+    "value": "REPLACE_WITH_kdt_COOKIE_VALUE",
+    "domain": ".twitter.com",
+    "path": "/"
+  }
+]

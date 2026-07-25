@@ -1,0 +1,90 @@
+name: Fullstack CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/fullstack-ci.yml"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - ".github/workflows/fullstack-ci.yml"
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    env:
+      ENCRYPTION_KEY: "ci-test-encryption-key-do-not-use-in-prod"
+      GEMINI_API_KEY: "ci-placeholder"
+      DATABASE_URL: "sqlite+aiosqlite:///./test.db"
+      SOLANA_RPC_URL: "https://api.devnet.solana.com"
+      SOLANA_CLUSTER: "devnet"
+      # SEC-002: JWT_SECRET obrigatório — sem ele o servidor recusa iniciar
+      JWT_SECRET: "ci-jwt-secret-32-chars-do-not-use"
+      # SEC-008/SEC-015: sem STELLAR_SERVER_SECRET os endpoints retornam 503 (esperado em CI)
+      STELLAR_NETWORK: "testnet"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements.dev.txt
+
+      - name: Run unit + integration tests
+        working-directory: backend
+        run: |
+          pytest -q \
+            --ignore=tests/test_anchor_integration.py \
+            --ignore=tests/test_fuzzing.py \
+            -m "not slow"
+
+      - name: Run fuzzing tests (Hypothesis)
+        working-directory: backend
+        env:
+          # Hypothesis: limite razoável para CI (padrão=100; local rode com 500+)
+          HYPOTHESIS_MAX_EXAMPLES: "150"
+        run: |
+          pytest tests/test_fuzzing.py -v --tb=short
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Test
+        working-directory: frontend
+        run: npm test
+
+      - name: Build frontend
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_CORE_API_URL: "http://localhost:8000"
+        run: npm run build

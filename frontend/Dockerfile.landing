@@ -1,0 +1,31 @@
+# ── Xiaolee Landing Page ── standalone static service
+# Builds the full Next.js app, then serves ONLY the landing page at root.
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+# ── Runner: serve only the landing page at root ──
+FROM node:18-alpine AS runner
+RUN npm install -g serve
+RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
+WORKDIR /app
+
+# Copy shared _next assets (JS/CSS bundles, fonts, images)
+COPY --from=builder /app/out/_next ./_next
+
+# Copy landing page as root index.html
+COPY --from=builder /app/out/landing.html ./index.html
+
+# Copy essential static assets (favicon, icons)
+COPY --from=builder /app/out/favicon.ico ./favicon.ico
+COPY --from=builder /app/out/icon-192.png ./icon-192.png
+COPY --from=builder /app/out/icon-512.png ./icon-512.png
+COPY --from=builder /app/out/apple-touch-icon.png ./apple-touch-icon.png
+
+RUN chown -R appuser:appgroup /app
+USER appuser
+EXPOSE 3000
+CMD ["sh", "-c", "serve -s . -l ${PORT:-3000}"]

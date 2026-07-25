@@ -1,0 +1,175 @@
+{
+  "name": "PiperX API Testing",
+  "description": "Test collection for PiperX price API used in Xiao Lee",
+  "version": "1.0",
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2025-01-17T21:47:43.000Z",
+  "__export_source": "insomnia.desktop.app:v2023.5.8",
+  "resources": [
+    {
+      "_id": "req_01",
+      "parentId": "wrk_01",
+      "modified": 1705524463000,
+      "created": 1705524463000,
+      "url": "https://piperxdb.piperxprotocol.workers.dev/api/piperxapi/getAllTokenPrices",
+      "name": "Get All Token Prices",
+      "description": "Tests with all addresses from your price manager",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"addresses\": [\n    \"0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee\",\n    \"0x1514000000000000000000000000000000000000\",\n    \"0x855bd6a8c5046d97c4e063e90e40f0f010d5423a\",\n    \"0x2f7f07691615188b07ea8198cf47a8bb11a3f2fc\",\n    \"0xf1815bd50389c46847f0bda824ec8da914045d14\",\n    \"0xbab93b7ad7fe8692a878b95a8e689423437cc500\",\n    \"0x5267f7ee069ceb3d8f1c760c215569b79d0685ad\",\n    \"0xd07faed671decf3c5a6cc038dad97c8efdb507c0\",\n    \"0x5a212776066b81e449fe74396cce368dc4b14043\",\n    \"0xa4f5c615f72ddeb2220471694fff1c0c3de051e1\",\n    \"0x1a925792d2dabaddc52fc929a2f1e3225bcfa611\",\n    \"0x79925eb7bafa8d227c4fc0c283d03292d5cadc7e\"\n  ]\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Origin",
+          "value": "https://app.piperx.xyz"
+        },
+        {
+          "name": "Referer",
+          "value": "https://app.piperx.xyz/"
+        },
+        {
+          "name": "User-Agent",
+          "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1705524463000,
+      "_type": "request"
+    },
+    {
+      "_id": "req_02",
+      "parentId": "wrk_01",
+      "modified": 1705524463000,
+      "created": 1705524463000,
+      "url": "https://piperxdb.piperxprotocol.workers.dev/api/piperxapi/getAllTokenPrices",
+      "name": "Get Specific Token Prices (WIP + USDC)",
+      "description": "Tests with just WIP and USDC addresses",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"addresses\": [\n    \"0x1514000000000000000000000000000000000000\",\n    \"0x855bd6a8c5046d97c4e063e90e40f0f010d5423a\"\n  ]\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Origin",
+          "value": "https://app.piperx.xyz"
+        },
+        {
+          "name": "Referer",
+          "value": "https://app.piperx.xyz/"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1705524462000,
+      "_type": "request"
+    },
+    {
+      "_id": "req_03",
+      "parentId": "wrk_01",
+      "modified": 1705524463000,
+      "created": 1705524463000,
+      "url": "https://piperxdb.piperxprotocol.workers.dev/api/piperxapi/getAllTokenPrices",
+      "name": "Test Empty Request",
+      "description": "Checks how the API handles no addresses",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"addresses\": []\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Origin",
+          "value": "https://app.piperx.xyz"
+        },
+        {
+          "name": "Referer",
+          "value": "https://app.piperx.xyz/"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1705524461000,
+      "_type": "request"
+    },
+    {
+      "_id": "req_04",
+      "parentId": "wrk_01",
+      "modified": 1705524463000,
+      "created": 1705524463000,
+      "url": "https://piperxdb.piperxprotocol.workers.dev/api/piperxapi/getAllTokenPrices",
+      "name": "Test Invalid Address",
+      "description": "Tests error handling with bad addresses",
+      "method": "POST",
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"addresses\": [\n    \"0x0000000000000000000000000000000000000000\",\n    \"invalid_address\"\n  ]\n}"
+      },
+      "parameters": [],
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Origin",
+          "value": "https://app.piperx.xyz"
+        },
+        {
+          "name": "Referer",
+          "value": "https://app.piperx.xyz/"
+        }
+      ],
+      "authentication": {},
+      "metaSortKey": -1705524460000,
+      "_type": "request"
+    },
+    {
+      "_id": "wrk_01",
+      "parentId": null,
+      "modified": 1705524463000,
+      "created": 1705524463000,
+      "name": "PiperX API Testing",
+      "description": "Test collection for PiperX price API used in Xiao Lee",
+      "_type": "workspace"
+    },
+    {
+      "_id": "env_01",
+      "parentId": "wrk_01",
+      "modified": 1705524463000,
+      "created": 1705524463000,
+      "name": "PiperX Production",
+      "data": {
+        "base_url": "https://piperxdb.piperxprotocol.workers.dev",
+        "origin": "https://app.piperx.xyz",
+        "referer": "https://app.piperx.xyz/"
+      },
+      "dataPropertyOrder": {
+        "&": [
+          "base_url",
+          "origin", 
+          "referer"
+        ]
+      },
+      "color": null,
+      "isPrivate": false,
+      "metaSortKey": 1705524463000,
+      "_type": "environment"
+    }
+  ]
+}

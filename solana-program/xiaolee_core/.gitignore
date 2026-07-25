@@ -1,0 +1,16 @@
+# Anchor build artifacts
+target/
+.anchor/
+
+# Node dependencies
+node_modules/
+
+# Yarn / NPM
+yarn-error.log
+*.log
+
+# Compiled keypairs
+*.json.bak
+
+# macOS
+.DS_Store

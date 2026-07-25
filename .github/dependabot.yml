@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      patch-updates:
+        update-types:
+          - "patch"
+    ignore:
+      # solders uses Rust FFI — review manually before upgrading
+      - dependency-name: "solders"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: "pip"
+    directory: "/backend"
+    target-branch: "develop"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    manifest-file: "requirements.mcp.txt"
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: "npm"
+    directory: "/frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    groups:
+      patch-updates:
+        update-types:
+          - "patch"
+    ignore:
+      # @stellar/freighter-api — review source before upgrading (critical path: wallet signing)
+      - dependency-name: "@stellar/freighter-api"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # python-multipart is pinned to ==0.0.20; upgrades require manual review
+      - dependency-name: "python-multipart"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]

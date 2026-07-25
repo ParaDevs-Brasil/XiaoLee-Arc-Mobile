@@ -1,0 +1,47 @@
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 122 files tracked by git with 220 Code rules:
+                                                                                                                        
+  Language     Rules   Files          Origin      Rules                                                                 
+ ────────────────────────────        ───────────────────                                                                
+  python          75     100          Community     220                                                                 
+  js              20       4                                                                                            
+  json             1       3                                                                                            
+  dockerfile       1       1                                                                                            
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 2 (2 blocking)
+ • Rules run: 97
+ • Targets scanned: 108
+ • Parsed lines: ~100.0%
+ • Scan skipped: 
+   ◦ Files matching .semgrepignore patterns: 24
+ • Scan was limited to files tracked by git
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 97 rules on 108 files: 2 findings.
+                   
+                   
+┌─────────────────┐
+│ 2 Code Findings │
+└─────────────────┘
+                                                                                            
+    /home/f0ntz/Documents/ParaDevs-XIAOLEE-StellarAdapt/XiaoLee/backend/scripts/smoke_api.py
+    ❯❱ python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+          ❰❰ Blocking ❱❱
+          Detected a dynamic value being used with urllib. urllib supports 'file://' schemes, so a dynamic    
+          value controlled by a malicious actor may allow them to read arbitrary files. Audit uses of urllib  
+          calls to ensure user data cannot control the URLs, or consider using the 'requests' library instead.
+          Details: https://sg.run/dKZZ                                                                        
+                                                                                                              
+           33┆ with urllib.request.urlopen("http://127.0.0.1:18000/status", timeout=1) as response:
+            ⋮┆----------------------------------------
+           46┆ with urllib.request.urlopen("http://127.0.0.1:18000/metrics", timeout=2) as response:
+

@@ -1,0 +1,38 @@
+/* landing.css — estilos exclusivos da página /landing
+   Tokens de tom (text-grad, glass, reveal, lift, btn-primary) vivem em globals.css. */
+
+.xl-landing {
+  --ink: #3a2b41;
+  color: #4b5563;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 700px at 85% -5%, #fce7f6 0%, rgba(252, 231, 246, 0) 55%),
+    radial-gradient(1000px 800px at -10% 20%, #f1e7ff 0%, rgba(241, 231, 255, 0) 55%),
+    linear-gradient(to bottom right, #fdf2f8, #faf5ff 45%, #fdf4ff);
+  -webkit-font-smoothing: antialiased;
+}
+
+.xl-landing *::selection { background: #f5c6ec; color: #5b2150; }
+
+.xl-landing .font-display { font-weight: 700; letter-spacing: -0.01em; }
+.xl-landing .text-ink     { color: var(--ink); }
+.xl-landing .bg-ink       { background: var(--ink); }
+
+/* Animações exclusivas da landing */
+@keyframes xlMsgIn { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+.xl-landing .msg-in { animation: xlMsgIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes xlWordIn { from { opacity: 0; transform: translateY(0.5em); filter: blur(4px); } to { opacity: 1; transform: none; filter: blur(0); } }
+.xl-landing .word-in { animation: xlWordIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes xlFloaty     { 0%, 100% { transform: translateY(0);              } 50% { transform: translateY(-14px);             } }
+@keyframes xlFloatySlow { 0%, 100% { transform: translateY(0) rotate(0);    } 50% { transform: translateY(-22px) rotate(6deg); } }
+.xl-landing .anim-floaty     { animation: xlFloaty     6s ease-in-out infinite; }
+.xl-landing .anim-floatySlow { animation: xlFloatySlow 9s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .xl-landing *, .xl-landing *::before, .xl-landing *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,107 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: xiaolee-postgres
+    environment:
+      POSTGRES_USER: xiaolee
+      POSTGRES_PASSWORD: xiaolee_pass_dev
+      POSTGRES_DB: xiaolee_db
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U xiaolee -d xiaolee_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: xiaolee-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  alembic-migrate:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://xiaolee:xiaolee_pass_dev@postgres:5432/xiaolee_db
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["alembic", "upgrade", "head"]
+
+  xiaolee-core:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: xiaolee-core
+    dns:
+      - 8.8.8.8
+    env_file:
+      - .env
+    environment:
+      - XIAOLEE_ENV=dev
+      - DATABASE_URL=postgresql+asyncpg://xiaolee:xiaolee_pass_dev@postgres:5432/xiaolee_db
+      - REDIS_URL=redis://redis:6379/0
+      - SOLANA_RPC_URL=https://api.devnet.solana.com
+      - SOLANA_CLUSTER=devnet
+      - GEMINI_MODEL=gemini-2.5-flash
+    volumes:
+      - ./backend/data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - xiaolee-core
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: xiaolee-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - ./ops/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  xiaolee-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_CORE_API_URL=http://localhost:8000
+    container_name: xiaolee-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - xiaolee-core

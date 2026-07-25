@@ -1,0 +1,45 @@
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 122 files tracked by git with 213 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin      Rules                                                                
+ ─────────────────────────────        ───────────────────                                                               
+  <multilang>       3     122          Community     213                                                                
+  python           61     100                                                                                           
+  js               38       4                                                                                           
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 1 (1 blocking)
+ • Rules run: 102
+ • Targets scanned: 122
+ • Parsed lines: ~100.0%
+ • Scan skipped: 
+   ◦ Files matching .semgrepignore patterns: 24
+ • Scan was limited to files tracked by git
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 102 rules on 122 files: 1 finding.
+                  
+                  
+┌────────────────┐
+│ 1 Code Finding │
+└────────────────┘
+                                                                                       
+    /home/f0ntz/Documents/ParaDevs-XIAOLEE-StellarAdapt/XiaoLee/backend/ai/mcp_tools.py
+   ❯❯❱ python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+          ❰❰ Blocking ❱❱
+          sqlalchemy.text passes the constructed SQL statement to the database mostly unchanged. This means  
+          that the usual SQL injection protections are not applied and this function is vulnerable to SQL    
+          injection if user input can reach here. Use normal SQLAlchemy operators (such as `or_()`, `and_()`,
+          etc.) to construct SQL.                                                                            
+          Details: https://sg.run/yP1O                                                                       
+                                                                                                             
+          2140┆ .where(text(f"user_id = {user.id}"))
+

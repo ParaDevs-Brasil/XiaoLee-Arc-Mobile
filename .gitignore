@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# Python caches and virtualenvs
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+env/
+
+# Coverage and test artifacts
+coverage/
+.coverage
+.coverage.*
+htmlcov/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# X/Twitter session cookies (contêm auth_token — nunca commitar)
+backend/data/eliza_cookies_v2.json
+
+# OS and editor files
+.DS_Store
+.vscode/
+
+# Solana / Anchor / Rust
+target/
+test-ledger/
+.anchor/
+
+# Local database snapshots
+backend/xiao_lee.db
+xiao_lee.db
+
+# Ignored by user request
+MODO ARQUITETO  RULES.md
+Links Xiaolee.md
+Arquitetura Completa do Projeto XiaoLee.md
+
+# Stellar mainnet secret keys (NUNCA commitar)
+mainnet_secrets.txt
+*secrets*.txt

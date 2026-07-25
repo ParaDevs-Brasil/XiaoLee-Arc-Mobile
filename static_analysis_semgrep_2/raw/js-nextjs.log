@@ -1,0 +1,10 @@
+Paths that match both --include and --exclude will be skipped by Semgrep.
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 67 files tracked by git with 0 Code rules:
+  Nothing to scan.
+If Semgrep missed a finding, please send us feedback to let us know!
+See https://semgrep.dev/docs/reporting-false-negatives/

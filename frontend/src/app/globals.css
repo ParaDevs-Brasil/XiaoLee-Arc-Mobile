@@ -1,0 +1,658 @@
+@import "tailwindcss";
+
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&display=swap');
+
+/* ── Design tokens (desbloqueados para o app inteiro) ──────────────────────── */
+
+/* Paleta neutra + acento único (04 jul) — acento só em botão primário,
+   avatar e destaques; o resto neutro */
+:root {
+  --ink: #1a1917;          /* texto primário */
+  --ink-2: #6b6862;        /* texto secundário */
+  --ink-3: #9a968f;        /* texto muted / metadados */
+  --bg: #f6f4f1;           /* fundo do app */
+  --card: #ffffff;         /* cards */
+  --border: #ece9e4;       /* bordas */
+  --accent: #d81b78;       /* marca */
+  --accent-hover: #c0166a;
+  --accent-soft: #fdf0f6;  /* fundo suave do acento */
+  --success: #1f8a5b;
+  --danger: #c23a3a;
+}
+
+/* Texto de destaque da marca (antes gradiente; agora acento sólido) */
+.text-grad {
+  background-image: linear-gradient(105deg, var(--accent), var(--accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Variante Stellar/sky para seções de apoio */
+.text-grad-stellar {
+  background-image: linear-gradient(105deg, #38bdf8, #3b82f6 55%, #9333ea);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Glassmorphism — painel translúcido */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Sombra suave de anel — card hover */
+.ring-soft {
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 12px 40px -18px rgba(26, 25, 23, 0.18);
+}
+
+/* Scroll reveal — opacity 0 → 1 + translateY ao entrar na viewport */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+.reveal.is-in    { opacity: 1; transform: none; }
+.reveal-d1 { transition-delay: 0.08s; }
+.reveal-d2 { transition-delay: 0.16s; }
+.reveal-d3 { transition-delay: 0.24s; }
+.reveal-d4 { transition-delay: 0.32s; }
+.reveal-d5 { transition-delay: 0.40s; }
+
+/* Hover lift — card com elevação ao passar o mouse */
+.lift {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+.lift:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 26px 50px -24px rgba(26, 25, 23, 0.22);
+}
+
+/* Botão primário (acento sólido da marca) */
+.btn-primary {
+  background-image: linear-gradient(105deg, var(--accent), var(--accent));
+  box-shadow:
+    0 10px 26px -12px rgba(216, 27, 120, 0.45),
+    0 1px 0 rgba(255, 255, 255, 0.25) inset;
+  transition: filter 0.25s ease, transform 0.25s ease;
+}
+.btn-primary:hover { filter: brightness(0.94); transform: translateY(-1px); }
+
+/* ── Níveis de elevação (hierarquia de sombras) ──────────────────────────── */
+.shadow-e1 { box-shadow: 0 1px 2px rgba(58, 43, 65, 0.05); }
+.shadow-e2 { box-shadow: 0 2px 8px -2px rgba(58, 43, 65, 0.09), 0 1px 2px rgba(58, 43, 65, 0.04); }
+.shadow-e3 { box-shadow: 0 14px 34px -14px rgba(26, 25, 23, 0.16), 0 2px 6px -2px rgba(26, 25, 23, 0.06); }
+
+/* Mensagem entrando no chat — fade + slide sutil */
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.msg-in { animation: msg-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Avatar "respirando" — escala sutil e lenta */
+@keyframes breath {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.02); }
+}
+.breath { animation: breath 5s ease-in-out infinite; transform-origin: center; }
+
+/* Card de sugestão do estado vazio */
+.suggestion-card {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
+}
+.suggestion-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(216, 27, 120, 0.35);
+  box-shadow: 0 10px 24px -12px rgba(26, 25, 23, 0.14);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal, .reveal::before, .reveal::after { animation: none !important; transition: none !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .msg-in, .breath { animation: none !important; }
+}
+
+/* ── Fim dos tokens globais ─────────────────────────────────────────────── */
+
+:root {
+  --font-sans: 'Quicksand', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Gradientes de Fundo — fundo neutro sólido */
+  --bg-gradient-start: #f6f4f1;
+  --bg-gradient-middle: #f6f4f1;
+  --bg-gradient-end: #f6f4f1;
+
+  /* Cores de Texto */
+  --text-primary: #1a1917;
+  --text-secondary: #6b6862;
+  --text-accent: #d81b78;
+  --text-placeholder: #9a968f;
+  --text-kawaii: #d81b78;
+
+  /* Cores de Navbar — neutra, borda sutil */
+  --navbar-bg-start: rgba(255, 255, 255, 0.88);
+  --navbar-bg-middle: rgba(255, 255, 255, 0.88);
+  --navbar-bg-end: rgba(255, 255, 255, 0.88);
+  --navbar-border: #ece9e4;
+  --navbar-text-gradient-start: #1a1917;
+  --navbar-text-gradient-middle: #6b6862;
+  --navbar-text-gradient-end: #1a1917;
+
+  /* Cores de Botões */
+  --btn-primary-bg-start: #d81b78;
+  --btn-primary-bg-middle: #d81b78;
+  --btn-primary-bg-end: #d81b78;
+  --btn-primary-hover-bg-start: #c0166a;
+  --btn-primary-hover-bg-middle: #c0166a;
+  --btn-primary-hover-bg-end: #c0166a;
+  --btn-primary-ring: rgba(216, 27, 120, 0.35);
+  --btn-primary-text: #ffffff;
+
+  --btn-secondary-bg-start: #60a5fa; /* blue-400 */
+  --btn-secondary-bg-middle: #6366f1; /* indigo-500 */
+  --btn-secondary-bg-end: #a855f7; /* purple-500 */
+  --btn-secondary-hover-bg-start: #3b82f6;
+  --btn-secondary-hover-bg-middle: #4f46e5;
+  --btn-secondary-hover-bg-end: #9333ea;
+  --btn-secondary-ring: rgba(147, 197, 253, 0.5); /* blue-300/50 */
+
+  /* Cores de Painéis e Modais */
+  --panel-bg-start: rgba(251, 241, 245, 0.8);
+  --panel-bg-middle: rgba(250, 245, 255, 0.7);
+  --panel-bg-end: rgba(239, 246, 255, 0.8);
+  --panel-border: rgba(216, 180, 254, 0.3);
+  
+  --panel-header-bg-start: rgba(233, 213, 255, 0.5);
+  --panel-header-bg-end: rgba(251, 207, 232, 0.5);
+  --panel-header-border: rgba(216, 180, 254, 0.3);
+  --panel-header-text-start: #a855f7;
+  --panel-header-text-middle: #ec4899;
+  --panel-header-text-end: #3b82f6;
+
+  /* Cores do Chat */
+  --chat-bubble-user-bg-border: #d8b4fe; /* purple-300 */
+  --chat-bubble-user-bg-start: #ffffff;
+  --chat-bubble-user-bg-end: #f5d0fe; /* fuchsia-200 */
+  --chat-bubble-user-text: #374151; /* gray-700 */
+  --chat-bubble-user-border-start: #f472b6; /* pink-400 */
+  --chat-bubble-user-border-middle: #a855f7; /* purple-400 */
+  --chat-bubble-user-border-end: #3b82f6; /* blue-400 */
+  --chat-bubble-user-avatar-start: #f472b6; /* pink-400 */
+  --chat-bubble-user-avatar-end: #a855f7; /* purple-400 */
+  --chat-bubble-user-accent: #ec4899; /* pink-500 */
+  --chat-bubble-user-accent-light: rgba(236, 72, 153, 0.7);
+  --chat-bubble-user-tail-start: #f472b6;
+  --chat-bubble-user-tail-end: #a855f7;
+
+  --chat-bubble-assistant-bg-border: #f472b6; /* pink-400 */
+  --chat-bubble-assistant-bg-start: #faf5ff; /* purple-50 */
+  --chat-bubble-assistant-bg-end: #fdf2f8; /* pink-50 */
+  --chat-bubble-assistant-text: #374151; /* gray-700 */
+  --chat-bubble-assistant-border-start: #a855f7; /* purple-400 */
+  --chat-bubble-assistant-border-middle: #f472b6; /* pink-400 */
+  --chat-bubble-assistant-border-end: #f97316; /* orange-500 */
+  --chat-bubble-assistant-avatar-start: #a855f7;
+  --chat-bubble-assistant-avatar-middle: #f472b6;
+  --chat-bubble-assistant-avatar-end: #f97316;
+  --chat-bubble-assistant-accent: #a855f7;
+  --chat-bubble-assistant-accent-light: rgba(168, 85, 247, 0.7);
+  --chat-bubble-assistant-tail-start: #a855f7;
+  --chat-bubble-assistant-tail-end: #f472b6;
+
+  --chat-action-love: #f472b6; /* pink-400 */
+  --chat-action-love-hover: #ec4899; /* pink-500 */
+  --chat-action-cheer: #fb923c; /* orange-400 */
+  --chat-action-cheer-hover: #f97316; /* orange-500 */
+  --chat-action-giggle: #a855f7; /* purple-500 */
+  --chat-action-giggle-hover: #9333ea; /* purple-600 */
+
+  /* Cores do Input */
+  --input-bg: #ffffff;
+  --input-border: #ece9e4;
+  --input-focus-border: rgba(216, 27, 120, 0.45);
+  --input-focus-ring: rgba(216, 27, 120, 0.25);
+  --input-text: #1a1917;
+  --input-placeholder-text: #9a968f;
+  --input-icon: #d81b78;
+
+  /* Scrollbar */
+  --scrollbar-track-bg: #f6f4f1;
+  --scrollbar-thumb-bg: #cfcbc4;
+  --scrollbar-thumb-hover-bg: #b7b3ab;
+
+  /* PFP */
+  --pfp-border-start: #f472b6; /* pink-400 */
+  --pfp-border-middle: #a855f7; /* purple-400 */
+  --pfp-border-end: #3b82f6; /* blue-400 */
+  --pfp-bg-start: rgba(255, 255, 255, 0.8); /* white/80 */
+  --pfp-bg-end: rgba(253, 242, 248, 0.6); /* pink-50/60 */
+  --pfp-overlay-start: rgba(251, 207, 232, 0.2); /* pink-200/20 */
+  --pfp-overlay-middle: rgba(233, 213, 255, 0.2); /* purple-200/20 */
+  --pfp-overlay-end: rgba(219, 234, 254, 0.2); /* blue-200/20 */
+
+  --pfp-fallback-bg-start: #fbcfe8; /* pink-200 */
+  --pfp-fallback-bg-end: #e9d5ff; /* purple-200 */
+  --pfp-fallback-border: rgba(249, 168, 212, 0.5); /* pink-300/50 */
+  --pfp-fallback-icon: #f472b6; /* pink-400 */
+
+  /* Modal */
+  --modal-bg-start: #ffffff;
+  --modal-bg-middle: #ffffff;
+  --modal-bg-end: #ffffff;
+  --modal-border: #ece9e4;
+  --modal-header-title-start: #a855f7;
+  --modal-header-title-middle: #ec4899;
+  --modal-header-title-end: #f97316;
+  --modal-header-subtitle: rgba(168, 85, 247, 0.8);
+  --modal-close-icon: #a855f7;
+  --modal-close-icon-hover: #d946ef;
+  --modal-filter-bg: rgba(233, 213, 255, 0.5);
+  --modal-filter-text: #7e22ce;
+  --modal-filter-hover-bg: rgba(216, 180, 254, 0.5);
+  --modal-filter-active-bg-start: #a855f7;
+  --modal-filter-active-bg-end: #f472b6;
+  --modal-filter-active-text: #ffffff;
+  --modal-item-bg-user-start: #eff6ff;
+  --modal-item-bg-user-end: #e0f2fe;
+  --modal-item-border-user: rgba(59, 130, 246, 0.5);
+  --modal-item-bg-assistant-start: #faf5ff;
+  --modal-item-bg-assistant-end: #fdf4ff;
+  --modal-item-border-assistant: rgba(216, 180, 254, 0.5);
+  --modal-footer-bg-start: rgba(250, 245, 255, 0.5);
+  --modal-footer-bg-end: rgba(253, 242, 248, 0.5);
+  --modal-footer-border: rgba(233, 213, 255, 0.3);
+  --modal-footer-text: rgba(168, 85, 247, 0.8);
+
+  /* Transaction Modal Specifics */
+  --transaction-summary-bg-start: rgba(251, 207, 232, 0.5); /* pink-200/50 */
+  --transaction-summary-bg-end: rgba(233, 213, 255, 0.5); /* purple-200/50 */
+  --transaction-summary-border: rgba(251, 207, 232, 0.3); /* pink-200/30 */
+  --transaction-summary-text: #ec4899; /* pink-500 */
+  --transaction-summary-total: #16a34a; /* green-600 */
+  --transaction-item-completed-bg-start: #dcfce7; /* green-100 */
+  --transaction-item-completed-bg-end: #e0f2fe; /* cyan-100 */
+  --transaction-item-completed-border: rgba(74, 222, 128, 0.5); /* green-300/50 */
+  --transaction-item-pending-bg-start: #fef9c3; /* yellow-100 */
+  --transaction-item-pending-bg-end: #ffedd5; /* orange-100 */
+  --transaction-item-pending-border: rgba(252, 211, 77, 0.5); /* yellow-300/50 */
+
+  /* Main Content Background */
+  --main-bg: #f6f4f1;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Tokens de tom — promovidos de src/app/landing/landing.css (Fase 1,
+   docs/FRONTEND_CONSISTENCY_PLAN.md). Antes só existiam sob .xl-landing;
+   agora disponíveis no app inteiro.
+   ────────────────────────────────────────────────────────────────────── */
+:root {
+  --ink: #3a2b41;
+  --pink-500: #ec4899;
+  --fuchsia-500: #d946ef;
+  --purple-600: #9333ea;
+  --sky-400: #38bdf8;
+  --blue-500: #3b82f6;
+}
+
+.font-display { font-weight: 700; letter-spacing: -0.01em; }
+
+.text-ink { color: var(--ink); }
+.bg-ink { background: var(--ink); }
+
+.text-grad {
+  background-image: linear-gradient(105deg, var(--pink-500), var(--fuchsia-500) 45%, var(--purple-600));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-grad-stellar {
+  background-image: linear-gradient(105deg, var(--sky-400), var(--blue-500) 55%, var(--purple-600));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.ring-soft {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .6) inset, 0 12px 40px -18px rgba(192, 38, 211, .35);
+}
+
+/* scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity .75s cubic-bezier(.16,1,.3,1), transform .75s cubic-bezier(.16,1,.3,1);
+  will-change: opacity, transform;
+}
+.reveal.is-in { opacity: 1; transform: none; }
+.reveal-d1 { transition-delay: .08s; }
+.reveal-d2 { transition-delay: .16s; }
+.reveal-d3 { transition-delay: .24s; }
+.reveal-d4 { transition-delay: .32s; }
+.reveal-d5 { transition-delay: .40s; }
+
+@keyframes xlMsgIn { from { opacity:0; transform:translateY(10px) scale(.97); } to { opacity:1; transform:none; } }
+.msg-in { animation: xlMsgIn .42s cubic-bezier(.16,1,.3,1) both; }
+@keyframes xlWordIn { from { opacity:0; transform:translateY(.5em); filter:blur(4px); } to { opacity:1; transform:none; filter:blur(0); } }
+.word-in { animation: xlWordIn .5s cubic-bezier(.16,1,.3,1) both; }
+
+@keyframes xlFloaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+@keyframes xlFloatySlow { 0%,100%{transform:translateY(0) rotate(0)} 50%{transform:translateY(-22px) rotate(6deg)} }
+.anim-floaty { animation: xlFloaty 6s ease-in-out infinite; }
+.anim-floatySlow { animation: xlFloatySlow 9s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1 !important; transform: none !important; }
+  .msg-in, .word-in, .anim-floaty, .anim-floatySlow { animation: none !important; }
+}
+
+.dark {
+  /* Gradientes de Fundo */
+  --bg-gradient-start: #3730a3; /* indigo-800 */
+  --bg-gradient-middle: #1e40af; /* blue-800 */
+  --bg-gradient-end: #581c87; /* purple-900 */
+
+  /* Cores de Texto */
+  --text-primary: #f1f5f9; /* slate-100 */
+  --text-secondary: #94a3b8; /* slate-400 */
+  --text-accent: #ffffff; /* sky-400 */
+  --text-placeholder: #7dd3fc; /* sky-300 com 70% opacidade */
+  --text-kawaii: #0ea5e9; /* sky-500 */
+
+  /* Cores de Navbar */
+  --navbar-bg-start: rgba(55, 48, 163, 0.7); /* indigo-800/70 */
+  --navbar-bg-middle: rgba(30, 64, 175, 0.7); /* blue-800/70 */
+  --navbar-bg-end: rgba(88, 28, 135, 0.7); /* purple-900/70 */
+  --navbar-border: rgba(129, 140, 248, 0.4); /* indigo-400/40 */
+  --navbar-text-gradient-start: #7dd3fc; /* sky-300 */
+  --navbar-text-gradient-middle: #818cf8; /* indigo-400 */
+  --navbar-text-gradient-end: #c084fc; /* purple-400 */
+
+  /* Cores de Botões */
+  --btn-primary-bg-start: #0ea5e9; /* sky-500 */
+  --btn-primary-bg-middle: #3b82f6; /* blue-500 */
+  --btn-primary-bg-end: #6366f1; /* indigo-500 */
+  --btn-primary-hover-bg-start: #0284c7; /* sky-600 */
+  --btn-primary-hover-bg-middle: #2563eb; /* blue-600 */
+  --btn-primary-hover-bg-end: #4f46e5; /* indigo-600 */
+  --btn-primary-ring: rgba(59, 130, 246, 0.5); /* blue-500/50 */
+
+  --btn-secondary-bg-start: #818cf8; /* indigo-400 */
+  --btn-secondary-bg-middle: #a78bfa; /* violet-400 */
+  --btn-secondary-bg-end: #c084fc; /* purple-400 */
+  --btn-secondary-hover-bg-start: #6366f1; /* indigo-500 */
+  --btn-secondary-hover-bg-middle: #8b5cf6; /* violet-500 */
+  --btn-secondary-hover-bg-end: #a855f7; /* purple-500 */
+  --btn-secondary-ring: rgba(129, 140, 248, 0.5); /* indigo-400/50 */
+
+  /* Cores de Painéis e Modais */
+  --panel-bg-start: rgba(11, 6, 170, 0.5); /* indigo-900/50 */
+  --panel-bg-middle: rgba(5, 55, 194, 0.5); /* blue-900/50 */
+  --panel-bg-end: rgba(47, 15, 143, 0.5); /* deep-purple/50 */
+  --panel-border: rgba(32, 80, 148, 0.3);
+  
+  --panel-header-bg-start: rgba(55, 48, 163, 0.5);
+  --panel-header-bg-end: rgba(88, 28, 135, 0.5);
+  --panel-header-border: rgba(129, 140, 248, 0.3);
+  --panel-header-text-start: #7dd3fc;
+  --panel-header-text-middle: #a78bfa;
+  --panel-header-text-end: #f472b6; /* A touch of pink */
+
+  /* Cores do Chat */
+  --chat-bubble-user-bg-border: #38bdf8; /* sky-400 */
+  --chat-bubble-user-bg-start: #0b2858; /* slate-800 */
+  --chat-bubble-user-bg-end: #581c87; /* blue-900 */
+  --chat-bubble-user-text: #e2e8f0;
+  --chat-bubble-user-border-start: #38bdf8;
+  --chat-bubble-user-border-middle: #60a5fa;
+  --chat-bubble-user-border-end: #818cf8;
+  --chat-bubble-user-avatar-start: #3b82f6; /* blue-500 */
+  --chat-bubble-user-avatar-end: #6366f1; /* indigo-500 */
+  --chat-bubble-user-accent: #7dd3fc; /* sky-300 */
+  --chat-bubble-user-accent-light: rgba(125, 211, 252, 0.7);
+  --chat-bubble-user-tail-start: #3b82f6;
+  --chat-bubble-user-tail-end: #6366f1;
+
+  --chat-bubble-assistant-bg-border: #a78bfa; /* violet-400 */
+  --chat-bubble-assistant-bg-start: #0b2858; /* slate-800 */
+  --chat-bubble-assistant-bg-end: #581c87; /* purple-900 */
+  --chat-bubble-assistant-text: #e2e8f0;
+  --chat-bubble-assistant-border-start: #818cf8;
+  --chat-bubble-assistant-border-middle: #a78bfa;
+  --chat-bubble-assistant-border-end: #c084fc;
+  --chat-bubble-assistant-avatar-start: #8b5cf6; /* violet-500 */
+  --chat-bubble-assistant-avatar-middle: #a855f7; /* purple-500 */
+  --chat-bubble-assistant-avatar-end: #d946ef; /* fuchsia-500 */
+  --chat-bubble-assistant-accent: #c4b5fd; /* violet-300 */
+  --chat-bubble-assistant-accent-light: rgba(196, 181, 253, 0.7);
+  --chat-bubble-assistant-tail-start: #8b5cf6;
+  --chat-bubble-assistant-tail-end: #a855f7;
+
+  /* Cores do Input */
+  --input-bg: rgba(30, 41, 59, 0.6);
+  --input-border: rgba(100, 116, 139, 0.5);
+  --input-focus-border: rgba(96, 165, 250, 0.5);
+  --input-focus-ring: rgba(12, 74, 150, 0.3);
+  --input-text: #e2e8f0;
+  --input-placeholder-text: #e2e8f0;
+  --input-icon: #38bdf8; /* sky-400 */
+
+  /* Scrollbar */
+  --scrollbar-track-bg: #1e293b;
+  --scrollbar-thumb-bg: #3b82f6; /* blue-500 */
+  --scrollbar-thumb-hover-bg: #2563eb; /* blue-600 */
+
+  /* PFP */
+  --pfp-border-start: #3b82f6;
+  --pfp-border-middle: #818cf8;
+  --pfp-border-end: #c084fc;
+  --pfp-bg-start: rgba(30, 41, 59, 0.8);
+  --pfp-bg-end: rgba(51, 65, 85, 0.6);
+  --pfp-overlay-start: rgba(96, 165, 250, 0.2);
+  --pfp-overlay-middle: rgba(129, 140, 248, 0.2);
+  --pfp-overlay-end: rgba(167, 139, 250, 0.2);
+  --pfp-fallback-bg-start: #3b82f6;
+  --pfp-fallback-bg-end: #6366f1;
+  --pfp-fallback-border: rgba(96, 165, 250, 0.5);
+  --pfp-fallback-icon: #bfdbfe; /* blue-200 */
+
+  /* Modal */
+  --modal-bg-start: #1e293b;
+  --modal-bg-middle: #111827;
+  --modal-bg-end: #0f172a;
+  --modal-border: rgba(100, 116, 139, 0.5);
+  --modal-header-title-start: #7dd3fc;
+  --modal-header-title-middle: #a78bfa;
+  --modal-header-title-end: #f472b6; /* A touch of pink */
+  --modal-header-subtitle: rgba(165, 180, 252, 0.8);
+  --modal-close-icon: #a78bfa;
+  --modal-close-icon-hover: #c4b5fd;
+  --modal-filter-bg: rgba(51, 65, 85, 0.5);
+  --modal-filter-text: #a78bfa;
+  --modal-filter-hover-bg: rgba(71, 85, 105, 0.5);
+  --modal-filter-active-bg-start: #3b82f6;
+  --modal-filter-active-bg-end: #818cf8;
+  --modal-filter-active-text: #ffffff;
+  --modal-item-bg-user-start: #1e293b;
+  --modal-item-bg-user-end: #1f2937;
+  --modal-item-border-user: rgba(96, 165, 250, 0.5);
+  --modal-item-bg-assistant-start: #1e293b;
+  --modal-item-bg-assistant-end: #28304f;
+  --modal-item-border-assistant: rgba(129, 140, 248, 0.5);
+  --modal-footer-bg-start: rgba(30, 41, 59, 0.5);
+  --modal-footer-bg-end: rgba(17, 24, 39, 0.5);
+  --modal-footer-border: rgba(51, 65, 85, 0.3);
+  --modal-footer-text: rgba(165, 180, 252, 0.8);
+
+  /* Transaction Modal Specifics */
+  --transaction-summary-bg-start: rgba(51, 65, 85, 0.5);
+  --transaction-summary-bg-end: rgba(71, 85, 105, 0.5);
+  --transaction-summary-border: rgba(100, 116, 139, 0.3);
+  --transaction-summary-text: #60a5fa; /* blue-400 */
+  --transaction-summary-total: #4ade80; /* green-400 */
+  --transaction-item-completed-bg-start: #1e3a8a; /* blue-900 */
+  --transaction-item-completed-bg-end: #1e40af; /* blue-800 */
+  --transaction-item-completed-border: rgba(96, 165, 250, 0.5); /* blue-400/50 */
+  --transaction-item-pending-bg-start: #422006; /* yellow-900 */
+  --transaction-item-pending-bg-end: #451a03; /* orange-900 */
+  --transaction-item-pending-border: rgba(202, 138, 4, 0.5); /* yellow-500/50 */
+
+  /* Main Content Background */
+  --main-bg: rgba(15, 23, 42, 0.6); /* slate-900/60 */
+}
+
+body {
+  background-image: linear-gradient(135deg, var(--bg-gradient-start), var(--bg-gradient-middle), var(--bg-gradient-end));
+  background-attachment: fixed;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-weight: 400;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom kawaii animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+@keyframes gentle-bounce {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-5px); }
+}
+
+@keyframes modal-slide-up {
+  0% { transform: translateY(100%) scale(0.9); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+@keyframes modal-fade-in {
+  0% { opacity: 0; backdrop-filter: blur(0px); }
+  100% { opacity: 1; backdrop-filter: blur(8px); }
+}
+
+@keyframes kawaii-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-sparkle {
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+.animate-gentle-bounce {
+  animation: gentle-bounce 2s ease-in-out infinite;
+}
+
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
+.typing-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: typing-dot 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+.modal-slide-up {
+  animation: modal-slide-up 0.3s ease-out;
+}
+
+.modal-fade-in {
+  animation: modal-fade-in 0.3s ease-out;
+}
+
+.kawaii-pulse {
+  animation: kawaii-pulse 2s ease-in-out infinite;
+}
+
+/* Enhanced modal backdrop blur */
+.modal-backdrop {
+  backdrop-filter: blur(12px);
+  background: radial-gradient(circle at center, rgba(255, 182, 193, 0.1) 0%, rgba(221, 160, 221, 0.1) 50%, rgba(173, 216, 230, 0.1) 100%);
+}
+
+/* Kawaii button hover effects */
+.kawaii-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.kawaii-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.kawaii-button:hover::before {
+  left: 100%;
+}
+
+/* Scrollbar — fina, discreta, visível apenas quando útil */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.22);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.45);
+}
+
+/* Scroll interno do chat: invisível até o hover do container */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 8px;
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb {
+  background: rgba(168, 85, 247, 0.28);
+}
+.custom-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background: rgba(168, 85, 247, 0.5);
+}
+/* Esconde a scrollbar da barra de abas (campanhas) mantendo o scroll horizontal no mobile */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

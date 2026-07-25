@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>XiaoLee — Documentação Técnica para Investidores</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">XiaoLee — Documentação Técnica para Investidores</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#xiaolee-documentação-técnica-para-investidores"
+id="toc-xiaolee-documentação-técnica-para-investidores">XiaoLee —
+Documentação Técnica para Investidores</a>
+<ul>
+<li><a
+href="#ai-ops-layer-não-custodial-para-a-economia-de-criadores-sobre-stellar"
+id="toc-ai-ops-layer-não-custodial-para-a-economia-de-criadores-sobre-stellar">AI
+Ops Layer não-custodial para a economia de criadores sobre
+Stellar</a></li>
+<li><a href="#sumário" id="toc-sumário">Sumário</a></li>
+<li><a href="#executive-summary" id="toc-executive-summary">1. Executive
+Summary</a></li>
+<li><a href="#produto-e-estado-atual" id="toc-produto-e-estado-atual">2.
+Produto e Estado Atual</a>
+<ul>
+<li><a href="#o-que-a-xiaolee-entrega"
+id="toc-o-que-a-xiaolee-entrega">2.1 O que a XiaoLee entrega</a></li>
+<li><a href="#diferenciais-e-impacto-gerado"
+id="toc-diferenciais-e-impacto-gerado">2.2 Diferenciais e impacto
+gerado</a></li>
+<li><a href="#público-alvo" id="toc-público-alvo">2.3
+Público-alvo</a></li>
+<li><a href="#estado-de-produto-honesto"
+id="toc-estado-de-produto-honesto">2.4 Estado de produto
+(honesto)</a></li>
+</ul></li>
+<li><a href="#prova-técnica-verificável"
+id="toc-prova-técnica-verificável">3. Prova Técnica Verificável</a>
+<ul>
+<li><a href="#track-solana-contrato-em-devnet"
+id="toc-track-solana-contrato-em-devnet">3.1 Track Solana — contrato em
+devnet</a></li>
+<li><a href="#track-stellar-fluxo-x402-em-testnet"
+id="toc-track-stellar-fluxo-x402-em-testnet">3.2 Track Stellar — fluxo
+x402 em testnet</a></li>
+<li><a href="#auditoria-de-segurança-interna-sprint-2026-05"
+id="toc-auditoria-de-segurança-interna-sprint-2026-05">3.3 Auditoria de
+segurança interna (Sprint 2026-05)</a></li>
+</ul></li>
+<li><a href="#arquitetura-e-fluxos-críticos"
+id="toc-arquitetura-e-fluxos-críticos">4. Arquitetura e Fluxos
+Críticos</a>
+<ul>
+<li><a href="#arquitetura-de-alto-nível"
+id="toc-arquitetura-de-alto-nível">4.1 Arquitetura de alto
+nível</a></li>
+<li><a href="#ciclo-de-vida-de-uma-campanha"
+id="toc-ciclo-de-vida-de-uma-campanha">4.2 Ciclo de vida de uma
+campanha</a></li>
+<li><a href="#fluxo-1-autenticação-sep-10-não-custodial"
+id="toc-fluxo-1-autenticação-sep-10-não-custodial">4.3 Fluxo 1 —
+Autenticação SEP-10 (não-custodial)</a></li>
+<li><a href="#fluxo-2-swap-conversacional-via-stellar-dex"
+id="toc-fluxo-2-swap-conversacional-via-stellar-dex">4.4 Fluxo 2 — Swap
+conversacional via Stellar DEX</a></li>
+<li><a href="#fluxo-3-micropagamento-de-ai-x402"
+id="toc-fluxo-3-micropagamento-de-ai-x402">4.5 Fluxo 3 — Micropagamento
+de AI (x402)</a></li>
+<li><a href="#fluxo-4-campanha-join-verify-claim-stellar"
+id="toc-fluxo-4-campanha-join-verify-claim-stellar">4.6 Fluxo 4 —
+Campanha: join / verify / claim (Stellar)</a></li>
+<li><a href="#contrato-soroban-xiaolee_core-especificado-p0"
+id="toc-contrato-soroban-xiaolee_core-especificado-p0">4.7 Contrato
+Soroban <code>xiaolee_core</code> (especificado, P0)</a></li>
+</ul></li>
+<li><a href="#segurança-e-modelo-de-custódia"
+id="toc-segurança-e-modelo-de-custódia">5. Segurança e Modelo de
+Custódia</a></li>
+<li><a href="#modelo-de-negócio-e-gtm"
+id="toc-modelo-de-negócio-e-gtm">6. Modelo de Negócio e GTM</a>
+<ul>
+<li><a href="#modelo-de-receita" id="toc-modelo-de-receita">6.1 Modelo
+de receita</a></li>
+<li><a href="#canais-de-aquisição" id="toc-canais-de-aquisição">6.2
+Canais de aquisição</a></li>
+<li><a href="#síntese-de-posicionamento"
+id="toc-síntese-de-posicionamento">6.3 Síntese de
+posicionamento</a></li>
+</ul></li>
+<li><a href="#roadmap-e-investimento-pleiteado"
+id="toc-roadmap-e-investimento-pleiteado">7. Roadmap e Investimento
+Pleiteado</a>
+<ul>
+<li><a href="#status-por-fase-37-graus-track-a"
+id="toc-status-por-fase-37-graus-track-a">7.1 Status por fase (37 Graus,
+Track A)</a></li>
+<li><a href="#marcos-críticos-gates" id="toc-marcos-críticos-gates">7.2
+Marcos críticos (gates)</a></li>
+<li><a href="#investimento-pleiteado"
+id="toc-investimento-pleiteado">7.3 Investimento pleiteado</a></li>
+</ul></li>
+<li><a href="#riscos-e-mitigações" id="toc-riscos-e-mitigações">8.
+Riscos e Mitigações</a></li>
+<li><a href="#anexo-a-decisões-de-produto-pdrs"
+id="toc-anexo-a-decisões-de-produto-pdrs">Anexo A — Decisões de Produto
+(PDRs)</a></li>
+<li><a href="#anexo-b-decisões-de-arquitetura-adrs"
+id="toc-anexo-b-decisões-de-arquitetura-adrs">Anexo B — Decisões de
+Arquitetura (ADRs)</a></li>
+<li><a href="#anexo-c-referência-de-endpoints-e-configuração"
+id="toc-anexo-c-referência-de-endpoints-e-configuração">Anexo C —
+Referência de Endpoints e Configuração</a>
+<ul>
+<li><a href="#c.1-endpoints-backend-fastapi"
+id="toc-c.1-endpoints-backend-fastapi">C.1 Endpoints (backend
+FastAPI)</a></li>
+<li><a href="#c.2-configuração-valores-de-teste"
+id="toc-c.2-configuração-valores-de-teste">C.2 Configuração (valores de
+teste)</a></li>
+<li><a href="#c.3-stack-tecnológico" id="toc-c.3-stack-tecnológico">C.3
+Stack tecnológico</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="xiaolee-documentação-técnica-para-investidores">XiaoLee —
+Documentação Técnica para Investidores</h1>
+<h3
+id="ai-ops-layer-não-custodial-para-a-economia-de-criadores-sobre-stellar">AI
+Ops Layer não-custodial para a economia de criadores sobre Stellar</h3>
+<blockquote>
+<p>Versão 1.0 — 2026-05-30 · Programa 37 Graus (NearX/SDF), Track A ·
+Stellar Testnet (MVP em construção, base técnica auditada) Builder:
+Gustavo Fontes (<code>f0ntz</code>) · fontzweb3@gmail.com · ParaDevs
+(Brazil) Repositório:
+<code>github.com/ParaDevs-Brasil/XiaoLee</code></p>
+</blockquote>
+<hr />
+<h2 id="sumário">Sumário</h2>
+<ul>
+<li><a href="#1-executive-summary">1. Executive Summary</a></li>
+<li><a href="#2-produto-e-estado-atual">2. Produto e Estado
+Atual</a></li>
+<li><a href="#3-prova-técnica-verificável">3. Prova Técnica
+Verificável</a></li>
+<li><a href="#4-arquitetura-e-fluxos-críticos">4. Arquitetura e Fluxos
+Críticos</a></li>
+<li><a href="#5-segurança-e-modelo-de-custódia">5. Segurança e Modelo de
+Custódia</a></li>
+<li><a href="#6-modelo-de-negócio-e-gtm">6. Modelo de Negócio e
+GTM</a></li>
+<li><a href="#7-roadmap-e-investimento-pleiteado">7. Roadmap e
+Investimento Pleiteado</a></li>
+<li><a href="#8-riscos-e-mitigações">8. Riscos e Mitigações</a></li>
+<li><a href="#anexo-a--decisões-de-produto-pdrs">Anexo A — Decisões de
+Produto (PDRs)</a></li>
+<li><a href="#anexo-b--decisões-de-arquitetura-adrs">Anexo B — Decisões
+de Arquitetura (ADRs)</a></li>
+<li><a href="#anexo-c--referência-de-endpoints-e-configuração">Anexo C —
+Referência de Endpoints e Configuração</a></li>
+</ul>
+<hr />
+<h2 id="executive-summary">1. Executive Summary</h2>
+<p>A XiaoLee é uma <strong>AI ops layer não-custodial</strong> para a
+economia de criadores: uma camada de inteligência conversacional que
+senta entre o usuário e a infraestrutura Stellar e orquestra operações
+on-chain — swaps, campanhas sociais, distribuição de recompensas e
+pagamentos — em linguagem natural, via Twitter DM, Telegram ou web. O
+usuário nunca precisa entender carteiras, slippage, trustlines ou
+contratos: descreve a intenção, a XiaoLee prepara a transação e a
+assinatura permanece sempre na carteira do usuário.</p>
+<p><strong>Problema.</strong> A economia de criadores cresce sobre rails
+de pagamento que não a servem: cartão e plataformas centralizadas
+bloqueiam contas sem aviso, aplicam chargebacks que destroem margem e
+cobram 20–50% de comissão. No Brasil e na LATAM, o fã sem cartão
+internacional simplesmente não consegue pagar. As soluções on-chain
+endereçam parte disso, mas exigem que o usuário aprenda DeFi — uma
+barreira que o criador e o seu público não absorvem.</p>
+<p><strong>Solução.</strong> A XiaoLee transforma a interface do DeFi
+Stellar em uma conversa. Três pilares — engine de campanhas sociais,
+DeFi conversacional (swaps e pagamentos via Stellar DEX) e gateway de
+entrada/saída em Pix para a LATAM — operam sobre um princípio único:
+<strong>wallet-first e non-custodial</strong>. O backend orquestra,
+prepara e roteia; a chave privada nunca toca o servidor. A camada
+blockchain permanece transparente para o usuário, e o vínculo
+social-financeiro (Twitter ID como identidade) é o que diferencia o
+protocolo de uma carteira genérica.</p>
+<p><strong>Estado em 30/05/2026.</strong> O produto é um <strong>MVP em
+construção com base técnica sólida e auditada internamente</strong>, não
+um conceito. A camada Stellar off-chain — autenticação SEP-10,
+micropagamentos x402, cotação e montagem de swaps via Stellar DEX,
+âncora SEP-24 e integração Freighter no frontend — está implementada e
+passou por auditoria de segurança interna (23 findings corrigidos,
+§3.3). O contrato on-chain da track Solana já opera em devnet; o
+contrato Soroban da track Stellar está especificado e é o próximo marco
+(P0). A XiaoLee <strong>ainda não opera em mainnet</strong> e este
+documento não reporta tração de usuários — reporta o que é verificável
+hoje no código e on-chain em rede de teste (§3).</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<tbody>
+<tr class="odd">
+<td>Categoria</td>
+<td>AI ops layer não-custodial para economia de criadores (campanhas +
+DeFi conversacional + on/off ramp)</td>
+</tr>
+<tr class="even">
+<td>Blockchain</td>
+<td>Stellar (testnet, direção estratégica do 37 Graus) + Soroban; track
+Solana/Anchor em devnet (legado multi-chain)</td>
+</tr>
+<tr class="odd">
+<td>Estágio</td>
+<td>MVP em construção · camada off-chain auditada · contrato Soroban a
+escrever · Track A 37 Graus</td>
+</tr>
+<tr class="even">
+<td>Prova verificável</td>
+<td>Programa Solana em devnet (§3.1); fluxo x402 em Stellar testnet
+(§3.2); auditoria interna com 23 findings corrigidos e 61 testes
+passando (§3.3)</td>
+</tr>
+<tr class="odd">
+<td>Diferencial</td>
+<td>Interface em linguagem natural · non-custodial · Pix nativo via
+EtherFuse · micropagamentos agentic x402 · identidade social (Twitter
+ID)</td>
+</tr>
+<tr class="even">
+<td>Modelo de receita</td>
+<td>Fee de swap (0,3%) + fee de campanha (0,5%) + x402 premium por query
+de AI (ativação em mainnet, §6.1)</td>
+</tr>
+<tr class="odd">
+<td>Investimento pleiteado</td>
+<td>Aplicação ao SCF Build Award (Stellar Community Fund); montante
+detalhado em documento SCF dedicado (§7.3)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="produto-e-estado-atual">2. Produto e Estado Atual</h2>
+<h3 id="o-que-a-xiaolee-entrega">2.1 O que a XiaoLee entrega</h3>
+<p>Uma interface de AI conversacional para o DeFi Stellar, construída
+sobre três pilares. Cada pilar endereça uma fricção concreta que hoje
+limita a adoção de cripto por criadores e pelo seu público.</p>
+<p><strong>1. Engine de Campanhas sociais com recompensa
+on-chain.</strong> Criadores publicam campanhas com tarefas sociais
+(seguir, repostar, comentar) e definem recompensas em $XLEE, XLM ou
+USDC. O usuário completa as tarefas, a XiaoLee verifica e a recompensa é
+distribuída diretamente na carteira Freighter — sem código e sem
+custódia.</p>
+<p><em>Impacto:</em> o criador monta um programa de engajamento pago em
+minutos, sem desenvolver contrato próprio, e constrói uma audiência
+on-chain que nenhuma plataforma centralizada pode remover ou
+bloquear.</p>
+<p><strong>2. DeFi conversacional non-custodial.</strong> Swaps,
+consultas de saldo e envio de pagamentos por mensagem. <em>“Troca 50
+USDC por XLM”</em> → a XiaoLee consulta o melhor caminho no Stellar DEX,
+apresenta o quote, o usuário confirma e o Freighter assina. O backend
+monta a transação não assinada (XDR); a chave nunca sai da carteira.</p>
+<p><em>Impacto:</em> elimina a curva técnica do DeFi. O usuário opera a
+liquidez nativa da camada-1 da Stellar sem aprender interface de DEX,
+sem aprovar contrato de terceiro e sem expor a chave privada.</p>
+<p><strong>3. Gateway de pagamentos Pix/LATAM.</strong> On/off ramp via
+<strong>EtherFuse</strong> (parceiro oficial do programa 37 Graus): o
+usuário entra com Pix, opera no DeFi Stellar e sai quando quiser, sem
+comprar cripto em exchange. A EtherFuse abstrai SEP-24, KYC e a
+conversão fiat ↔︎ Stellar.</p>
+<p><em>Impacto:</em> desloca a barreira de entrada do DeFi do “tenha uma
+exchange e um cartão internacional” para “tenha um celular e um CPF”. É
+o caminho Pix → DeFi que hoje não existe de forma conversacional no
+Brasil.</p>
+<h3 id="diferenciais-e-impacto-gerado">2.2 Diferenciais e impacto
+gerado</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Capacidade</th>
+<th>Impacto gerado</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linguagem natural como única interface</td>
+<td>Remove a curva técnica do DeFi: o criador e o fã operam por
+conversa, encurtando o onboarding a uma mensagem.</td>
+</tr>
+<tr class="even">
+<td>Non-custodial por design (chave nunca toca o backend)</td>
+<td>Um eventual comprometimento do servidor não movimenta fundos —
+superfície de ataque substancialmente menor e <em>due diligence</em>
+mais simples.</td>
+</tr>
+<tr class="odd">
+<td>Identidade social (Twitter ID como âncora)</td>
+<td>A campanha recompensa “um criador com audiência verificada”, não
+“uma carteira” — a wallet pode ser trocada; a identidade social, não
+(PDR-001).</td>
+</tr>
+<tr class="even">
+<td>Pix nativo via EtherFuse</td>
+<td>Único caminho conversacional Pix ↔︎ DeFi para a LATAM — abre o funil
+para o público sem cartão internacional.</td>
+</tr>
+<tr class="odd">
+<td>Micropagamentos agentic via x402</td>
+<td>A própria AI cobra por query premium em XLM (HTTP 402), criando um
+modelo de receita on-chain nativo para a economia de agentes.</td>
+</tr>
+<tr class="even">
+<td>Multi-chain isolado (Solana + Stellar)</td>
+<td>A camada de orquestração e o DB são compartilhados (coluna
+<code>chain</code>); a integração Stellar não regride os rails Solana já
+em devnet.</td>
+</tr>
+<tr class="odd">
+<td>Custo de rede em frações de centavo (Stellar L1)</td>
+<td>Viabiliza recompensa pequena e micropagamento de AI sem erosão de
+margem por gás.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="público-alvo">2.3 Público-alvo</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Segmento</th>
+<th>Dor central</th>
+<th>Solução da XiaoLee</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Criadores LATAM e globais (Twitter/X, streamers, artistas)</td>
+<td>Sem ferramenta para monetizar engajamento on-chain sem exigir que o
+fã configure carteira do zero</td>
+<td>Engine de campanhas: tarefa social → recompensa na carteira, sem
+código e sem custódia</td>
+</tr>
+<tr class="even">
+<td>Fãs / usuários crypto-nativos (18–35)</td>
+<td>Cada protocolo tem uma UX diferente; querem uma conversa só, em
+qualquer língua</td>
+<td>Interface única em linguagem natural sobre o DeFi Stellar</td>
+</tr>
+<tr class="odd">
+<td>Usuários não-crypto (LATAM, Pix)</td>
+<td>Barreira de entrada ao DeFi via rail de pagamento local</td>
+<td>Pix nativo via EtherFuse — entra com R$ e opera no DeFi sem
+exchange</td>
+</tr>
+<tr class="even">
+<td>Projetos Web3 globais</td>
+<td>Custo alto de desenvolvimento de campanhas com recompensa
+on-chain</td>
+<td>Plataforma escalável de campanhas como serviço, independente de
+região</td>
+</tr>
+</tbody>
+</table>
+<h3 id="estado-de-produto-honesto">2.4 Estado de produto (honesto)</h3>
+<p>A XiaoLee é um MVP em construção: a base do protocolo (backend,
+campanhas, AI, observabilidade) está funcional e a camada Stellar
+off-chain foi auditada internamente. Este documento <strong>não reporta
+métricas de tração de usuários</strong> — o produto não está em mainnet
+e ainda não foi distribuído ao público final. O que é reportável hoje é
+a prova técnica verificável da §3.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Dimensão</th>
+<th>Estado em 2026-05-30</th>
+<th>Track</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Camada Stellar off-chain (SEP-10, x402, swap DEX, SEP-24,
+Freighter)</td>
+<td>Implementada e auditada</td>
+<td>Stellar</td>
+</tr>
+<tr class="even">
+<td>Contrato on-chain</td>
+<td>Em devnet (Anchor) / especificado e a escrever (Soroban)</td>
+<td>Solana / Stellar</td>
+</tr>
+<tr class="odd">
+<td>Backend API + DB multi-chain</td>
+<td>Funcional; 61 testes passando; auditoria interna feita</td>
+<td>Compartilhado</td>
+</tr>
+<tr class="even">
+<td>Canal conversacional</td>
+<td>Telegram operacional; X/Twitter DM pendente de API paga</td>
+<td>Compartilhado</td>
+</tr>
+<tr class="odd">
+<td>Mainnet</td>
+<td>Não — bloqueada por contrato Soroban + auditoria externa</td>
+<td>Ambas</td>
+</tr>
+</tbody>
+</table>
+<p>A XiaoLee não se apresenta como produto em escala: apresenta-se como
+uma camada de orquestração de AI com fundação técnica auditada,
+posicionada para destravar a track Stellar e ir a mainnet com
+segurança.</p>
+<hr />
+<h2 id="prova-técnica-verificável">3. Prova Técnica Verificável</h2>
+<p>Em linha com o estágio real do produto, a prova abaixo é o que pode
+ser verificado hoje — em código, em rede de teste e na auditoria — e não
+envolve fundos reais em mainnet.</p>
+<h3 id="track-solana-contrato-em-devnet">3.1 Track Solana — contrato em
+devnet</h3>
+<p>O programa on-chain da track Solana opera na devnet pública,
+demonstrando o padrão de registro on-chain que o contrato Soroban
+replicará na track Stellar.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Valor (devnet)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Program ID</td>
+<td><code>Fmmpn79Tij8fzYHg31ekZz4MmK9ArGzN59VogfcwhXiM</code></td>
+</tr>
+<tr class="even">
+<td>Código</td>
+<td><code>solana-program/xiaolee_core/programs/xiaolee_core/src/lib.rs</code></td>
+</tr>
+<tr class="odd">
+<td>IDL no frontend</td>
+<td><code>frontend/src/idl/xiaolee_core.json</code></td>
+</tr>
+<tr class="even">
+<td>Instruções executadas</td>
+<td><code>initialize_global</code>, <code>initialize_user</code>,
+<code>record_swap</code> (serialização Borsh validada),
+<code>pause_protocol</code></td>
+</tr>
+<tr class="odd">
+<td>Pendência P0</td>
+<td><code>record_swap</code> com submissão real requer
+<code>SOLANA_ADMIN_KEYPAIR_B58</code> em vault</td>
+</tr>
+</tbody>
+</table>
+<h3 id="track-stellar-fluxo-x402-em-testnet">3.2 Track Stellar — fluxo
+x402 em testnet</h3>
+<p>O fluxo de micropagamento agentic (x402) opera na <strong>Stellar
+testnet</strong>: a AI cobra 0,5 XLM por query premium, o cliente paga
+na testnet e o backend verifica a transação via Horizon antes de
+processar a resposta.</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Item</th>
+<th>Valor</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Rede</td>
+<td><code>STELLAR_NETWORK=testnet</code></td>
+</tr>
+<tr class="even">
+<td>Protocolo</td>
+<td>x402 (HTTP 402 Payment Required) —
+<code>POST /v1/ai/query</code></td>
+</tr>
+<tr class="odd">
+<td>Preço por query</td>
+<td>0,5 XLM (<code>STELLAR_X402_PRICE_XLM</code>, configurável)</td>
+</tr>
+<tr class="even">
+<td>Verificação</td>
+<td><code>StellarAdapter.verify_payment(tx_hash, pay_to, min_amount)</code>
+via Horizon</td>
+</tr>
+<tr class="odd">
+<td>Anti-replay</td>
+<td><code>tx_hash</code> registrado após o uso — reuso rejeitado
+(correção SEC-001, §3.3)</td>
+</tr>
+<tr class="even">
+<td>Autenticação</td>
+<td>SEP-10 challenge/response → JWT
+(<code>/auth/stellar/challenge</code> →
+<code>/auth/stellar/token</code>)</td>
+</tr>
+<tr class="odd">
+<td>Swaps</td>
+<td>Stellar DEX via path payments — quote em
+<code>/stellar/swap/quote</code>, XDR montado no backend</td>
+</tr>
+</tbody>
+</table>
+<p>A integração <code>StellarAdapter.record_reward</code> ao contrato
+Soroban (distribuição de $XLEE em campanha) é, hoje, off-chain/stub:
+torna-se on-chain quando o contrato da §4.6 for escrito e implantado
+(Gate 1B, §7).</p>
+<h3 id="auditoria-de-segurança-interna-sprint-2026-05">3.3 Auditoria de
+segurança interna (Sprint 2026-05)</h3>
+<p>Auditoria de segurança interna conduzida sobre a branch
+<code>develop</code>, cobrindo backend (FastAPI), frontend (Next.js) e
+infraestrutura. <strong>23 findings corrigidos</strong>, com metodologia
+equivalente à de uma pré-auditoria de produção. Não substitui auditoria
+externa independente para mainnet com TVL real.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Severidade</th>
+<th>Qtd</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Crítico</td>
+<td>4</td>
+<td>Corrigidos (SEC-001 replay x402, SEC-002 <code>JWT_SECRET</code>
+obrigatório, SEC-011, SEC-012)</td>
+</tr>
+<tr class="even">
+<td>Alto</td>
+<td>9</td>
+<td>Corrigidos (inclui SEP-10 SEC-014/015, Helius HMAC SEC-007/011)</td>
+</tr>
+<tr class="odd">
+<td>Médio</td>
+<td>7</td>
+<td>Corrigidos</td>
+</tr>
+<tr class="even">
+<td>Baixo</td>
+<td>3</td>
+<td>Avaliados (1 corrigido, 1 false positive, 1 aceito por UX)</td>
+</tr>
+</tbody>
+</table>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Frente</th>
+<th>Cobertura</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>SAST</td>
+<td>Semgrep 1.163.0 OSS — Python (security-audit, secrets, fastapi,
+OWASP Top 10, CWE Top 25, Trail of Bits), JS/TS (react, nextjs),
+Docker</td>
+</tr>
+<tr class="even">
+<td>Cripto / timing</td>
+<td>Análise (metodologia Trail of Bits) em
+<code>encryption_service.py</code>, <code>stellar_auth_routes.py</code>,
+<code>helius_routes.py</code>, <code>x402_routes.py</code></td>
+</tr>
+<tr class="odd">
+<td>Supply chain</td>
+<td>11 dependências flagradas (5 de alto risco); dependências mortas
+removidas; Dependabot configurado</td>
+</tr>
+<tr class="even">
+<td>Fuzzing</td>
+<td>Hypothesis property-based — 15 testes, ~2.500 exemplos; encontrou e
+corrigiu 2 bugs reais</td>
+</tr>
+<tr class="odd">
+<td>Carga</td>
+<td><code>load_tests/locustfile.py</code> — 5 classes, incluindo
+<code>XiaoLeeStellarAuth</code> (stress SEP-10) e replay/SQLi</td>
+</tr>
+<tr class="even">
+<td>Suíte</td>
+<td>61 testes passando, 6 skipped</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="arquitetura-e-fluxos-críticos">4. Arquitetura e Fluxos
+Críticos</h2>
+<h3 id="arquitetura-de-alto-nível">4.1 Arquitetura de alto nível</h3>
+<pre><code>┌─────────────────────────────────────────────────────────┐
+│                      Clientes                           │
+│  Next.js Frontend    Telegram Bot    X/Twitter DM       │
+│  Freighter (Stellar) · Wallet Adapter (Solana, legado)  │
+└──────────────┬──────────────────────────────────────────┘
+               │ HTTPS + JWT (SEP-10)
+┌──────────────▼──────────────────────────────────────────┐
+│                  Backend FastAPI                         │
+│  ┌─────────────┐  ┌────────────────┐  ┌─────────────┐   │
+│  │  SEP-10     │  │ Orchestration  │  │  Campaigns  │   │
+│  │  Auth (JWT) │  │ Service + LLM  │  │  Router     │   │
+│  └─────────────┘  └───────┬────────┘  └──────┬──────┘   │
+│  ┌──────────────┐         │                  │          │
+│  │ x402 (HTTP   │         │                  │          │
+│  │ 402) /v1/ai  │         │                  │          │
+│  └──────────────┘ ┌───────▼──────────────────▼──────┐   │
+│                   │        StellarAdapter            │   │
+│                   │  get_balance · prepare_swap      │   │
+│                   │  build_swap_xdr · verify_payment │   │
+│                   │  record_reward (→ Soroban, P0)   │   │
+│                   └──────────────────────────────────┘   │
+│  ┌────────────┐  ┌────────────┐  ┌────────────────────┐ │
+│  │ PostgreSQL │  │   Redis    │  │  Horizon (Stellar) │ │
+│  │ (coluna    │  │ Rate Limit │  │  + Solana RPC      │ │
+│  │  `chain`)  │  │ + fallback │  │                    │ │
+│  └────────────┘  └────────────┘  └────────────────────┘ │
+└─────────────────────────────┬───────────────────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────┐
+│                    Redes On-chain                        │
+│  Stellar: Horizon · DEX (path payments) · SEP-24 anchor  │
+│           Soroban xiaolee_core + SAC $XLEE  (a escrever) │
+│  Solana:  Anchor xiaolee_core (devnet, legado multi-chain)│
+└─────────────────────────────────────────────────────────┘</code></pre>
+<h3 id="ciclo-de-vida-de-uma-campanha">4.2 Ciclo de vida de uma
+campanha</h3>
+<p><code>CREATED</code> → <code>ENROLLED</code> →
+<code>TASKS_VERIFIED</code> → { <code>REWARDED</code> |
+<code>EXPIRED</code> }</p>
+<p>O participante entra (<code>enrolled</code>), completa as tarefas
+sociais, a XiaoLee verifica (<code>tasks_verified</code>) e, na claim, a
+recompensa é distribuída e registrada (<code>rewarded</code>).
+Idempotência garantida por constraint única
+(<code>uq_participant_campaign_user</code>) — uma segunda inscrição
+retorna <code>409 Conflict</code>.</p>
+<h3 id="fluxo-1-autenticação-sep-10-não-custodial">4.3 Fluxo 1 —
+Autenticação SEP-10 (não-custodial)</h3>
+<pre><code>1. Frontend: GET /auth/stellar/challenge?account=G...ABC
+2. Backend: gera challenge XDR (sequence=0, manage_data op, nonce, TTL 5min)
+3. Frontend: Freighter.sign(XDR) -&gt; signed_xdr
+4. Frontend: POST /auth/stellar/token { account, transaction: signed_xdr }
+5. Backend: valida a assinatura com stellar-sdk e extrai a public key
+6. Backend: emite JWT { sub: twitter_id, stellar_wallet: G...ABC, chain: &quot;stellar&quot; }
+7. Frontend: armazena o JWT — todas as requests subsequentes o incluem</code></pre>
+<p>O backend mantém um keypair dedicado exclusivamente ao challenge
+SEP-10, nunca usado para fundos. A chave privada do usuário nunca toca o
+servidor (ADR-002).</p>
+<h3 id="fluxo-2-swap-conversacional-via-stellar-dex">4.4 Fluxo 2 — Swap
+conversacional via Stellar DEX</h3>
+<pre><code>Usuário: &quot;troca 50 USDC por XLM&quot;
+1. OrchestrationService: intent = stellar_swap
+2. StellarAdapter.prepare_swap(USDC, XLM, 50)
+   - GET /paths/strict-send (Horizon) -&gt; melhor caminho + destination_amount
+3. XiaoLee: &quot;Você receberá ~142.3 XLM. Confirma?&quot;
+4. Usuário confirma
+5. Backend: build_swap_xdr -&gt; XDR unsigned (pathPaymentStrictSend)
+6. Freighter: o usuário assina
+7. Frontend submete via Horizon -&gt; Backend persiste swap_record (chain=&quot;stellar&quot;)</code></pre>
+<p>A liquidez é a nativa da camada-1 da Stellar — sem contrato de DEX de
+terceiro e sem aprovação de token (ADR-003).</p>
+<h3 id="fluxo-3-micropagamento-de-ai-x402">4.5 Fluxo 3 — Micropagamento
+de AI (x402)</h3>
+<pre><code>1. Cliente: POST /v1/ai/query  (sem pagamento)
+2. Backend: HTTP 402 Payment Required + payment-info { asset: XLM, amount: 0.5, pay_to }
+3. Cliente: paga 0.5 XLM na Stellar testnet (Freighter) -&gt; tx_hash
+4. Cliente: POST /v1/ai/query  com header X-Payment { tx_hash, network: testnet }
+5. Backend: verify_payment(tx_hash, pay_to, 0.5) via Horizon
+   - rejeita se o hash já foi usado (anti-replay, SEC-001)
+6. Backend: processa a query e retorna a resposta da AI</code></pre>
+<p>É o caso de uso <em>agentic</em>: a própria AI cobra por uso premium,
+em XLM, de forma nativa ao protocolo HTTP — modelo de receita on-chain
+sem intermediário (PDR-007).</p>
+<h3 id="fluxo-4-campanha-join-verify-claim-stellar">4.6 Fluxo 4 —
+Campanha: join / verify / claim (Stellar)</h3>
+<pre><code>POST /campaigns/join { campaign_id, stellar_wallet, chain: &quot;stellar&quot; }
+   -&gt; participant enrolled (409 se já inscrito)
+Usuário completa as tarefas sociais (follow, RT, comment)
+POST /campaigns/verify { campaign_id, twitter_id, proof }
+   -&gt; Backend verifica via API Twitter/X -&gt; tasks_verified
+POST /campaigns/claim { campaign_id, stellar_wallet }
+   -&gt; Backend valida o JWT (SEP-10)
+   -&gt; StellarAdapter.record_reward(twitter_id, wallet, amount)
+        [hoje: registro off-chain | a escrever: invoca record_reward no Soroban + SAC $XLEE]
+   -&gt; persiste o receipt com tx_hash -&gt; usuário recebe $XLEE no Freighter</code></pre>
+<p>A etapa <code>record_reward</code> on-chain depende do contrato
+Soroban da §7 (Gate 1B). Até lá, a recompensa é registrada off-chain de
+forma auditável no banco.</p>
+<h3 id="contrato-soroban-xiaolee_core-especificado-p0">4.7 Contrato
+Soroban <code>xiaolee_core</code> (especificado, P0)</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Instrução</th>
+<th>Descrição</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>initialize(admin, xlee_sac)</code></td>
+<td>Inicializa o <code>GlobalConfig</code> (instance storage);
+<code>require_auth</code></td>
+</tr>
+<tr class="even">
+<td><code>initialize_user(twitter_id)</code></td>
+<td>Registra o usuário (persistent storage + bump de TTL)</td>
+</tr>
+<tr class="odd">
+<td><code>record_reward(admin, twitter_id, amount)</code></td>
+<td>Distribui $XLEE via SAC; <code>require_auth</code> +
+<code>checked_add</code> (anti-overflow)</td>
+</tr>
+<tr class="even">
+<td><code>pause_protocol</code> / <code>unpause_protocol</code></td>
+<td>Emergency pause</td>
+</tr>
+<tr class="odd">
+<td><code>transfer_admin(admin, new_admin)</code></td>
+<td>Migração de autoridade</td>
+</tr>
+</tbody>
+</table>
+<p>Storage <code>instance</code> para config global e
+<code>persistent</code> por usuário; auth por
+<code>Address::require_auth()</code>; token via SAC
+(<code>token::Client</code>). Eventos <code>reward_recorded</code>,
+<code>protocol_paused</code>, <code>admin_transferred</code>.
+<strong>Status: especificado no RT, código a escrever — é o marco que
+destrava a track Stellar.</strong></p>
+<hr />
+<h2 id="segurança-e-modelo-de-custódia">5. Segurança e Modelo de
+Custódia</h2>
+<p>A segurança é o núcleo do produto, não uma camada acessória. O
+princípio é abstrair a complexidade cripto do usuário sem nunca assumir
+o controle dos seus fundos. A tabela associa cada mecanismo ao risco
+concreto que ele elimina; o status reflete o estado real verificado no
+código.</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Mecanismo</th>
+<th>Risco eliminado</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Non-custodial — XDR montado no backend, assinado no Freighter</td>
+<td>Um vazamento do servidor não move fundos: a chave do usuário nunca
+está sob a plataforma (ADR-002)</td>
+<td>Implementado</td>
+</tr>
+<tr class="even">
+<td>Autenticação SEP-10 (challenge/response → JWT)</td>
+<td>Sessão sem senha e sem custódia de chave; padrão Stellar compatível
+com âncoras</td>
+<td>Implementado e auditado</td>
+</tr>
+<tr class="odd">
+<td>Anti-replay no x402 (<code>tx_hash</code> registrado após uso)</td>
+<td>Reuso de um pagamento para obter respostas de AT de graça
+(SEC-001)</td>
+<td>Corrigido</td>
+</tr>
+<tr class="even">
+<td><code>JWT_SECRET</code> obrigatório no startup (raise se
+ausente)</td>
+<td>Segredo de assinatura fraco/default em produção (SEC-002)</td>
+<td>Corrigido</td>
+</tr>
+<tr class="odd">
+<td>Webhook Helius com HMAC SHA-256 validado</td>
+<td>Injeção de eventos on-chain forjados (SEC-007/011)</td>
+<td>Corrigido</td>
+</tr>
+<tr class="even">
+<td>Rate limiting por usuário (Redis + fallback in-memory)</td>
+<td>Abuso e exaustão de recursos (ex.: flood de challenge SEP-10)</td>
+<td>Implementado</td>
+</tr>
+<tr class="odd">
+<td>Idempotência (constraint única → 409)</td>
+<td>Inscrição/recompensa duplicada em campanha</td>
+<td>Implementado</td>
+</tr>
+<tr class="even">
+<td>Verificação on-chain antes de creditar (Horizon)</td>
+<td>Crédito baseado em estado local divergente do ledger</td>
+<td>Implementado (x402/swap)</td>
+</tr>
+<tr class="odd">
+<td>CORS restrito por env (sem wildcard)</td>
+<td>Origem maliciosa consumindo a API autenticada</td>
+<td>Implementado</td>
+</tr>
+<tr class="even">
+<td>Emergency pause no contrato</td>
+<td>Continuidade de operação durante incidente on-chain</td>
+<td>No Anchor (devnet); no Soroban via spec</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Hardening pré-mainnet (BLOQUEADORES):</strong> auditoria
+externa independente dos contratos (Anchor + Soroban) e do backend;
+secrets em vault (keypairs, DB, Redis, JWT); HTTPS + HSTS; migração do
+admin EOA para multisig nativo (Squads na Solana / multisig Stellar);
+bug bounty em testnet pública. Nenhum deploy em mainnet com fundos reais
+ocorre antes desses gates (ver §3 do
+<code>MAINNET_READINESS.md</code>).</p>
+<hr />
+<h2 id="modelo-de-negócio-e-gtm">6. Modelo de Negócio e GTM</h2>
+<h3 id="modelo-de-receita">6.1 Modelo de receita</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Fonte</th>
+<th>Mecanismo</th>
+<th>Ativação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Fee de swap</td>
+<td>0,3% sobre o volume de swaps executados via XiaoLee</td>
+<td>Mainnet (Fase 3)</td>
+</tr>
+<tr class="even">
+<td>Fee de campanha</td>
+<td>0,5% sobre o volume de recompensas distribuídas</td>
+<td>Mainnet (Fase 3)</td>
+</tr>
+<tr class="odd">
+<td>x402 premium</td>
+<td>Micropagamento em XLM por query de AI avançada</td>
+<td>Testnet hoje (§3.2); mainnet em seguida</td>
+</tr>
+</tbody>
+</table>
+<p>Diferentemente de fluxos B2B humano-para-humano, a XiaoLee abraça o
+x402 como receita nativa: o caso de uso <em>agentic</em> (a AI cobra por
+uso premium) é compatível com o produto e já está implementado em
+testnet — um vetor de monetização on-chain que não depende de
+intermediário de pagamento.</p>
+<h3 id="canais-de-aquisição">6.2 Canais de aquisição</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Canal</th>
+<th>Tática</th>
+<th>Meta</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Twitter/X (dogfooding)</td>
+<td>Campanha self-referencial na própria plataforma: “complete tarefas →
+ganhe $XLEE”</td>
+<td>Primeiros usuários e prova de produto</td>
+</tr>
+<tr class="even">
+<td>Telegram</td>
+<td>Bot XiaoLee com onboarding Stellar na comunidade (canal já
+operacional)</td>
+<td>Base inicial conversacional</td>
+</tr>
+<tr class="odd">
+<td>Criadores BR</td>
+<td>Parceria com 3–5 influenciadores crypto BR para campanhas pagas</td>
+<td>Liquidez de oferta nas campanhas</td>
+</tr>
+<tr class="even">
+<td>Comunidade Stellar BR</td>
+<td>Presença em Telegram/Discord Stellar BR</td>
+<td>Awareness</td>
+</tr>
+<tr class="odd">
+<td>Build in public</td>
+<td>Thread semanal com progresso e métricas reais</td>
+<td>Credibilidade</td>
+</tr>
+<tr class="even">
+<td>Rede 37 Graus</td>
+<td>Mentoria SDF e introduções no Rio</td>
+<td>Pipeline e parceria EtherFuse</td>
+</tr>
+</tbody>
+</table>
+<h3 id="síntese-de-posicionamento">6.3 Síntese de posicionamento</h3>
+<p>Configure uma campanha em poucos minutos: seus fãs completam tarefas
+sociais e recebem a recompensa direto na carteira, sem código e sem
+custódia. Swaps e pagamentos por conversa, com a chave sempre no
+usuário. E, para a LATAM, o fã entra via Pix — sem exchange e sem cartão
+internacional. <strong>A XiaoLee é a interface de AI para o DeFi
+Stellar, com Pix nativo.</strong></p>
+<hr />
+<h2 id="roadmap-e-investimento-pleiteado">7. Roadmap e Investimento
+Pleiteado</h2>
+<h3 id="status-por-fase-37-graus-track-a">7.1 Status por fase (37 Graus,
+Track A)</h3>
+<blockquote>
+<p>Programa NearX/SDF: 04/05–11/06/2026 · 5 Sprints · Residência no Rio
+08–11/06.</p>
+</blockquote>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Fase</th>
+<th>Período</th>
+<th>Status</th>
+<th>Entregáveis-chave</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1 — Infra Stellar + primeiros usuários</td>
+<td>04–11/05</td>
+<td>Em curso</td>
+<td><code>StellarAdapter</code>, SEP-10, Freighter no frontend, migração
+multi-chain (DB)</td>
+</tr>
+<tr class="even">
+<td>2 — Pagamentos: Pix, stablecoins, x402</td>
+<td>11–18/05</td>
+<td>Em curso</td>
+<td>x402 em testnet (feito); EtherFuse on/off ramp (a integrar); swap
+DEX</td>
+</tr>
+<tr class="odd">
+<td>3 — DeFi e protocolo</td>
+<td>18–25/05</td>
+<td>Pendente</td>
+<td>Contrato Soroban + SAC $XLEE; <code>record_reward</code> on-chain;
+campanhas verificáveis</td>
+</tr>
+<tr class="even">
+<td>4 — GTM e narrativa de investidor</td>
+<td>25/05–01/06</td>
+<td>Em curso</td>
+<td>Deck, one-pager, este documento, vídeo demo</td>
+</tr>
+<tr class="odd">
+<td>5 — Pitch Rio</td>
+<td>08–11/06</td>
+<td>Planejado</td>
+<td>Apresentação presencial + demo ao vivo</td>
+</tr>
+</tbody>
+</table>
+<h3 id="marcos-críticos-gates">7.2 Marcos críticos (gates)</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Gate</th>
+<th>Descrição</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1B — Contrato Soroban</td>
+<td>Escrever <code>xiaolee_core</code> (auth, overflow check, eventos) +
+testes + deploy testnet</td>
+<td><strong>P0 — destrava a track Stellar</strong></td>
+</tr>
+<tr class="even">
+<td>Asset $XLEE (Stellar)</td>
+<td>Emitir o asset + <code>stellar contract asset deploy</code> (SAC) em
+testnet</td>
+<td>Pendente</td>
+</tr>
+<tr class="odd">
+<td>Integração on-chain</td>
+<td>Ligar <code>StellarAdapter.record_reward</code> ao contrato real
+(hoje off-chain)</td>
+<td>Pendente</td>
+</tr>
+<tr class="even">
+<td>Auditoria externa</td>
+<td>2 auditorias independentes por track + backend</td>
+<td>BLOQUEADOR de mainnet</td>
+</tr>
+<tr class="odd">
+<td>Secrets / vault + HTTPS/HSTS + multisig</td>
+<td>Hardening de produção</td>
+<td>BLOQUEADOR de mainnet</td>
+</tr>
+</tbody>
+</table>
+<h3 id="investimento-pleiteado">7.3 Investimento pleiteado</h3>
+<p>Aplicação ao <strong>SCF Build Award</strong> (Stellar Community
+Fund) para escrever e auditar o contrato Soroban, integrar o EtherFuse
+(Pix) e levar a track Stellar a mainnet com segurança. Montante e uso de
+recursos detalhados em documento SCF dedicado; submissão pendente.</p>
+<p>Uso de recursos previsto:</p>
+<ul>
+<li><strong>Engenharia:</strong> contrato Soroban
+<code>xiaolee_core</code> + SAC $XLEE, integração on-chain do
+<code>record_reward</code>, integração EtherFuse.</li>
+<li><strong>Segurança:</strong> auditoria externa por track + backend;
+migração de admin para multisig; secrets em vault.</li>
+<li><strong>Infraestrutura:</strong> Horizon/Soroban RPC dedicados;
+provisionamento de PostgreSQL gerenciado e Redis em produção.</li>
+<li><strong>Comercial:</strong> ativação dos primeiros criadores BR e do
+canal Telegram/X.</li>
+</ul>
+<hr />
+<h2 id="riscos-e-mitigações">8. Riscos e Mitigações</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Risco</th>
+<th>Probabilidade</th>
+<th>Impacto</th>
+<th>Mitigação</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Contrato Soroban não escrito a tempo (Gate 1B)</td>
+<td>Média</td>
+<td>Alto</td>
+<td>Spec completa no RT (§4.7); contrato Anchor em devnet serve de
+referência de padrão; é o P0 priorizado</td>
+</tr>
+<tr class="even">
+<td>Ausência de auditoria externa para mainnet</td>
+<td>Alta</td>
+<td>Crítico</td>
+<td>Mainnet bloqueada por gate; auditoria interna (23 findings) como
+pré-auditoria; candidatos mapeados (OtterSec, Veridise, Trail of
+Bits)</td>
+</tr>
+<tr class="odd">
+<td>Dependência da API EtherFuse (Pix)</td>
+<td>Média</td>
+<td>Médio</td>
+<td>Parceria oficial do 37 Graus; swap DEX nativo funciona sem o on/off
+ramp; integração isolada no <code>StellarAdapter</code></td>
+</tr>
+<tr class="even">
+<td>X/Twitter DM exige API paga</td>
+<td>Alta</td>
+<td>Baixo</td>
+<td>Telegram cobre 100% do fluxo conversacional; X é incremental, não
+bloqueia o hackathon</td>
+</tr>
+<tr class="odd">
+<td>Complexidade do híbrido multi-chain (Solana + Stellar)</td>
+<td>Média</td>
+<td>Médio</td>
+<td>Camada de orquestração e DB compartilhados (coluna
+<code>chain</code>); tracks isoladas, sem regressão mútua</td>
+</tr>
+<tr class="even">
+<td>Secrets/keypairs fora de vault</td>
+<td>Alta (hoje)</td>
+<td>Crítico (em mainnet)</td>
+<td>Gate explícito antes de mainnet; em dev opera com chaves de teste e
+<code>dry_run</code></td>
+</tr>
+<tr class="odd">
+<td>Trustline $XLEE como atrito de UX</td>
+<td>Média</td>
+<td>Médio</td>
+<td>XiaoLee detecta a ausência e guia o usuário; o Freighter assina o
+trustline com um clique (ADR-005)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="anexo-a-decisões-de-produto-pdrs">Anexo A — Decisões de Produto
+(PDRs)</h2>
+<p><strong>PDR-001 — Twitter ID como identidade primária.</strong> A
+wallet Freighter é vinculada ao Twitter ID, não o contrário.
+<em>Justificativa:</em> o vínculo social-financeiro é o diferencial; uma
+campanha recompensa um criador com audiência verificada, não uma
+carteira. A wallet pode ser trocada; a identidade social, não.</p>
+<p><strong>PDR-002 — Freighter como wallet principal.</strong> Mantida
+pela SDF, com SDK TypeScript oficial e suporte nativo a Soroban.
+<em>Futuro:</em> xBull e LOBSTR via abstração
+<code>WalletAdapter</code>, sem quebrar a interface.</p>
+<p><strong>PDR-003 — On/off ramp via EtherFuse (Sprint 2).</strong> A
+EtherFuse (parceiro oficial do 37 Graus) abstrai SEP-24, KYC e a
+conversão fiat ↔︎ Stellar. <em>Justificativa:</em> reduz o escopo de
+implementação e entrega o diferenciador Pix sem integrar âncora
+diretamente.</p>
+<p><strong>PDR-004 — $XLEE como Stellar Asset (SAC), não token Soroban
+puro.</strong> Liquidez nativa no Stellar DEX imediata; o SAC provê a
+interface para o contrato distribuir $XLEE. Complexidade extra
+(vesting/locks) via wrapper Soroban quando necessário.</p>
+<p><strong>PDR-005 — SEP-10 para autenticação não-custodial.</strong>
+Padrão Stellar de challenge/response → JWT. <em>Justificativa:</em>
+compatibilidade com âncoras e integradores; suportado nativamente pelo
+Freighter.</p>
+<p><strong>PDR-006 — Soroban para o contrato XiaoLee Core.</strong> O
+registro on-chain de recompensa é diferencial de produto (auditabilidade
+sem confiar no backend). Rust/WASM com <code>require_auth()</code> e
+integração via SAC.</p>
+<p><strong>PDR-007 — x402 para micropagamentos de AI.</strong> A AI
+cobra em XLM por query premium (HTTP 402). <em>Justificativa:</em>
+modelo de receita on-chain nativo para a economia agentic — entregável
+explícito do 37 Graus, já em testnet.</p>
+<p><strong>PDR-008 — Track A no 37 Graus.</strong> A base do protocolo
+está funcional e auditada; a integração Stellar é expansão, não rebuild.
+Classificação coerente com o estágio real e competitiva nos critérios de
+escala.</p>
+<hr />
+<h2 id="anexo-b-decisões-de-arquitetura-adrs">Anexo B — Decisões de
+Arquitetura (ADRs)</h2>
+<p><strong>ADR-001 — <code>StellarAdapter</code> como camada de
+abstração de protocolo.</strong> Encapsula Horizon, Soroban e EtherFuse;
+o <code>OrchestrationService</code> delega conforme a intenção
+detectada. <em>Rejeitado:</em> lógica Stellar dispersa nos controllers
+(acoplamento, sem teste isolado).</p>
+<p><strong>ADR-002 — XDR gerado no backend, assinado no frontend
+(non-custodial).</strong> O backend monta o XDR unsigned; o Freighter
+assina; o backend submete. As chaves do usuário nunca tocam o
+servidor.</p>
+<p><strong>ADR-003 — Stellar DEX (path payments) para swaps.</strong>
+<code>pathPaymentStrictSend/Receive</code> via Horizon path finding.
+<em>Vantagem:</em> liquidez nativa da L1, sem contrato de terceiro nem
+aprovação de token.</p>
+<p><strong>ADR-004 — Soroban <code>xiaolee_core</code> com storage
+<code>persistent</code> e auth por <code>Address</code>.</strong>
+<code>instance</code> para config global, <code>persistent</code> por
+usuário (TTL bumped pelo backend); <code>Address::require_auth()</code>
+sem workarounds; token via SAC.</p>
+<p><strong>ADR-005 — $XLEE como Stellar Asset + SAC.</strong> Asset
+emitido + <code>stellar contract asset deploy</code>; o contrato usa o
+SAC para transferir. UX de trustline guiada pelo chat (assinatura em um
+clique no Freighter).</p>
+<p><strong>ADR-006 — PostgreSQL com coluna <code>chain</code> para
+eventos multi-origem.</strong> <code>chain VARCHAR(16)</code> em
+<code>campaign_participants</code>/<code>swap_records</code> e
+<code>stellar_wallet</code> em <code>user_profiles</code>;
+<code>twitter_id</code> permanece FK primária. Migração
+<code>20260515_stellar_columns.py</code>.</p>
+<p><strong>ADR-007 — Horizon event_stream (SSE) para indexação
+on-chain.</strong> Task asyncio escuta transações via cursor
+<code>now</code>; eventos do contrato são processados e persistidos.
+<em>Rejeitado:</em> polling por cron (latência e custo).</p>
+<hr />
+<h2 id="anexo-c-referência-de-endpoints-e-configuração">Anexo C —
+Referência de Endpoints e Configuração</h2>
+<h3 id="c.1-endpoints-backend-fastapi">C.1 Endpoints (backend
+FastAPI)</h3>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Endpoint</th>
+<th>Método</th>
+<th>Responsabilidade</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>/auth/stellar/challenge</code></td>
+<td>GET</td>
+<td>Gera o challenge XDR (SEP-10)</td>
+</tr>
+<tr class="even">
+<td><code>/auth/stellar/token</code></td>
+<td>POST</td>
+<td>Valida o XDR assinado e emite o JWT</td>
+</tr>
+<tr class="odd">
+<td><code>/stellar/swap/quote</code></td>
+<td>GET</td>
+<td>Quote de swap via Stellar DEX (path payment)</td>
+</tr>
+<tr class="even">
+<td><code>/stellar/anchor/info</code></td>
+<td>GET</td>
+<td>Info da âncora SEP-24</td>
+</tr>
+<tr class="odd">
+<td><code>/stellar/anchor/challenge</code></td>
+<td>GET</td>
+<td>Challenge da âncora SEP-24</td>
+</tr>
+<tr class="even">
+<td><code>/stellar/anchor/deposit</code></td>
+<td>POST</td>
+<td>Inicia o depósito via âncora SEP-24</td>
+</tr>
+<tr class="odd">
+<td><code>/v1/ai/query</code></td>
+<td>POST</td>
+<td>Query de AI premium com micropagamento x402</td>
+</tr>
+<tr class="even">
+<td><code>/v1/ai/query/payment-info</code></td>
+<td>GET</td>
+<td>Instruções de pagamento (asset, amount, pay_to)</td>
+</tr>
+<tr class="odd">
+<td><code>/v1/ai/query/verify-tx</code></td>
+<td>GET</td>
+<td>Verifica o <code>tx_hash</code> do pagamento</td>
+</tr>
+<tr class="even">
+<td><code>/campaigns/join</code> · <code>/verify</code> ·
+<code>/claim</code></td>
+<td>POST</td>
+<td>Ciclo de vida da campanha (idempotente, 409 em duplicidade)</td>
+</tr>
+<tr class="odd">
+<td><code>/metrics</code></td>
+<td>GET</td>
+<td>Prometheus</td>
+</tr>
+<tr class="even">
+<td><code>/health</code> · <code>/health/detailed</code></td>
+<td>GET</td>
+<td>Liveness e dependências (DB, Solana, Gemini)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="c.2-configuração-valores-de-teste">C.2 Configuração (valores de
+teste)</h3>
+<pre><code>STELLAR_NETWORK          = testnet
+STELLAR_HORIZON_URL      = (configurável por env)
+STELLAR_X402_PRICE_XLM   = 0.5
+STELLAR_X402_ENABLED     = true
+SOLANA_CLUSTER           = devnet
+SOLANA_RPC_URL           = https://api.devnet.solana.com
+SOLANA_PROGRAM_ID        = Fmmpn79Tij8fzYHg31ekZz4MmK9ArGzN59VogfcwhXiM</code></pre>
+<h3 id="c.3-stack-tecnológico">C.3 Stack tecnológico</h3>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Camada</th>
+<th>Tecnologia</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Smart contract (Stellar)</td>
+<td>Soroban SDK (Rust/WASM) — a escrever</td>
+</tr>
+<tr class="even">
+<td>Smart contract (Solana, legado)</td>
+<td>Anchor (Rust) — devnet</td>
+</tr>
+<tr class="odd">
+<td>Wallet</td>
+<td>Freighter + <code>@stellar/freighter-api</code></td>
+</tr>
+<tr class="even">
+<td>Swaps</td>
+<td>Stellar DEX via Horizon path payments</td>
+</tr>
+<tr class="odd">
+<td>Token</td>
+<td>Stellar Asset <code>XLEE</code> + SAC (SEP-41)</td>
+</tr>
+<tr class="even">
+<td>Autenticação</td>
+<td>SEP-10 challenge/response → JWT</td>
+</tr>
+<tr class="odd">
+<td>Micropagamento de AI</td>
+<td>x402 (HTTP 402, XLM)</td>
+</tr>
+<tr class="even">
+<td>On/off ramp BR/LATAM</td>
+<td>EtherFuse API (parceiro 37 Graus) — a integrar</td>
+</tr>
+<tr class="odd">
+<td>Backend</td>
+<td>FastAPI (Python 3.12) + asyncio</td>
+</tr>
+<tr class="even">
+<td>Frontend</td>
+<td>Next.js 15 (TypeScript)</td>
+</tr>
+<tr class="odd">
+<td>Banco de dados</td>
+<td>PostgreSQL 16 + Alembic async (coluna <code>chain</code>)</td>
+</tr>
+<tr class="even">
+<td>Cache / rate limit</td>
+<td>Redis sliding window + fallback in-memory</td>
+</tr>
+<tr class="odd">
+<td>Observabilidade</td>
+<td>Prometheus <code>/metrics</code> + Grafana</td>
+</tr>
+<tr class="even">
+<td>Testes</td>
+<td>61 passando · auditoria interna (23 findings corrigidos)</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>XiaoLee — AI ops layer não-custodial para a economia de criadores
+sobre Stellar.</em> <em>Programa 37 Graus — NearX/SDF · Track A · 2026 ·
+MVP em construção, base técnica auditada.</em></p>
+</body>
+</html>

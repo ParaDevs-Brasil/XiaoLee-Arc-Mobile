@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XiaoLee — Framework de Posicionamento</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0f0f14;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 40px 20px;
+  }
+
+  .card {
+    background: #16161e;
+    border-radius: 20px;
+    padding: 48px;
+    width: 1100px;
+    box-shadow: 0 0 80px rgba(217, 70, 239, 0.12);
+    border: 1px solid #2a2a38;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .logo-badge {
+    background: linear-gradient(135deg, #d946ef, #a855f7);
+    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .brand-name {
+    font-size: 28px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.5px;
+  }
+  .brand-tag {
+    background: linear-gradient(135deg, #d946ef22, #a855f722);
+    border: 1px solid #d946ef55;
+    color: #d946ef;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+    margin-left: 8px;
+  }
+  .tagline {
+    font-size: 17px;
+    color: #9ca3af;
+    font-style: italic;
+    margin-top: 4px;
+  }
+  .tagline span {
+    color: #e879f9;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  /* 4 columns */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 32px;
+  }
+
+  .col {
+    border-radius: 14px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .col-1 { background: #1a2035; border-top: 3px solid #3b82f6; }
+  .col-2 { background: #1a2b1a; border-top: 3px solid #22c55e; }
+  .col-3 { background: #251a35; border-top: 3px solid #a855f7; }
+  .col-4 { background: #2d1a1a; border-top: 3px solid #f97316; }
+
+  .col-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 800;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .col-1 .col-num { background: #3b82f6; }
+  .col-2 .col-num { background: #22c55e; }
+  .col-3 .col-num { background: #a855f7; }
+  .col-4 .col-num { background: #f97316; }
+
+  .col-title {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+  }
+  .col-1 .col-title { color: #60a5fa; }
+  .col-2 .col-title { color: #4ade80; }
+  .col-3 .col-title { color: #c084fc; }
+  .col-4 .col-title { color: #fb923c; }
+
+  .col-icon {
+    font-size: 28px;
+    margin: 4px 0;
+  }
+
+  .col-text {
+    font-size: 14px;
+    color: #d1d5db;
+    line-height: 1.6;
+    flex: 1;
+  }
+
+  .col-text strong {
+    color: #fff;
+    display: block;
+    margin-bottom: 6px;
+    font-size: 13px;
+  }
+
+  .col-label {
+    font-size: 11px;
+    color: #6b7280;
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid #ffffff10;
+    font-style: italic;
+  }
+
+  /* Proposta em frase */
+  .proposta-box {
+    margin-top: 20px;
+    background: linear-gradient(135deg, #1e1030, #200d2b);
+    border: 1px solid #7c3aed44;
+    border-radius: 14px;
+    padding: 24px 28px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .proposta-icon {
+    font-size: 32px;
+    flex-shrink: 0;
+  }
+  .proposta-label {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #a78bfa;
+    margin-bottom: 6px;
+  }
+  .proposta-frase {
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.3;
+  }
+  .proposta-frase span {
+    background: linear-gradient(90deg, #d946ef, #a855f7);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Essência */
+  .essencia {
+    margin-top: 16px;
+    background: #12121a;
+    border: 1px solid #2a2a38;
+    border-radius: 12px;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .essencia-dot {
+    width: 10px;
+    height: 10px;
+    background: linear-gradient(135deg, #d946ef, #a855f7);
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .essencia-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: #6b7280;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  .essencia-text {
+    font-size: 14px;
+    color: #9ca3af;
+    font-style: italic;
+  }
+  .essencia-text strong {
+    color: #e879f9;
+    font-style: normal;
+  }
+</style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- Header -->
+  <div class="header">
+    <div style="flex:1">
+      <div style="display:flex; align-items:center; gap:12px">
+        <div class="logo-badge">X</div>
+        <div>
+          <div style="display:flex; align-items:center; gap:8px">
+            <span class="brand-name">XiaoLee</span>
+            <span class="brand-tag">Posicionamento</span>
+          </div>
+          <div class="tagline">A plataforma que transforma <span>engajamento em renda</span> — sem código, sem fricção.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 Colunas -->
+  <div class="grid">
+
+    <!-- 1. Para quem é -->
+    <div class="col col-1">
+      <div style="display:flex; align-items:center; gap:10px">
+        <div class="col-num">1</div>
+        <div class="col-title">Para quem é</div>
+      </div>
+      <div class="col-icon">👥</div>
+      <div class="col-text">
+        <strong>Criadores de conteúdo</strong>
+        Que querem monetizar seu tempo nas redes sociais sem precisar entender cripto.
+      </div>
+      <div class="col-text" style="margin-top:8px">
+        <strong>Empresas e marcas</strong>
+        Que buscam alcance real em campanhas de marketing com resultados verificáveis on-chain.
+      </div>
+      <div class="col-label">Defina seu cliente, contexto e necessidade central.</div>
+    </div>
+
+    <!-- 2. Contra o que compete -->
+    <div class="col col-2">
+      <div style="display:flex; align-items:center; gap:10px">
+        <div class="col-num">2</div>
+        <div class="col-title">Contra o que compete</div>
+      </div>
+      <div class="col-icon">🎯</div>
+      <div class="col-text">
+        <strong>Plataformas de marketing cripto</strong>
+        Galxe, Layer3, Rally — focadas em Web3 nativo, com UX complexa e sem integração com redes sociais tradicionais.
+      </div>
+      <div class="col-text" style="margin-top:8px">
+        <strong>SocialFi genérico</strong>
+        Interfaces técnicas que afastam o público milenial e exigem conhecimento prévio de blockchain.
+      </div>
+      <div class="col-label">Entenda o conjunto competitivo real do cliente.</div>
+    </div>
+
+    <!-- 3. Por que é melhor -->
+    <div class="col col-3">
+      <div style="display:flex; align-items:center; gap:10px">
+        <div class="col-num">3</div>
+        <div class="col-title">Por que somos melhores</div>
+      </div>
+      <div class="col-icon">💎</div>
+      <div class="col-text">
+        <strong>Experiência gamificada</strong>
+        Campanhas com tarefas, recompensas e progresso — engaja como um jogo, não como um banco.
+      </div>
+      <div class="col-text" style="margin-top:8px">
+        <strong>Linguagem natural + Pix nativo</strong>
+        Conversa em português como o público milenial fala. Entra com Pix, sai com cripto — sem fricção.
+      </div>
+      <div class="col-label">Traduza diferenciais em benefícios comprováveis.</div>
+    </div>
+
+    <!-- 4. Proposta de valor -->
+    <div class="col col-4">
+      <div style="display:flex; align-items:center; gap:10px">
+        <div class="col-num">4</div>
+        <div class="col-title">Proposta de valor</div>
+      </div>
+      <div class="col-icon">💬</div>
+      <div class="col-text">
+        <strong>Onboarding sem barreiras</strong>
+        Qualquer pessoa com celular e conta no Instagram, X ou TikTok já pode participar — sem carteira, sem curso, sem jargão técnico.
+      </div>
+      <div class="col-text" style="margin-top:8px">
+        <strong>Auditável on-chain</strong>
+        Criadores e marcas verificam cada recompensa no Stellar Explorer — zero confiança necessária.
+      </div>
+      <div class="col-label">Uma frase clara, simples e memorável.</div>
+    </div>
+
+  </div>
+
+  <!-- Proposta em 1 frase -->
+  <div class="proposta-box">
+    <div class="proposta-icon">⭐</div>
+    <div>
+      <div class="proposta-label">Proposta de valor em 1 frase</div>
+      <div class="proposta-frase">
+        <span>XiaoLee:</span> Rentabilize seu tempo na sua rede social preferida.
+      </div>
+    </div>
+  </div>
+
+  <!-- Essência da marca -->
+  <div class="essencia">
+    <div class="essencia-dot"></div>
+    <span class="essencia-label">Essência da marca</span>
+    <span class="essencia-text">
+      Transformar <strong>engajamento social em renda real</strong> — sem complexidade técnica, para qualquer criador em qualquer rede.
+    </span>
+  </div>
+
+</div>
+
+</body>
+</html>

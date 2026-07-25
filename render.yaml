@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: xiaolee-frontend
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: out
+    envVars:
+      - key: NEXT_PUBLIC_CORE_API_URL
+        value: https://xiaolee-backend.up.railway.app

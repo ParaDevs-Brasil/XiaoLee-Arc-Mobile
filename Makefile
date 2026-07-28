@@ -2,6 +2,7 @@
         lint-quick lint-quick-backend lint-quick-frontend preflight \
         ci-local ci-local-backend ci-local-frontend \
         dev dev-backend dev-frontend \
+        init-mobile dev-mobile dev-mobile-android dev-mobile-ios dev-mobile-web typecheck-mobile \
         db-migrate db-rollback db-status \
         redis-ping redis-cli \
         build-docker run-docker run-docker-dev stop-docker logs \
@@ -68,6 +69,28 @@ dev-backend:
 
 dev-frontend:
 	@cd frontend && npm run dev
+
+# ─── Mobile (Expo / React Native) ─────────────────────────────────────────────
+# O app deriva a URL do backend do host do Metro (mobile/src/lib/config.ts), entao
+# `make dev-backend` precisa estar rodando em 0.0.0.0:8000 e o aparelho na mesma rede.
+init-mobile:
+	@[ -f mobile/.env ] || cp mobile/.env.example mobile/.env
+	@cd mobile && npm install
+
+dev-mobile:
+	@cd mobile && npm start
+
+dev-mobile-android:
+	@cd mobile && npm run android
+
+dev-mobile-ios:
+	@cd mobile && npm run ios
+
+dev-mobile-web:
+	@cd mobile && npm run web
+
+typecheck-mobile:
+	@cd mobile && npx tsc --noEmit
 
 # ─── Testes ───────────────────────────────────────────────────────────────────
 smoke:

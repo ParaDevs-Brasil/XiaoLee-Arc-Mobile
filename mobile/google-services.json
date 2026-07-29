@@ -12,7 +12,20 @@
           "package_name": "XiaoLee.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "347296354021-6euqql8brrk4smtvrudp3kp7muj66ekp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "XiaoLee.app",
+            "certificate_hash": "326729ea8b0b32850f3215f8dff9c8f63c77956a"
+          }
+        },
+        {
+          "client_id": "347296354021-p6i6cf8c7i28cm8265q905jc9bpovvio.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCcKzz28LqtR_u8gPvQgaHQIuPlS3_OB88"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "347296354021-p6i6cf8c7i28cm8265q905jc9bpovvio.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "347296354021-3kk05tg49il0a92st441vmk76s0vccog.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "XiaoLee.mobile"
+              }
+            }
+          ]
         }
       }
     }

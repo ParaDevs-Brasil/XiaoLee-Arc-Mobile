@@ -25,6 +25,7 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from database.database import get_db_session
+from server import token_auth
 import logging
 from database.models import AuthToken, Campaign as CampaignModel, CampaignParticipant, NotificationEvent, User, Wallet, WebSession
 
@@ -639,6 +640,84 @@ async def google_web3auth_login(payload: dict, db: AsyncSession = Depends(get_db
         "twitter_user_id": user.twitter_user_id,
         "username": handle,
         "address": address,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Login social verificado (substitui /auth/google/login)
+# ---------------------------------------------------------------------------
+
+class SessionLoginRequest(BaseModel):
+    """Só o token entra. Campos extras no corpo são ignorados de propósito —
+    é exatamente daí que vinha o furo do /auth/google/login."""
+
+    provider: str = ""
+    id_token: str = ""
+
+
+_TOKEN_VERIFIERS = {
+    "firebase": token_auth.verify_firebase_token,
+    "web3auth": token_auth.verify_web3auth_token,
+}
+
+
+@router.post("/auth/session")
+async def auth_session(payload: SessionLoginRequest, db: AsyncSession = Depends(get_db_session)):
+    """Emite sessão a partir de um ID token verificado do provedor social.
+
+    A identidade sai inteira de dentro do token (assinatura conferida contra o
+    JWKS do provedor); nada do corpo da request é confiável.
+    """
+    verifier = _TOKEN_VERIFIERS.get(payload.provider.strip().lower())
+    if verifier is None:
+        raise HTTPException(status_code=400, detail="provider inválido")
+    if not payload.id_token.strip():
+        raise HTTPException(status_code=400, detail="id_token é obrigatório")
+
+    try:
+        identity = verifier(payload.id_token)
+    except token_auth.TokenVerificationError as exc:
+        logger.warning("login social recusado (%s): %s", payload.provider, exc)
+        raise HTTPException(status_code=401, detail="token inválido") from exc
+
+    twitter_user_id = f"{identity.provider}_{identity.subject}"
+    handle = identity.name or (identity.email.split("@")[0] if identity.email else twitter_user_id)
+
+    user = (
+        await db.execute(select(User).where(User.twitter_user_id == twitter_user_id))
+    ).scalars().first()
+    if not user:
+        user = User(twitter_user_id=twitter_user_id, twitter_handle=handle)
+        db.add(user)
+        await db.flush()
+
+    # Endereço de payout só existe se o provedor o assinou dentro do token.
+    if identity.address:
+        wallet = (await db.execute(select(Wallet).where(Wallet.user_id == user.id))).scalars().first()
+        if not wallet:
+            db.add(
+                Wallet(
+                    user_id=user.id,
+                    address=identity.address,
+                    private_key_encrypted=f"{identity.provider}_managed",
+                )
+            )
+
+    session_id = f"{identity.provider}_session_{uuid.uuid4().hex}"
+    db.add(
+        WebSession(
+            session_id=session_id,
+            twitter_user_id=user.twitter_user_id,
+            expires_at=datetime.utcnow() + timedelta(days=30),
+        )
+    )
+    await db.commit()
+
+    return {
+        "session_id": session_id,
+        "twitter_user_id": user.twitter_user_id,
+        "username": handle,
+        "address": identity.address,
     }
 
 

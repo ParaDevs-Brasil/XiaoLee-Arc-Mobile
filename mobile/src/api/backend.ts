@@ -63,6 +63,30 @@ export interface CampaignsResponse {
   campaigns: Campaign[];
 }
 
+/** `POST /auth/session` — `backend/server/campaigns_routes.py::auth_session` */
+export interface SessionResponse {
+  session_id: string;
+  twitter_user_id: string;
+  username: string;
+  address: string;
+}
+
+/**
+ * Troca o ID token do Firebase por uma sessão do backend.
+ *
+ * O backend confere a assinatura do token contra o JWKS do Google antes de
+ * emitir a sessão — por isso só o token vai no corpo. Mandar `address`/`email`
+ * daqui não teria efeito: a rota ignora o corpo como fonte de identidade
+ * (é o furo que ela substitui, ver `/auth/google/login`).
+ */
+export function loginWithFirebase(idToken: string): Promise<SessionResponse> {
+  return apiFetch<SessionResponse>('/auth/session', {
+    method: 'POST',
+    json: { provider: 'firebase', id_token: idToken },
+    skipAuth: true,
+  });
+}
+
 /** Rota pública — não exige sessão. */
 export function getHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/health', { skipAuth: true });

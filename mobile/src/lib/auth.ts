@@ -1,6 +1,9 @@
 import auth, { type FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
+import { loginWithFirebase } from '@/api/backend';
+import { clearSession, saveSession, type Session } from '@/lib/session';
+
 /**
  * Login com Google → Firebase Auth.
  *
@@ -80,10 +83,32 @@ export function onAuthChanged(
 }
 
 /**
- * ID token do Firebase para mandar ao backend, que deve **verificar a
- * assinatura** com o Admin SDK antes de emitir sessão.
+ * ID token do Firebase para mandar ao backend, que verifica a assinatura
+ * contra o JWKS do Google antes de emitir sessão (`POST /auth/session`).
  */
 export async function getFirebaseIdToken(): Promise<string | null> {
   const user = auth().currentUser;
   return user ? user.getIdToken() : null;
+}
+
+/**
+ * Fluxo completo: Google → Firebase → sessão do backend, já persistida.
+ * É o que as telas devem chamar; as funções acima são as peças soltas.
+ */
+export async function signInAndStartSession(): Promise<Session> {
+  await signInWithGoogle();
+
+  const idToken = await getFirebaseIdToken();
+  if (!idToken) throw new Error('Firebase não devolveu ID token após o login.');
+
+  const { session_id, twitter_user_id } = await loginWithFirebase(idToken);
+  const session: Session = { sessionId: session_id, twitterUserId: twitter_user_id };
+  await saveSession(session);
+  return session;
+}
+
+/** Encerra tudo: Google, Firebase e a sessão guardada do backend. */
+export async function signOutEverywhere(): Promise<void> {
+  await signOut();
+  await clearSession();
 }

@@ -44,7 +44,10 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: Colors.light.bg },
         }}
       >
-        <Stack.Screen name="index" options={{ title: 'XiaoLee' }} />
+        {/* O chat traz o próprio HeaderBar (o wordmark do Figma), então a
+            barra nativa sairia duplicada. */}
+        <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
       </Stack>
     </ThemeProvider>
   );

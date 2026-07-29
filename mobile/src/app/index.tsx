@@ -1,203 +1,370 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
+import { useState } from 'react';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
-import { getHealth, getTractionStats, type HealthResponse, type TractionSnapshot } from '@/api/backend';
-import { ApiError } from '@/api/client';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-import { API_URL, API_URL_SOURCE } from '@/lib/config';
-
-const SOURCE_LABEL: Record<typeof API_URL_SOURCE, string> = {
-  env: 'EXPO_PUBLIC_API_URL',
-  packager: 'host do Metro',
-  fallback: 'padrão da plataforma',
-};
-
-interface BackendState {
-  health: HealthResponse | null;
-  traction: TractionSnapshot | null;
-  error: string | null;
-}
-
-const EMPTY: BackendState = { health: null, traction: null, error: null };
-
-/**
- * Busca o estado do backend sem tocar em state do React — assim tanto o efeito
- * de montagem quanto o botão de refresh reusam a mesma lógica, cada um
- * decidindo quando (e se) aplicar o resultado.
- */
-async function fetchBackendState(): Promise<BackendState> {
-  try {
-    // `/health` prova que o backend responde; `/v1/traction/stats` prova que
-    // o dado real do produto chega — as duas rotas são públicas.
-    const [health, traction] = await Promise.all([getHealth(), getTractionStats()]);
-    return { health, traction, error: null };
-  } catch (error) {
-    const message = error instanceof ApiError ? error.message : String(error);
-    return { health: null, traction: null, error: message };
-  }
-}
+import { HeaderBar } from '@/components/header-bar';
+import {
+  IconActivity,
+  IconChat,
+  IconCheck,
+  IconGift,
+  IconSend,
+  IconSwap,
+  IconWallet,
+  type IconProps,
+} from '@/components/icons';
+import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 
 /**
- * Tela de diagnóstico da conexão com o backend FastAPI.
+ * Tela de chat — a home do app.
  *
- * É a primeira tela do app de propósito: antes de portar chat, campanhas e
- * agente, é preciso conseguir ver de dentro do aparelho se `API_URL` está
- * certa — o erro mais comum aqui é apontar para `localhost`, que no device
- * resolve para o próprio aparelho e não para a máquina de desenvolvimento.
+ * Implementa o frame "Xiaolee - AI Chat" (412x915) do arquivo Figma
+ * "Xiaolee-Mobile". Medidas tiradas do próprio arquivo: cards de ação 62 de
+ * altura com gap 10, chips 30 com gap 8, card externo raio 16.
+ *
+ * O avatar é um frame estático de `xiaolee_standby.mov` — a personagem é
+ * animada no produto (ver ACTION_VIDEO_MAP no backend), mas o desenho pede
+ * um still e um vídeo em loop aqui custaria bateria por nada.
  */
-export default function ConnectionScreen() {
-  const theme = useTheme();
-  const [state, setState] = useState<BackendState>(EMPTY);
-  const [loading, setLoading] = useState(true);
 
-  const check = useCallback(async () => {
-    setLoading(true);
-    setState(await fetchBackendState());
-    setLoading(false);
-  }, []);
+interface Action {
+  key: string;
+  Icon: (p: IconProps) => React.ReactElement;
+  title: string;
+  subtitle: string;
+}
 
-  // `loading` já nasce `true`, então a checagem de montagem não precisa (nem
-  // deve) chamar setState de forma síncrona aqui — o React Compiler trata isso
-  // como render em cascata (`react-hooks/set-state-in-effect`).
-  useEffect(() => {
-    let cancelled = false;
+const ACTIONS: Action[] = [
+  { key: 'campaign', Icon: IconGift, title: 'Create a campaign', subtitle: 'Reward your community' },
+  { key: 'dashboard', Icon: IconActivity, title: 'View dashboard', subtitle: 'Metrics and activity' },
+  { key: 'swap', Icon: IconSwap, title: 'Make a swap', subtitle: 'Exchange tokens by chat' },
+  { key: 'balance', Icon: IconWallet, title: 'Check balance', subtitle: 'See your wallet funds' },
+];
 
-    fetchBackendState().then((next) => {
-      if (cancelled) return;
-      setState(next);
-      setLoading(false);
-    });
+const SUGGESTIONS = [
+  'What can you do for me?',
+  'How do campaigns work?',
+  'Show my recent transactions',
+];
 
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const connected = state.health !== null;
+export default function ChatScreen() {
+  const [draft, setDraft] = useState('');
 
   return (
-    <ThemedView style={styles.container}>
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={check} />}>
-        <ThemedView type="backgroundElement" style={styles.card}>
-          <ThemedText type="smallBold" themeColor="textSecondary">
-            BACKEND
-          </ThemedText>
-          <ThemedText type="code">{API_URL}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            resolvido via {SOURCE_LABEL[API_URL_SOURCE]}
-          </ThemedText>
-        </ThemedView>
+    <View style={styles.screen}>
+      <HeaderBar />
 
-        {loading && !state.health && !state.error ? (
-          <ThemedView style={styles.centered}>
-            <ActivityIndicator />
-            <ThemedText type="small" themeColor="textSecondary">
-              conectando…
-            </ThemedText>
-          </ThemedView>
-        ) : null}
+      <KeyboardAvoidingView
+        style={styles.flex}
+        // Sem isto o teclado cobre o input — o iOS não recua a view sozinho.
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <View style={styles.card}>
+          <AssistantHeader />
 
-        {state.error ? (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold" style={styles.error}>
-              SEM CONEXÃO
-            </ThemedText>
-            <ThemedText type="small">{state.error}</ThemedText>
-            <ThemedText type="small" themeColor="textSecondary">
-              Suba o backend com `make dev-backend` na raiz do repositório. Ele precisa escutar em
-              0.0.0.0:8000 para o aparelho alcançá-lo pela rede.
-            </ThemedText>
-          </ThemedView>
-        ) : null}
+          <ScrollView
+            contentContainerStyle={styles.body}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <Image
+              source={require('../../assets/images/xiaolee-avatar.png')}
+              style={styles.hero}
+              contentFit="cover"
+              accessibilityLabel="Xiaolee"
+            />
 
-        {connected && state.health ? (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold" style={styles.ok}>
-              CONECTADO
-            </ThemedText>
-            <Row label="serviço" value={state.health.service} />
-            <Row label="versão" value={state.health.version} />
-            <Row label="ambiente" value={state.health.environment} />
-            <Row label="cluster solana" value={state.health.solana_cluster} />
-            <Row label="gemini" value={state.health.gemini_enabled ? 'ativo' : 'desativado'} />
-          </ThemedView>
-        ) : null}
+            <Text style={styles.greeting}>Hi! I&apos;m Xiaolee ✨</Text>
+            <Text style={styles.pitch}>
+              Swaps, campaigns and payments — all by message. What would you like to do?
+            </Text>
 
-        {state.traction ? (
-          <ThemedView type="backgroundElement" style={styles.card}>
-            <ThemedText type="smallBold" themeColor="textSecondary">
-              TRACTION
-            </ThemedText>
-            <Row label="USDC liquidado" value={`$${state.traction.total_usdc.toFixed(2)}`} />
-            <Row label="pagamentos" value={String(state.traction.total_payments)} />
-            <Row label="creators ativos" value={String(state.traction.active_creators)} />
-            <Row label="latência média" value={`${Math.round(state.traction.avg_latency_ms)} ms`} />
-          </ThemedView>
-        ) : null}
+            <View style={styles.actions}>
+              {ACTIONS.map((action) => (
+                <ActionCard key={action.key} action={action} />
+              ))}
+            </View>
 
-        <Pressable
-          onPress={check}
-          disabled={loading}
-          style={({ pressed }) => [
-            styles.button,
-            { backgroundColor: theme.backgroundSelected, opacity: pressed || loading ? 0.6 : 1 },
-          ]}>
-          <ThemedText type="smallBold">{loading ? 'Verificando…' : 'Testar conexão'}</ThemedText>
-        </Pressable>
-      </ScrollView>
-    </ThemedView>
+            <View style={styles.suggestions}>
+              {SUGGESTIONS.map((text) => (
+                <Suggestion key={text} text={text} onPress={() => setDraft(text)} />
+              ))}
+            </View>
+          </ScrollView>
+
+          <Composer value={draft} onChange={setDraft} />
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/** Faixa de identidade do assistente, fixa no topo do card. */
+function AssistantHeader() {
   return (
-    <ThemedView type="backgroundElement" style={styles.row}>
-      <ThemedText type="small" themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <ThemedText type="small">{value}</ThemedText>
-    </ThemedView>
+    <View style={styles.assistant}>
+      <View>
+        <Image
+          source={require('../../assets/images/xiaolee-avatar.png')}
+          style={styles.assistantAvatar}
+          contentFit="cover"
+        />
+        <View style={styles.onlineDot} />
+      </View>
+
+      <View style={styles.flex}>
+        <View style={styles.assistantNameRow}>
+          <Text style={styles.assistantName}>Xiaolee</Text>
+          <View style={styles.onlineDotSmall} />
+          <Text style={styles.onlineLabel}>ONLINE</Text>
+        </View>
+        <Text style={styles.assistantRole}>Your intelligent DeFi assistant</Text>
+      </View>
+
+      <View style={styles.verifiedBadge}>
+        <IconCheck size={10} sw={2.4} color={Colors.light.success} />
+      </View>
+    </View>
+  );
+}
+
+function ActionCard({ action: { Icon, title, subtitle } }: { action: Action }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${subtitle}`}
+    >
+      <View style={styles.actionIcon}>
+        <Icon size={20} color={Colors.light.accent} />
+      </View>
+      <View style={styles.flex}>
+        <Text style={styles.actionTitle}>{title}</Text>
+        <Text style={styles.actionSubtitle}>{subtitle}</Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function Suggestion({ text, onPress }: { text: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.chip, pressed && styles.pressed]}
+      accessibilityRole="button"
+    >
+      <IconChat size={12} color={Colors.light.ink2} />
+      <Text style={styles.chipText}>{text}</Text>
+    </Pressable>
+  );
+}
+
+function Composer({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+  const canSend = value.trim().length > 0;
+
+  return (
+    <View style={styles.composer}>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder="Ask Xiaolee anything…"
+        placeholderTextColor={Colors.light.ink3}
+        style={styles.input}
+        multiline
+        maxLength={2000}
+      />
+      <Pressable
+        disabled={!canSend}
+        style={({ pressed }) => [
+          styles.sendButton,
+          !canSend && styles.sendButtonIdle,
+          pressed && styles.pressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel="Enviar"
+      >
+        <IconSend size={18} color={Colors.light.card} />
+      </Pressable>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: Spacing.three,
-    gap: Spacing.three,
-  },
+  screen: { flex: 1, backgroundColor: Colors.light.bg },
+  flex: { flex: 1 },
+
   card: {
-    gap: Spacing.two,
-    padding: Spacing.three,
-    borderRadius: Spacing.three,
+    flex: 1,
+    margin: Spacing.three - 4,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.light.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+    overflow: 'hidden',
+    ...CardShadow,
   },
-  row: {
+
+  // ── Faixa do assistente ────────────────────────────────────────────────
+  assistant: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: Spacing.three,
+    gap: Spacing.two + 2,
+    paddingHorizontal: Spacing.three - 3,
+    paddingVertical: Spacing.two + 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.light.border,
   },
-  centered: {
+  assistantAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.bg,
+  },
+  onlineDot: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 12,
+    height: 12,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.success,
+    borderWidth: 2,
+    borderColor: Colors.light.card,
+  },
+  assistantNameRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + 2 },
+  assistantName: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.light.ink },
+  onlineDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.success,
+  },
+  onlineLabel: {
+    fontFamily: Fonts.bold,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    color: Colors.light.success,
+  },
+  assistantRole: { fontFamily: Fonts.sans, fontSize: 12, color: Colors.light.ink2, marginTop: 1 },
+  verifiedBadge: {
+    width: 28,
+    height: 20,
+    borderRadius: Radius.sm,
     alignItems: 'center',
-    gap: Spacing.two,
-    paddingVertical: Spacing.four,
+    justifyContent: 'center',
+    backgroundColor: Colors.light.successSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.successBorder,
   },
-  button: {
+
+  // ── Corpo ──────────────────────────────────────────────────────────────
+  body: {
+    paddingHorizontal: Spacing.four + 3,
+    paddingTop: Spacing.four + 6,
+    paddingBottom: Spacing.four,
     alignItems: 'center',
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.three,
   },
-  ok: {
-    color: '#16a34a',
+  hero: {
+    width: 104,
+    height: 104,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.bg,
   },
-  error: {
-    color: '#dc2626',
+  greeting: {
+    fontFamily: Fonts.bold,
+    fontSize: 16,
+    color: Colors.light.ink,
+    marginTop: Spacing.three,
   },
+  pitch: {
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    lineHeight: 23,
+    color: Colors.light.ink2,
+    textAlign: 'center',
+    marginTop: Spacing.two,
+  },
+
+  // ── Cards de ação ──────────────────────────────────────────────────────
+  actions: { alignSelf: 'stretch', gap: 10, marginTop: Spacing.four + 2 },
+  action: {
+    height: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: Spacing.two + 2,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.card,
+  },
+  actionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.accentSoft,
+  },
+  actionTitle: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.light.ink },
+  actionSubtitle: { fontFamily: Fonts.sans, fontSize: 12, color: Colors.light.ink2, marginTop: 1 },
+
+  // ── Chips de sugestão ──────────────────────────────────────────────────
+  suggestions: { gap: Spacing.two, marginTop: Spacing.four, alignItems: 'center' },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two - 2,
+    height: 30,
+    paddingHorizontal: Spacing.three - 2,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+    backgroundColor: Colors.light.card,
+  },
+  chipText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.ink2 },
+
+  // ── Composer ───────────────────────────────────────────────────────────
+  composer: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: Spacing.two + 2,
+    paddingHorizontal: Spacing.three - 3,
+    paddingVertical: Spacing.two + 2,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Colors.light.border,
+  },
+  input: {
+    flex: 1,
+    minHeight: 46,
+    maxHeight: 120,
+    paddingHorizontal: Spacing.three,
+    paddingTop: 13,
+    paddingBottom: 13,
+    borderRadius: Radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    color: Colors.light.ink,
+  },
+  sendButton: {
+    width: 50,
+    height: 42,
+    borderRadius: Radius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.light.accent,
+  },
+  sendButtonIdle: { opacity: 0.45 },
+  pressed: { opacity: 0.65 },
 });

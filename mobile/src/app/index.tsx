@@ -24,6 +24,23 @@ interface BackendState {
 const EMPTY: BackendState = { health: null, traction: null, error: null };
 
 /**
+ * Busca o estado do backend sem tocar em state do React — assim tanto o efeito
+ * de montagem quanto o botão de refresh reusam a mesma lógica, cada um
+ * decidindo quando (e se) aplicar o resultado.
+ */
+async function fetchBackendState(): Promise<BackendState> {
+  try {
+    // `/health` prova que o backend responde; `/v1/traction/stats` prova que
+    // o dado real do produto chega — as duas rotas são públicas.
+    const [health, traction] = await Promise.all([getHealth(), getTractionStats()]);
+    return { health, traction, error: null };
+  } catch (error) {
+    const message = error instanceof ApiError ? error.message : String(error);
+    return { health: null, traction: null, error: message };
+  }
+}
+
+/**
  * Tela de diagnóstico da conexão com o backend FastAPI.
  *
  * É a primeira tela do app de propósito: antes de portar chat, campanhas e
@@ -38,22 +55,26 @@ export default function ConnectionScreen() {
 
   const check = useCallback(async () => {
     setLoading(true);
-    try {
-      // `/health` prova que o backend responde; `/v1/traction/stats` prova que
-      // o dado real do produto chega — as duas rotas são públicas.
-      const [health, traction] = await Promise.all([getHealth(), getTractionStats()]);
-      setState({ health, traction, error: null });
-    } catch (error) {
-      const message = error instanceof ApiError ? error.message : String(error);
-      setState({ health: null, traction: null, error: message });
-    } finally {
-      setLoading(false);
-    }
+    setState(await fetchBackendState());
+    setLoading(false);
   }, []);
 
+  // `loading` já nasce `true`, então a checagem de montagem não precisa (nem
+  // deve) chamar setState de forma síncrona aqui — o React Compiler trata isso
+  // como render em cascata (`react-hooks/set-state-in-effect`).
   useEffect(() => {
-    check();
-  }, [check]);
+    let cancelled = false;
+
+    fetchBackendState().then((next) => {
+      if (cancelled) return;
+      setState(next);
+      setLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const connected = state.health !== null;
 

@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HeaderBar } from '@/components/header-bar';
 import {
@@ -58,6 +59,8 @@ const SUGGESTIONS = [
 
 export default function ChatScreen() {
   const [draft, setDraft] = useState('');
+  // Barra de gestos do Android come a margem de baixo do card sem este inset.
+  const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.screen}>
@@ -68,7 +71,7 @@ export default function ChatScreen() {
         // Sem isto o teclado cobre o input — o iOS não recua a view sozinho.
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.card}>
+        <View style={[styles.card, { marginBottom: Spacing.three - 4 + insets.bottom }]}>
           <AssistantHeader />
 
           <ScrollView

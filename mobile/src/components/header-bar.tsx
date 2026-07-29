@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconBell, IconList, IconUser } from '@/components/icons';
+import { IconBell, IconMenu, IconUser } from '@/components/icons';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 
 /**
@@ -23,8 +24,12 @@ export function HeaderBar({
   onPressMenu,
   onPressProfile,
 }: HeaderBarProps) {
+  // O frame do Figma começa em y=0 porque não desenha a status bar. No
+  // aparelho, sem este inset o wordmark fica embaixo do relógio e da bateria.
+  const insets = useSafeAreaInsets();
+
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, { paddingTop: insets.top, height: 53 + insets.top }]}>
       {/* Wordmark: "Xiao" neutro + "lee" no acento, com o sparkle sobrescrito */}
       <Text style={styles.wordmark}>
         Xiao<Text style={styles.wordmarkAccent}>lee</Text>
@@ -47,7 +52,7 @@ export function HeaderBar({
           accessibilityRole="button"
           accessibilityLabel="Menu"
         >
-          <IconList size={26} color={Colors.light.accent} />
+          <IconMenu size={26} sw={2.2} color={Colors.light.accent} />
         </Pressable>
 
         {/* Avatar: círculo cheio no acento — um dos poucos usos permitidos */}
@@ -67,7 +72,6 @@ export function HeaderBar({
 
 const styles = StyleSheet.create({
   bar: {
-    height: 53,
     paddingHorizontal: Spacing.two,
     flexDirection: 'row',
     alignItems: 'center',

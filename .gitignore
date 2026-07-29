@@ -52,3 +52,6 @@ Arquitetura Completa do Projeto XiaoLee.md
 # Stellar mainnet secret keys (NUNCA commitar)
 mainnet_secrets.txt
 *secrets*.txt
+
+# Firebase Admin SDK service account (NUNCA commitar)
+backend/firebase-adminsdk.json

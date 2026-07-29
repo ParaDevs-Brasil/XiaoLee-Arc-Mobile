@@ -20,6 +20,8 @@ API_BASE_URL = os.getenv("API_BASE_URL", "http://127.0.0.1:5000")
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 # AI Provider settings
+FIREBASE_ADMIN_CREDENTIALS_PATH = os.getenv("FIREBASE_ADMIN_CREDENTIALS_PATH", "backend/firebase-adminsdk.json")
+
 AI_PROVIDER = os.getenv("AI_PROVIDER", "deepseek")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")

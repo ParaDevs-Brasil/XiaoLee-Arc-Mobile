@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "347296354021",
+    "project_id": "xiaolee-mobile",
+    "storage_bucket": "xiaolee-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:347296354021:android:c46983e870f7c943bf8e0c",
+        "android_client_info": {
+          "package_name": "XiaoLee.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCcKzz28LqtR_u8gPvQgaHQIuPlS3_OB88"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

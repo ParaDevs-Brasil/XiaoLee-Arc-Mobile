@@ -15,18 +15,12 @@ vi.mock("@/hooks/useModal", () => ({
 
 const STORAGE_KEY = "xiaolee_evm_address";
 
-const { connectEvmWalletMock, getEvmChainNameMock, isEvmWalletInstalledMock } = vi.hoisted(
-  () => ({
-    connectEvmWalletMock: vi.fn(),
-    getEvmChainNameMock: vi.fn(),
-    isEvmWalletInstalledMock: vi.fn(),
-  }),
-);
+const { getEvmChainNameMock } = vi.hoisted(() => ({
+  getEvmChainNameMock: vi.fn(),
+}));
 
 vi.mock("@/lib/evmWallet", () => ({
-  connectEvmWallet: connectEvmWalletMock,
   getEvmChainName: getEvmChainNameMock,
-  isEvmWalletInstalled: isEvmWalletInstalledMock,
   getStoredEvmAddress: () => localStorage.getItem(STORAGE_KEY) ?? "",
   clearStoredEvmAddress: () => localStorage.removeItem(STORAGE_KEY),
   shortEvmAddress: (address: string, front = 6, back = 4) =>
@@ -46,11 +40,6 @@ describe("Wallet — XiaoLee (EVM)", () => {
   });
 
   beforeEach(() => {
-    isEvmWalletInstalledMock.mockReturnValue(true);
-    connectEvmWalletMock.mockImplementation(async () => {
-      localStorage.setItem(STORAGE_KEY, MOCK_ADDRESS);
-      return MOCK_ADDRESS;
-    });
     getEvmChainNameMock.mockResolvedValue("Ethereum Sepolia");
   });
 
@@ -81,27 +70,17 @@ describe("Wallet — XiaoLee (EVM)", () => {
     expect((await within(container).findAllByText("$25.00")).length).toBeGreaterThan(0);
   });
 
-  it("connects wallet and shows address on button click", async () => {
+  it("delegates to the wallet picker (WalletConnect) on button click", async () => {
+    // Wallet.tsx só exibe saldo — conectar de fato é responsabilidade multi-chain
+    // do WalletConnect, acionado via onRequestConnect (com o modal atual fechando primeiro).
+    const onRequestConnect = vi.fn();
     const user = userEvent.setup();
-    const { container } = render(<Wallet shouldOpen balance={[]} />);
+    const { container } = render(<Wallet shouldOpen balance={[]} onRequestConnect={onRequestConnect} />);
     const screen = within(container);
 
     await user.click(screen.getByRole("button", { name: /Conectar Carteira/i }));
 
-    expect(connectEvmWalletMock).toHaveBeenCalledOnce();
-    expect(await screen.findByText(/Carteira conectada/i)).toBeTruthy();
-    expect(screen.getByText(/0x123456…345678/i)).toBeTruthy();
-  });
-
-  it("shows error when no EVM wallet is installed", async () => {
-    isEvmWalletInstalledMock.mockReturnValue(false);
-    const user = userEvent.setup();
-    const { container } = render(<Wallet shouldOpen balance={[]} />);
-    const screen = within(container);
-
-    await user.click(screen.getByRole("button", { name: /Conectar Carteira/i }));
-
-    expect(await screen.findByText(/Carteira EVM não encontrada/)).toBeTruthy();
+    await vi.waitFor(() => expect(onRequestConnect).toHaveBeenCalledOnce());
   });
 
   it("lists campaign reward tokens when connected", async () => {

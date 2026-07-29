@@ -1,7 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { IconBell, IconMenu, IconUser } from '@/components/icons';
+import { IconBell, IconMenu, IconSpark, IconUser } from '@/components/icons';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 
 /**
@@ -30,11 +30,17 @@ export function HeaderBar({
 
   return (
     <View style={[styles.bar, { paddingTop: insets.top, height: 53 + insets.top }]}>
-      {/* Wordmark: "Xiao" neutro + "lee" no acento, com o sparkle sobrescrito */}
-      <Text style={styles.wordmark}>
-        Xiao<Text style={styles.wordmarkAccent}>lee</Text>
-        <Text style={styles.sparkle}> ✦</Text>
-      </Text>
+      {/* Logo idêntico ao da navbar web: "Xiao" neutro + "lee" no acento em
+          Candice, seguido da faísca como SVG (não como caractere). */}
+      <View style={styles.logo}>
+        <Text style={styles.wordmark}>
+          Xiao<Text style={styles.wordmarkAccent}>lee</Text>
+        </Text>
+        {/* A faísca sobe um pouco, como o `-translate-y-1.5` do web. */}
+        <View style={styles.spark}>
+          <IconSpark size={13} color={Colors.light.accent} />
+        </View>
+      </View>
 
       <View style={styles.actions}>
         <Pressable
@@ -80,18 +86,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: Colors.light.border,
   },
+  logo: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one },
   wordmark: {
-    fontFamily: Fonts.bold,
-    fontSize: 24,
+    // Candice é a fonte da marca, só do logo — o resto do app é Quicksand.
+    fontFamily: Fonts.brand,
+    fontSize: 26,
     color: Colors.light.ink,
+    // Candice tem ascendentes altos; sem isto o Android corta o topo das letras.
+    lineHeight: 34,
   },
   wordmarkAccent: {
     color: Colors.light.accent,
   },
-  sparkle: {
-    fontSize: 10,
-    color: Colors.light.accent,
-  },
+  spark: { marginTop: -6 },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',

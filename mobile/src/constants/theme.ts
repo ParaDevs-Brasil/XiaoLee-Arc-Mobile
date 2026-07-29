@@ -74,6 +74,13 @@ export const Fonts = {
   medium: 'Quicksand_500Medium',
   semibold: 'Quicksand_600SemiBold',
   bold: 'Quicksand_700Bold',
+  /**
+   * Candice — fonte da marca, usada **só no logo**, igual à navbar web
+   * (`--font-candice`). O arquivo é o `candice-web.ttf`, subset latino
+   * re-serializado: o TTF original tem tabelas glyf/hmtx malformadas que os
+   * sanitizadores de fonte rejeitam.
+   */
+  brand: 'Candice',
   mono: Platform.select({ ios: 'ui-monospace', default: 'monospace' }) as string,
 } as const;
 

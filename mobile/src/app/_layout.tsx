@@ -22,6 +22,8 @@ export default function RootLayout() {
     Quicksand_500Medium,
     Quicksand_600SemiBold,
     Quicksand_700Bold,
+    // Candice: fonte da marca, só o logo usa (ver Fonts.brand).
+    Candice: require('../../assets/fonts/candice-web.ttf'),
   });
 
   useEffect(() => {

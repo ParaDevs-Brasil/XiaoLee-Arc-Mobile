@@ -117,3 +117,10 @@ export const IconCheck = (p: IconProps) => (
     <Path d="M20 6 9 17l-5-5" />
   </Svg>
 );
+
+/** Faísca do logo. Preenchida, sem traço — é a exceção ao padrão stroke-based. */
+export const IconSpark = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
+    <Path d="M12 2l1.6 5.6L19 9.2l-5.4 1.6L12 16l-1.6-5.2L5 9.2l5.4-1.6L12 2z" />
+  </Svg>
+);

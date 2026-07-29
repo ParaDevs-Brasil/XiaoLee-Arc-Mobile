@@ -43,6 +43,12 @@
     "eslint-config-expo": "~57.0.0",
     "typescript": "~6.0.3"
   },
+  "//overrides": "@napi-rs/wasm-runtime declara peerDependency de @emnapi/* num range de PRERELEASE (^2.0.0-alpha.3). O npm install resolve isso para o alpha mais recente publicado, então o lockfile envelhece sozinho e `npm ci` passa a acusar drift — foi o que quebrou a Mobile CI duas vezes. O consumidor real (@unrs/resolver-binding-wasm32-wasi, o fallback wasm do unrs-resolver que vem do eslint-config-expo) fixa 1.10.0, então travamos aqui. Reavaliar quando @emnapi 2.x sair de alpha.",
+  "overrides": {
+    "@emnapi/core": "1.10.0",
+    "@emnapi/runtime": "1.10.0",
+    "@emnapi/wasi-threads": "1.2.1"
+  },
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",

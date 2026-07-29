@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { AnimatedAvatar } from '@/components/animated-avatar';
 import { HeaderBar } from '@/components/header-bar';
 import {
   IconActivity,
@@ -23,6 +24,8 @@ import {
   IconWallet,
   type IconProps,
 } from '@/components/icons';
+import { NavMenu } from '@/components/nav-menu';
+import { ProfileMenu } from '@/components/profile-menu';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 
 /**
@@ -57,14 +60,26 @@ const SUGGESTIONS = [
   'Show my recent transactions',
 ];
 
+/** Qual painel do header está aberto — só um por vez, como no Figma. */
+type OpenPanel = 'none' | 'menu' | 'profile';
+
 export default function ChatScreen() {
   const [draft, setDraft] = useState('');
+  const [panel, setPanel] = useState<OpenPanel>('none');
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
 
+  const close = () => setPanel('none');
+  /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
+  const toggle = (next: Exclude<OpenPanel, 'none'>) =>
+    setPanel((current) => (current === next ? 'none' : next));
+
   return (
     <View style={styles.screen}>
-      <HeaderBar />
+      <HeaderBar
+        onPressMenu={() => toggle('menu')}
+        onPressProfile={() => toggle('profile')}
+      />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -79,12 +94,9 @@ export default function ChatScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Image
-              source={require('../../assets/images/xiaolee-avatar.png')}
-              style={styles.hero}
-              contentFit="cover"
-              accessibilityLabel="Xiaolee"
-            />
+            {/* Animado só aqui. O avatar de 40dp do header ficaria com um
+                segundo decoder na mesma tela por ganho quase nulo. */}
+            <AnimatedAvatar size={104} />
 
             <Text style={styles.greeting}>Hi! I&apos;m Xiaolee ✨</Text>
             <Text style={styles.pitch}>
@@ -107,6 +119,10 @@ export default function ChatScreen() {
           <Composer value={draft} onChange={setDraft} />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Depois do card para ficarem por cima dele, como nos frames do Figma. */}
+      <NavMenu visible={panel === 'menu'} onDismiss={close} />
+      <ProfileMenu visible={panel === 'profile'} onDismiss={close} />
     </View>
   );
 }

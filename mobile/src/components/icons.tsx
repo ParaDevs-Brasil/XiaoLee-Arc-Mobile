@@ -118,6 +118,59 @@ export const IconCheck = (p: IconProps) => (
   </Svg>
 );
 
+export const IconBarChart = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Line x1="18" y1="20" x2="18" y2="10" />
+    <Line x1="12" y1="20" x2="12" y2="4" />
+    <Line x1="6" y1="20" x2="6" y2="14" />
+  </Svg>
+);
+
+export const IconDollar = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Line x1="12" y1="1" x2="12" y2="23" />
+    <Path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+  </Svg>
+);
+
+export const IconRocket = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" />
+    <Path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 19 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" />
+    <Path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" />
+    <Path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" />
+  </Svg>
+);
+
+export const IconClipboard = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+    <Path d="M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 2 2 0 0 1-2 2H11a2 2 0 0 1-2-2z" />
+    <Path d="M9 12h6M9 16h6M9 9h.01" />
+  </Svg>
+);
+
+export const IconClock = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Circle cx="12" cy="12" r="9" />
+    <Polyline points="12 7 12 12 15.5 14" />
+  </Svg>
+);
+
+export const IconDownload = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
+    <Path d="M12 4v12m0 0-4-4m4 4 4-4" />
+  </Svg>
+);
+
+export const IconUpload = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
+    <Path d="M12 16V4m0 0 4 4m-4-4-4 4" />
+  </Svg>
+);
+
 /** Faísca do logo. Preenchida, sem traço — é a exceção ao padrão stroke-based. */
 export const IconSpark = ({ size = 24, color = 'currentColor' }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>

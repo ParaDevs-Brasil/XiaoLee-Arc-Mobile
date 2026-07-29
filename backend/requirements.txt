@@ -33,7 +33,7 @@ PyJWT>=2.8.0               # JWT para tokens SEP-10
 
 # ─── HTTP / Networking ────────────────────────────────────────────────────────
 aiohttp==3.13.5            # HTTP async para integrações externas
-httpx==0.27.0              # HTTP async — Circle Payments API
+httpx==0.28.1              # HTTP async — Circle Payments API, ArcClient W3S API, CCTP attestation (alinhado com requirements.dev.txt)
 
 # ─── IA / LLM ─────────────────────────────────────────────────────────────────
 anthropic>=0.69.0          # Claude (Messages API) — engine agêntica (LLM_PROVIDER=anthropic)
@@ -46,7 +46,6 @@ anthropic>=0.111.0
 openai>=1.0.0              # fallback provider compat
 
 # ─── Arc / Circle / CCTP (Sprint Lepton) ─────────────────────────────────────
-httpx>=0.27.0              # HTTP async — ArcClient W3S API, CCTP attestation
 web3>=6.20.0               # EVM on-chain: CCTP depositForBurn + receiveMessage
 eth-account>=0.13.0        # key derivation + tx signing (incluído no web3, pin explícito)
 eth-abi>=4.0.0             # ABI decode do evento MessageSent (CCTP raw_message extraction)

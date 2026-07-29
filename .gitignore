@@ -55,3 +55,6 @@ mainnet_secrets.txt
 
 # Firebase Admin SDK service account (NUNCA commitar)
 backend/firebase-adminsdk.json
+
+# Ferramenta local
+.commandcode/

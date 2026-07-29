@@ -1,24 +1,49 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import {
+  Quicksand_400Regular,
+  Quicksand_500Medium,
+  Quicksand_600SemiBold,
+  Quicksand_700Bold,
+  useFonts,
+} from '@expo-google-fonts/quicksand';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { useColorScheme } from 'react-native';
+
+import { Colors } from '@/constants/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  // Quicksand é a fonte do produto (ver constants/theme.ts). Sem esperar por
+  // ela, o app pisca na fonte de sistema antes de trocar.
+  const [fontsLoaded, fontError] = useFonts({
+    Quicksand_400Regular,
+    Quicksand_500Medium,
+    Quicksand_600SemiBold,
+    Quicksand_700Bold,
+  });
 
   useEffect(() => {
-    // Nada assíncrono para carregar ainda (fontes, sessão restaurada, etc.).
-    // Quando houver, mova o hide para depois desse carregamento.
+    // Falha de fonte não deve prender o usuário no splash — segue na de sistema.
+    if (!fontsLoaded && !fontError) return;
     SplashScreen.hideAsync().catch(() => {
       // splash já escondido — não há o que tratar
     });
-  }, []);
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
+    // Tema claro fixo: o design system suspendeu o modo escuro até a paleta
+    // ganhar variante escura (o web também força light).
+    <ThemeProvider value={DefaultTheme}>
+      <Stack
+        screenOptions={{
+          headerStyle: { backgroundColor: Colors.light.card },
+          headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
+          contentStyle: { backgroundColor: Colors.light.bg },
+        }}
+      >
         <Stack.Screen name="index" options={{ title: 'XiaoLee' }} />
       </Stack>
     </ThemeProvider>

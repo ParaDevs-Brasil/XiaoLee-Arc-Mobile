@@ -17,6 +17,23 @@ make dev-mobile           # Metro; leia o QR code com o app Expo Go
 
 Atalhos: `make dev-mobile-android`, `make dev-mobile-ios`, `make dev-mobile-web`.
 
+## Checagens
+
+```bash
+make ci-local-mobile      # a sequência exata do CI: lint + typecheck + bundle
+make lint-mobile          # eslint (eslint-config-expo)
+make typecheck-mobile     # tsc --noEmit
+```
+
+O CI (`.github/workflows/mobile-ci.yml`) roda o mesmo em todo push/PR que toque
+`mobile/**`, incluindo o bundle das três plataformas (`expo export --platform all`)
+— o que pega erro de import, de plugin do `app.json` e de código que só quebra no
+Metro, sem precisar de runner macOS.
+
+`expo-env.d.ts` e `.expo/types/router.d.ts` são gerados e estão no `.gitignore`; num
+clone novo o `tsc` falha sem eles. Os alvos acima chamam `expo customize tsconfig.json`
+antes, que regenera os dois sem alterar o `tsconfig.json` versionado.
+
 A primeira tela é um diagnóstico de conexão: mostra qual `API_URL` foi resolvida, se o
 backend respondeu e os números de traction ao vivo. Se aparecer "SEM CONEXÃO", o
 problema é de rede/URL, não do app.

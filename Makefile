@@ -2,7 +2,8 @@
         lint-quick lint-quick-backend lint-quick-frontend preflight \
         ci-local ci-local-backend ci-local-frontend \
         dev dev-backend dev-frontend \
-        init-mobile dev-mobile dev-mobile-android dev-mobile-ios dev-mobile-web typecheck-mobile \
+        init-mobile dev-mobile dev-mobile-android dev-mobile-ios dev-mobile-web \
+        expo-types-mobile typecheck-mobile lint-mobile ci-local-mobile \
         db-migrate db-rollback db-status \
         redis-ping redis-cli \
         build-docker run-docker run-docker-dev stop-docker logs \
@@ -89,8 +90,21 @@ dev-mobile-ios:
 dev-mobile-web:
 	@cd mobile && npm run web
 
-typecheck-mobile:
+# `expo-env.d.ts` e `.expo/types/router.d.ts` são gerados e ficam no .gitignore —
+# num clone novo o tsc quebra sem eles. `expo customize tsconfig.json` regenera os
+# dois sem tocar no tsconfig.json versionado.
+expo-types-mobile:
+	@cd mobile && npx expo customize tsconfig.json
+
+typecheck-mobile: expo-types-mobile
 	@cd mobile && npx tsc --noEmit
+
+lint-mobile:
+	@cd mobile && npm run lint
+
+# Mesma sequência do .github/workflows/mobile-ci.yml
+ci-local-mobile: expo-types-mobile
+	@cd mobile && npm run lint && npx tsc --noEmit && npx expo export --platform all --output-dir dist
 
 # ─── Testes ───────────────────────────────────────────────────────────────────
 smoke:

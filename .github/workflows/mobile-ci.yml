@@ -1,0 +1,72 @@
+name: Mobile CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+  pull_request:
+    branches: ["main", "develop"]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile-ci.yml"
+
+# Push + PR no mesmo branch disparam dois runs; só o mais recente interessa.
+concurrency:
+  group: mobile-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  mobile:
+    name: Lint · Typecheck · Bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # React Native 0.86 exige Node >= 20.19.4; o `20` do setup-node resolve
+      # para o último 20.x, então o piso está coberto.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `expo-env.d.ts` e `.expo/types/router.d.ts` são gerados, não versionados
+      # (estão no .gitignore). Sem eles o tsc não acha os tipos de `*.css` nem as
+      # rotas tipadas (`experiments.typedRoutes`), e o typecheck quebra num
+      # checkout limpo. Este comando regenera os dois e não altera o tsconfig.json.
+      - name: Generate Expo types
+        run: npx expo customize tsconfig.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # Bundle real de JS para as três plataformas — pega erro de import, de
+      # plugin do app.json e de código que só falha no Metro, sem precisar de
+      # runner macOS nem de build nativo.
+      - name: Export bundle (iOS · Android · Web)
+        env:
+          # Sem `.env` no CI (é gitignored). Fixamos a URL para o bundle não
+          # depender do host do Metro, que não existe aqui.
+          EXPO_PUBLIC_API_URL: "http://localhost:8000"
+        run: npx expo export --platform all --output-dir dist
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-bundle
+          path: mobile/dist
+          retention-days: 7

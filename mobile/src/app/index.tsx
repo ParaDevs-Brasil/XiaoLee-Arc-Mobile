@@ -21,7 +21,6 @@ import {
 } from '@/lib/avatar-animation';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
-import { HeaderBar } from '@/components/header-bar';
 import {
   IconActivity,
   IconChat,
@@ -32,8 +31,7 @@ import {
   IconWallet,
   type IconProps,
 } from '@/components/icons';
-import { NavMenu } from '@/components/nav-menu';
-import { ProfileMenu } from '@/components/profile-menu';
+import { ScreenShell } from '@/components/screen-shell';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 
 /**
@@ -94,9 +92,6 @@ const SUGGESTIONS = [
   'Show my recent transactions',
 ];
 
-/** Qual painel do header está aberto — só um por vez, como no Figma. */
-type OpenPanel = 'none' | 'menu' | 'profile';
-
 interface Message {
   id: string;
   author: 'user' | 'xiaolee';
@@ -121,17 +116,11 @@ const REACTIONS: { emoji: string; key: AnimationKey; label: string }[] = [
 
 export default function ChatScreen() {
   const [draft, setDraft] = useState('');
-  const [panel, setPanel] = useState<OpenPanel>('none');
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
   const scroller = useRef<ScrollView>(null);
-
-  const close = () => setPanel('none');
-  /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
-  const toggle = (next: Exclude<OpenPanel, 'none'>) =>
-    setPanel((current) => (current === next ? 'none' : next));
 
   async function send(text: string) {
     const message = text.trim();
@@ -179,12 +168,7 @@ export default function ChatScreen() {
   const empty = messages.length === 0;
 
   return (
-    <View style={styles.screen}>
-      <HeaderBar
-        onPressMenu={() => toggle('menu')}
-        onPressProfile={() => toggle('profile')}
-      />
-
+    <ScreenShell>
       <KeyboardAvoidingView
         style={styles.flex}
         // Sem isto o teclado cobre o input — o iOS não recua a view sozinho.
@@ -244,11 +228,7 @@ export default function ChatScreen() {
           />
         </View>
       </KeyboardAvoidingView>
-
-      {/* Depois do card para ficarem por cima dele, como nos frames do Figma. */}
-      <NavMenu visible={panel === 'menu'} onDismiss={close} />
-      <ProfileMenu visible={panel === 'profile'} onDismiss={close} />
-    </View>
+    </ScreenShell>
   );
 }
 
@@ -442,7 +422,6 @@ function Composer({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.light.bg },
   flex: { flex: 1 },
 
   card: {

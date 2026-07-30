@@ -1,14 +1,25 @@
-import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getTractionStats, type PaymentEvent } from '@/api/backend';
-import { EmptyState, ErrorState, LoadingState } from '@/components/feedback';
-import { IconActivity, IconDollar, IconInbox, IconUser, IconUsers, IconZap } from '@/components/icons';
+import { EmptyState, ErrorState, Skeleton } from '@/components/feedback';
+import {
+  IconActivity,
+  IconChevronRight,
+  IconDollar,
+  IconInbox,
+  IconUser,
+  IconUsers,
+  IconZap,
+} from '@/components/icons';
 import { PageHeading, ScreenShell } from '@/components/screen-shell';
 import { SectionCard } from '@/components/section-card';
-import { StatCard } from '@/components/stat-card';
+import { Sparkline } from '@/components/sparkline';
+import { MiniStat, StatCard } from '@/components/stat-card';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useBackendData } from '@/hooks/use-backend-data';
+import { isOnChainTx, txExplorerUrl } from '@/lib/explorer';
 import { formatUSDC, shortHash, timeAgo } from '@/lib/format';
 
 /**
@@ -18,6 +29,11 @@ import { formatUSDC, shortHash, timeAgo } from '@/lib/format';
  * rota (`GET /v1/traction/stats`) é pública: não exige sessão, então esta é a
  * única tela do app que mostra dado real sem login — de propósito, é a que o
  * júri do hackathon abre.
+ *
+ * A hierarquia é deliberada: o total liquidado é a métrica que a tela existe
+ * para comunicar, então ele vem sozinho e grande, e as outras três descem para
+ * uma faixa de apoio. Numa grade de quatro cartões iguais, como era antes, o
+ * número que importa lia com o mesmo peso de "Registered".
  */
 
 /** Acima disto a liquidação deixa de parecer instantânea — mesmo corte do web. */
@@ -55,38 +71,41 @@ export default function TractionScreen() {
           <ErrorState title="Couldn't load traction" message={error} onRetry={reload} />
         ) : null}
 
-        {loading && !data ? <LoadingState label="Reading the payment rail…" /> : null}
+        {loading && !data ? <TractionSkeleton /> : null}
 
         {data ? (
           <>
-            <View style={styles.stats}>
-              <StatCard
-                Icon={IconDollar}
-                label="USDC settled"
-                value={`$${formatUSDC(data.total_usdc)}`}
-                tone="success"
-              />
-              <StatCard
+            <TractionHero
+              total={data.total_usdc}
+              payments={data.total_payments}
+              feed={data.feed}
+            />
+
+            <View style={styles.strip}>
+              <MiniStat
                 Icon={IconActivity}
                 label="Payments"
                 value={String(data.total_payments)}
               />
-              <StatCard
+              <MiniStat
                 Icon={IconUsers}
                 label="Active creators"
                 value={String(data.active_creators)}
               />
-              <StatCard
+              <MiniStat
                 Icon={IconUser}
                 label="Registered"
                 value={String(data.registered_creators)}
-                tone="neutral"
               />
             </View>
 
-            <LatencyBar avg={data.avg_latency_ms} p95={data.p95_latency_ms} />
+            <LatencyBar
+              avg={data.avg_latency_ms}
+              p95={data.p95_latency_ms}
+              payments={data.total_payments}
+            />
 
-            <SectionCard title="Payment feed" subtitle="Latest settlements, newest first">
+            <SectionCard title="Payment feed" subtitle="Newest first · tap a row to verify on Arc">
               {data.feed.length === 0 ? (
                 <EmptyState
                   Icon={IconInbox}
@@ -104,16 +123,120 @@ export default function TractionScreen() {
   );
 }
 
+/** Contrato de stat tile: doze pontos de tendência, nem mais nem menos. */
+const SPARK_POINTS = 12;
+/** Com menos que isto não há forma para ler — dois pontos não são tendência. */
+const SPARK_MIN_POINTS = 3;
+
+/**
+ * O número que a tela existe para comunicar.
+ *
+ * O total sozinho é um enquadramento fraco de um ativo forte: um nanopagamento
+ * gira em torno de 5 USDC (`creator_pay_tools.py`), então o acumulado de uma
+ * campanha é de dezenas de dólares — e dezenas de dólares em 48px lê como
+ * "foi só isso". O que reposiciona o número é a frase em volta dele: quem
+ * pagou foi o agente, sozinho, e valor baixo é o **ponto** de um trilho de
+ * nanopagamento, não uma limitação.
+ *
+ * Daí o herói carregar três coisas em vez do número seco: o rótulo diz quem
+ * pagou, a linha de apoio diz quantos e quando, e o sparkline mostra o agente
+ * dimensionando cada pagamento — que é o acumulado virando fluxo.
+ */
+function TractionHero({
+  total,
+  payments,
+  feed,
+}: {
+  total: number;
+  payments: number;
+  feed: PaymentEvent[];
+}) {
+  const spark = sparkValues(feed);
+
+  return (
+    <StatCard
+      size="lg"
+      tone="success"
+      Icon={IconDollar}
+      label="USDC settled by the agent"
+      value={`$${formatUSDC(total)}`}
+      sub={heroSubLabel(payments, feed)}
+      chart={
+        spark ? (
+          <Sparkline
+            values={spark}
+            caption={`Last ${spark.length} settlements · the agent sizes each one`}
+          />
+        ) : null
+      }
+    />
+  );
+}
+
+/**
+ * Os pontos do sparkline, do mais antigo para o mais recente.
+ *
+ * O feed vem do backend do mais novo para o mais antigo (`metrics.py` insere
+ * na posição 0), então inverter é o que faz o tempo correr para a direita.
+ *
+ * O que está plotado é o valor de cada pagamento, não o acumulado: o acumulado
+ * sobre uma janela dos últimos doze começaria do zero e daria a entender que
+ * nada foi pago antes dela. Valor por pagamento também é o dado mais
+ * interessante — a variação entre as barras é o agente decidindo quanto cada
+ * creator vale, que é literalmente o que `pay_creator_nanopayment` pede a ele.
+ */
+function sparkValues(feed: PaymentEvent[]): number[] | null {
+  if (feed.length < SPARK_MIN_POINTS) return null;
+  return feed
+    .slice(0, SPARK_POINTS)
+    .map((event) => event.amount)
+    .reverse();
+}
+
+/**
+ * Linha de apoio do herói: quantos pagamentos e há quanto tempo foi o último.
+ *
+ * O acumulado sozinho não diz se a coisa está viva — "$412.80" pode ser de
+ * hoje ou do mês passado.
+ */
+function heroSubLabel(payments: number, feed: PaymentEvent[]): string {
+  const unit = payments === 1 ? 'nanopayment' : 'nanopayments';
+  const latest = feed[0];
+  if (!latest) return `${payments} ${unit}`;
+
+  // `timeAgo` devolve vazio se a data não parsear — nesse caso corta o trecho
+  // em vez de escrever "last ".
+  const ago = timeAgo(latest.ts);
+  return ago ? `${payments} ${unit} · last ${ago}` : `${payments} ${unit}`;
+}
+
 /**
  * Saúde da liquidação em uma linha.
  *
- * O web pinta o estado degradado de âmbar, mas o design system só tem
- * `success` e `danger` — inventar um hex aqui violaria a regra de referenciar
- * sempre os tokens, então degradado usa `danger`.
+ * Três estados, não dois: rápido, degradado e sem medida. Degradado é âmbar
+ * (`warn`) e não vermelho — o pagamento liquidou, só que devagar, e pintar
+ * isso de `danger` faria a tela anunciar uma falha que não houve.
  */
-function LatencyBar({ avg, p95 }: { avg: number; p95: number }) {
+function LatencyBar({ avg, p95, payments }: { avg: number; p95: number; payments: number }) {
+  // Sem pagamento nenhum a média chega como 0, que passa no teste de "rápido"
+  // e anunciaria liquidação instantânea numa tela que nunca liquidou nada.
+  if (payments === 0) {
+    return (
+      <View style={[styles.latency, styles.latencyIdle]}>
+        <View style={[styles.latencyIcon, styles.latencyIconIdle]}>
+          <IconZap size={18} color={Colors.light.ink3} />
+        </View>
+
+        <View style={styles.flex}>
+          <Text style={styles.latencyIdleTitle}>No settlements measured yet</Text>
+          <Text style={styles.latencySub}>Decision to on-chain settlement</Text>
+        </View>
+      </View>
+    );
+  }
+
   const ok = avg < LATENCY_OK_MS;
-  const color = ok ? Colors.light.success : Colors.light.danger;
+  const color = ok ? Colors.light.success : Colors.light.warn;
 
   return (
     <View style={[styles.latency, ok ? styles.latencyOk : styles.latencyWarn]}>
@@ -135,9 +258,30 @@ function LatencyBar({ avg, p95 }: { avg: number; p95: number }) {
   );
 }
 
+/**
+ * Abre a transação no explorer da Arc.
+ *
+ * `openBrowserAsync` rejeita quando não há navegador disponível. A tela não
+ * tem superfície para reportar isso, e um alerta por um link que não abriu
+ * seria mais ruído do que ajuda — o toque simplesmente não faz nada.
+ */
+function openTx(tx: string) {
+  WebBrowser.openBrowserAsync(txExplorerUrl(tx)).catch(() => {});
+}
+
+/**
+ * Uma liquidação do feed.
+ *
+ * Hash truncado na tela não prova nada para quem está olhando; prova quando dá
+ * para abrir. Por isso a linha vira link — mas só quando existe transação de
+ * verdade: um pagamento em `dry_run` ou enfileirado não tem hash, e mandar o
+ * usuário para uma página de "não encontrado" seria pior do que não linkar.
+ */
 function FeedRow({ event }: { event: PaymentEvent }) {
-  return (
-    <View style={styles.feedRow}>
+  const linkable = isOnChainTx(event.tx);
+
+  const content = (
+    <>
       <View style={styles.feedIcon}>
         <IconDollar size={14} color={Colors.light.success} />
       </View>
@@ -146,8 +290,8 @@ function FeedRow({ event }: { event: PaymentEvent }) {
         <Text style={styles.feedCreator} numberOfLines={1}>
           {event.creator}
         </Text>
-        <Text style={styles.feedTx} numberOfLines={1}>
-          {shortHash(event.tx)}
+        <Text style={linkable ? styles.feedTx : styles.feedNoTx} numberOfLines={1}>
+          {linkable ? shortHash(event.tx) : 'No transaction hash'}
         </Text>
       </View>
 
@@ -155,9 +299,68 @@ function FeedRow({ event }: { event: PaymentEvent }) {
         <Text style={styles.feedAmount}>+${formatUSDC(event.amount)}</Text>
         <Text style={styles.feedTime}>{timeAgo(event.ts)}</Text>
       </View>
+
+      {/* A seta é o que diferencia a linha que abre da que não abre. */}
+      {linkable ? <IconChevronRight size={14} color={Colors.light.ink3} /> : null}
+    </>
+  );
+
+  if (!linkable) return <View style={styles.feedRow}>{content}</View>;
+
+  return (
+    <Pressable
+      onPress={() => openTx(event.tx)}
+      style={({ pressed }) => [styles.feedRow, pressed && styles.feedRowPressed]}
+      accessibilityRole="link"
+      accessibilityLabel={`${event.creator}, ${formatUSDC(event.amount)} USDC — open the transaction in the Arc explorer`}
+    >
+      {content}
+    </Pressable>
+  );
+}
+
+/**
+ * Esqueleto da primeira carga, na silhueta do resultado.
+ *
+ * Substitui o spinner centralizado que havia aqui: ele ocupava uma altura que
+ * não era a do conteúdo, então a tela inteira pulava no instante em que o dado
+ * chegava — logo no primeiro segundo de uma demo.
+ */
+function TractionSkeleton() {
+  return (
+    <View style={styles.skeleton} accessible accessibilityLabel="Loading traction">
+      <Skeleton height={SKELETON.hero} radius={Radius.lg} />
+
+      <View style={styles.strip}>
+        <Skeleton height={SKELETON.mini} radius={Radius.lg} style={styles.flex} />
+        <Skeleton height={SKELETON.mini} radius={Radius.lg} style={styles.flex} />
+        <Skeleton height={SKELETON.mini} radius={Radius.lg} style={styles.flex} />
+      </View>
+
+      <Skeleton height={SKELETON.latency} radius={Radius.lg} />
+      <Skeleton height={SKELETON.feed} radius={Radius.lg} />
     </View>
   );
 }
+
+/**
+ * Alturas medidas contra o layout real, não chutadas.
+ *
+ * Um esqueleto com a altura errada é pior do que nenhum: ele promete uma
+ * silhueta e entrega outra, então a tela pula do mesmo jeito — só que depois
+ * de o usuário já ter começado a ler. Se o herói ou o cartão de métrica
+ * mudarem de anatomia, estes números têm de mudar junto.
+ */
+const SKELETON = {
+  /** Cabeçalho + número de 48px + linha de apoio + sparkline com legenda. */
+  hero: 216,
+  /** Ícone + número + rótulo de até duas linhas, com o padding do cartão. */
+  mini: 92,
+  /** Uma linha só: o chip de 36px mais o padding. */
+  latency: 66,
+  /** Cabeçalho da seção mais três linhas de feed. */
+  feed: 228,
+} as const;
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
@@ -168,9 +371,10 @@ const styles = StyleSheet.create({
   },
 
   // ── Métricas ───────────────────────────────────────────────────────────
-  // `wrap` com os cartões em `flex: 1` e `minWidth: 140` dá dois por linha sem
-  // conta de largura, e cai para um só em aparelho estreito.
-  stats: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.two + 2 },
+  // Três colunas fixas: são números curtos, e um `wrap` deixaria o terceiro
+  // cartão sozinho numa linha só em aparelho estreito.
+  strip: { flexDirection: 'row', gap: Spacing.two + 2 },
+  skeleton: { gap: Spacing.three - 4 },
 
   // ── Barra de latência ──────────────────────────────────────────────────
   latency: {
@@ -182,7 +386,8 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   latencyOk: { backgroundColor: Colors.light.successSoft, borderColor: Colors.light.successBorder },
-  latencyWarn: { backgroundColor: Colors.light.dangerSoft, borderColor: Colors.light.danger },
+  latencyWarn: { backgroundColor: Colors.light.warnSoft, borderColor: Colors.light.warnBorder },
+  latencyIdle: { backgroundColor: Colors.light.card, borderColor: Colors.light.border },
   latencyIcon: {
     width: 36,
     height: 36,
@@ -191,8 +396,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   latencyIconOk: { backgroundColor: Colors.light.successBorder },
-  latencyIconWarn: { backgroundColor: Colors.light.card },
+  latencyIconWarn: { backgroundColor: Colors.light.warnBorder },
+  latencyIconIdle: { backgroundColor: Colors.light.bg },
   latencyTitle: { fontFamily: Fonts.bold, fontSize: 13 },
+  latencyIdleTitle: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.ink2 },
   latencySub: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.light.ink2, marginTop: 1 },
 
   // ── Feed ───────────────────────────────────────────────────────────────
@@ -205,6 +412,7 @@ const styles = StyleSheet.create({
     borderRadius: Radius.md,
     backgroundColor: Colors.light.bg,
   },
+  feedRowPressed: { backgroundColor: Colors.light.border },
   feedIcon: {
     width: 32,
     height: 32,
@@ -217,6 +425,7 @@ const styles = StyleSheet.create({
   },
   feedCreator: { fontFamily: Fonts.semibold, fontSize: 13, color: Colors.light.ink },
   feedTx: { fontFamily: Fonts.mono, fontSize: 10, color: Colors.light.ink3, marginTop: 2 },
+  feedNoTx: { fontFamily: Fonts.sans, fontSize: 10, color: Colors.light.ink3, marginTop: 2 },
   feedRight: { alignItems: 'flex-end' },
   feedAmount: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.success },
   feedTime: { fontFamily: Fonts.sans, fontSize: 10, color: Colors.light.ink3, marginTop: 2 },

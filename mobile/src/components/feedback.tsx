@@ -1,4 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { IconProps } from '@/components/icons';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
@@ -38,6 +40,65 @@ export function EmptyState({
       <Text style={styles.emptyTitle}>{title}</Text>
       <Text style={styles.dim}>{text}</Text>
     </View>
+  );
+}
+
+/**
+ * Bloco cinza pulsante com a forma do conteúdo que ainda vai chegar.
+ *
+ * Serve de alternativa ao `LoadingState` nas telas cujo conteúdo tem silhueta
+ * previsível: o spinner centralizado ocupa uma altura que não é a do resultado,
+ * então a tela inteira salta quando o dado entra. Um esqueleto com a forma
+ * certa segura o layout parado.
+ *
+ * Usa o `Animated` do React Native, e não o Reanimated, pelo mesmo motivo que
+ * `dropdown-panel`: é o que o resto do app usa.
+ */
+export function Skeleton({
+  height,
+  width,
+  radius = Radius.md,
+  style,
+}: {
+  height: number;
+  /** Sem largura o bloco estica na coluna, que é o caso comum. */
+  width?: DimensionValue;
+  radius?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  // A `Animated.Value` nasce uma vez e sobrevive aos re-renders — mesmo idioma
+  // do `dropdown-panel`.
+  const [pulse] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 700,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    // Sem o `stop` a animação continua rodando depois que o dado chega e o
+    // esqueleto sai da árvore.
+    return () => loop.stop();
+  }, [pulse]);
+
+  const opacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.4, 1] });
+
+  return (
+    <Animated.View
+      style={[styles.skeleton, { height, width, borderRadius: radius }, style, { opacity }]}
+    />
   );
 }
 
@@ -89,6 +150,8 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.bg,
   },
   emptyTitle: { fontFamily: Fonts.semibold, fontSize: 14, color: Colors.light.ink },
+
+  skeleton: { backgroundColor: Colors.light.border },
 
   error: {
     gap: Spacing.two,

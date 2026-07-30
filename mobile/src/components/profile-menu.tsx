@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DropdownPanel, PanelRow, type PanelItem } from '@/components/dropdown-panel';
 import {
@@ -25,24 +25,54 @@ interface ProfileMenuProps {
   onDismiss: () => void;
   /** Handle do usuário, quando há sessão. */
   handle?: string;
+  /** Endereço de payout vinculado, quando há. */
+  walletAddress?: string;
   onSignIn?: () => void;
+  onConnectWallet?: () => void;
+  signingIn?: boolean;
 }
 
-const ACTIONS: PanelItem[] = [
-  { key: 'wallet', Icon: IconWallet, title: 'wallet', subtitle: 'View token balance' },
-  { key: 'transaction', Icon: IconClipboard, title: 'Transaction', subtitle: 'View swap history' },
-  { key: 'history', Icon: IconClock, title: 'History', subtitle: 'View conversations and activities' },
-  {
-    key: 'connect',
-    Icon: IconClipboard,
-    title: 'Connect Wallet',
-    subtitle: 'ARC - Solana - Stellar - USDC',
-  },
-  { key: 'withdraw', Icon: IconDownload, title: 'Withdraw', subtitle: 'Withdraw funds to wallet' },
-  { key: 'deposit', Icon: IconUpload, title: 'Deposit', subtitle: 'Add funds to account' },
-];
+/** Abrevia o endereço como no web: início e fim, meio elidido. */
+function short(address: string): string {
+  return address.length <= 16 ? address : `${address.slice(0, 8)}…${address.slice(-6)}`;
+}
 
-export function ProfileMenu({ visible, onDismiss, handle, onSignIn }: ProfileMenuProps) {
+export function ProfileMenu({
+  visible,
+  onDismiss,
+  handle,
+  walletAddress,
+  onSignIn,
+  onConnectWallet,
+  signingIn,
+}: ProfileMenuProps) {
+  const connected = Boolean(walletAddress);
+
+  // Só o Connect Wallet está ligado; as demais ainda não têm destino, então
+  // seguem sem `onPress` em vez de abrir tela vazia.
+  const actions: PanelItem[] = [
+    { key: 'wallet', Icon: IconWallet, title: 'wallet', subtitle: 'View token balance' },
+    { key: 'transaction', Icon: IconClipboard, title: 'Transaction', subtitle: 'View swap history' },
+    {
+      key: 'history',
+      Icon: IconClock,
+      title: 'History',
+      subtitle: 'View conversations and activities',
+    },
+    {
+      key: 'connect',
+      Icon: IconClipboard,
+      title: connected ? 'Wallet conectada' : 'Connect Wallet',
+      subtitle: walletAddress ? short(walletAddress) : 'ARC - Solana - Stellar - USDC',
+      onPress: () => {
+        onDismiss();
+        onConnectWallet?.();
+      },
+    },
+    { key: 'withdraw', Icon: IconDownload, title: 'Withdraw', subtitle: 'Withdraw funds to wallet' },
+    { key: 'deposit', Icon: IconUpload, title: 'Deposit', subtitle: 'Add funds to account' },
+  ];
+
   return (
     <DropdownPanel visible={visible} onDismiss={onDismiss}>
       <View style={styles.identity}>
@@ -59,20 +89,29 @@ export function ProfileMenu({ visible, onDismiss, handle, onSignIn }: ProfileMen
         </View>
       </View>
 
-      {ACTIONS.map((item) => (
+      {actions.map((item) => (
         <PanelRow key={item.key} item={item} />
       ))}
 
-      <Pressable
-        onPress={onSignIn}
-        style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
-        accessibilityRole="button"
-      >
-        {/* O "G" colorido do Google é marca registrada; o SVG oficial entra
-            junto com o botão real de login, não como aproximação desenhada. */}
-        <Text style={styles.googleMark}>G</Text>
-        <Text style={styles.signInLabel}>Sign in with Google</Text>
-      </Pressable>
+      {handle ? null : (
+        <Pressable
+          onPress={onSignIn}
+          disabled={signingIn}
+          style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          {signingIn ? (
+            <ActivityIndicator size="small" color={Colors.light.accent} />
+          ) : (
+            <>
+              {/* O "G" colorido do Google é marca registrada; o SVG oficial
+                  entra junto com o botão do próprio SDK, não desenhado à mão. */}
+              <Text style={styles.googleMark}>G</Text>
+              <Text style={styles.signInLabel}>Sign in with Google</Text>
+            </>
+          )}
+        </Pressable>
+      )}
     </DropdownPanel>
   );
 }

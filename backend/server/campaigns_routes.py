@@ -12,6 +12,7 @@ import binascii
 import hashlib
 import hmac as _hmac
 import json
+import re
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -719,6 +720,83 @@ async def auth_session(payload: SessionLoginRequest, db: AsyncSession = Depends(
         "username": handle,
         "address": identity.address,
     }
+
+
+# ---------------------------------------------------------------------------
+# Vínculo autenticado de carteira (substitui POST /user/{user_id}/wallet)
+# ---------------------------------------------------------------------------
+
+# EVM: 0x + 40 hex. Não valida checksum EIP-55 de propósito — muitas carteiras
+# exibem tudo minúsculo, e recusar isso viraria suporte, não segurança.
+_EVM_ADDRESS_RE = re.compile(r"^0x[0-9a-fA-F]{40}$")
+
+
+class WalletLinkRequest(BaseModel):
+    """Só o endereço entra. O dono vem da sessão — ver `link_wallet`."""
+
+    address: str = ""
+    chain: str = "arc"
+
+
+async def _user_from_session(token: str | None, db: AsyncSession) -> User:
+    """Resolve o `Bearer` em usuário, ou 401. Sessão expirada não vale."""
+    if not token or not token.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="autenticação obrigatória")
+
+    session_id = token.removeprefix("Bearer ").strip()
+    session = (
+        await db.execute(select(WebSession).where(WebSession.session_id == session_id))
+    ).scalars().first()
+    if not session:
+        raise HTTPException(status_code=401, detail="sessão inválida")
+
+    expires_at = session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=401, detail="sessão expirada")
+
+    user = (
+        await db.execute(select(User).where(User.twitter_user_id == session.twitter_user_id))
+    ).scalars().first()
+    if not user:
+        raise HTTPException(status_code=401, detail="sessão sem usuário")
+    return user
+
+
+@router.post("/auth/wallet")
+async def link_wallet(
+    payload: WalletLinkRequest,
+    authorization: str | None = Header(default=None),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Vincula o endereço de payout ao usuário **da sessão**.
+
+    O endereço é para onde o agente manda USDC, então quem consegue gravá-lo
+    redireciona dinheiro. `POST /user/{user_id}/wallet` aceita o alvo pela URL
+    sem autenticação; aqui o dono sai do token e nada do corpo o altera.
+    """
+    user = await _user_from_session(authorization, db)
+
+    address = payload.address.strip()
+    if not address:
+        raise HTTPException(status_code=400, detail="address é obrigatório")
+    if not _EVM_ADDRESS_RE.match(address):
+        raise HTTPException(status_code=400, detail="endereço EVM inválido")
+
+    wallet = (
+        await db.execute(select(Wallet).where(Wallet.user_id == user.id))
+    ).scalars().first()
+
+    if wallet:
+        # Trocar de carteira é operação legítima do dono.
+        wallet.address = address
+    else:
+        # Chave privada nunca chega ao servidor — a carteira é do usuário.
+        db.add(Wallet(user_id=user.id, address=address, private_key_encrypted="user_managed"))
+
+    await db.commit()
+    return {"address": address, "chain": payload.chain, "twitter_user_id": user.twitter_user_id}
 
 
 # ---------------------------------------------------------------------------

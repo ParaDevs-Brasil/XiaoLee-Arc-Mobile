@@ -127,6 +127,27 @@ export function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
   });
 }
 
+/** `POST /auth/wallet` — `backend/server/campaigns_routes.py::link_wallet` */
+export interface WalletLinkResponse {
+  address: string;
+  chain: string;
+  twitter_user_id: string;
+}
+
+/**
+ * Vincula o endereço de payout ao usuário da sessão.
+ *
+ * Exige sessão: o backend tira o dono do `Bearer`, nunca do corpo. A rota
+ * antiga (`POST /user/{user_id}/wallet`) aceitava o alvo pela URL sem
+ * autenticação, o que deixava reivindicar o payout de outro usuário.
+ */
+export function linkWallet(address: string, chain = 'arc'): Promise<WalletLinkResponse> {
+  return apiFetch<WalletLinkResponse>('/auth/wallet', {
+    method: 'POST',
+    json: { address, chain },
+  });
+}
+
 /** Rota pública — não exige sessão. */
 export function getHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/health', { skipAuth: true });

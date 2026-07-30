@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -19,6 +19,8 @@ import {
   avatarAnimation,
   type AnimationKey,
 } from '@/lib/avatar-animation';
+import { GoogleSignInCancelled, signInAndStartSession } from '@/lib/auth';
+import { getSession, getWallet } from '@/lib/session';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
 import { HeaderBar } from '@/components/header-bar';
@@ -32,6 +34,7 @@ import {
   IconWallet,
   type IconProps,
 } from '@/components/icons';
+import { ConnectWalletSheet } from '@/components/connect-wallet-sheet';
 import { NavMenu } from '@/components/nav-menu';
 import { ProfileMenu } from '@/components/profile-menu';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
@@ -124,6 +127,10 @@ export default function ChatScreen() {
   const [panel, setPanel] = useState<OpenPanel>('none');
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
+  const [handle, setHandle] = useState<string>();
+  const [wallet, setWallet] = useState<string>();
+  const [signingIn, setSigningIn] = useState(false);
+  const [walletSheet, setWalletSheet] = useState(false);
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
   const scroller = useRef<ScrollView>(null);
@@ -132,6 +139,39 @@ export default function ChatScreen() {
   /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
   const toggle = (next: Exclude<OpenPanel, 'none'>) =>
     setPanel((current) => (current === next ? 'none' : next));
+
+  // Sessão e carteira sobrevivem ao fechamento do app (SecureStore), então o
+  // estado é restaurado na montagem em vez de começar deslogado.
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([getSession(), getWallet()]).then(([session, stored]) => {
+      if (cancelled) return;
+      if (session?.twitterUserId) setHandle(session.twitterUserId);
+      if (stored) setWallet(stored.address);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function signIn() {
+    setSigningIn(true);
+    try {
+      const session = await signInAndStartSession();
+      setHandle(session.twitterUserId);
+      close();
+    } catch (error) {
+      // Desistir do login não é erro — não vale poluir a conversa com isso.
+      if (error instanceof GoogleSignInCancelled) return;
+      const detail = error instanceof ApiError ? error.message : String(error);
+      setMessages((current) => [
+        ...current,
+        { id: `e${Date.now()}`, author: 'xiaolee', text: detail, time: now() },
+      ]);
+    } finally {
+      setSigningIn(false);
+    }
+  }
 
   async function send(text: string) {
     const message = text.trim();
@@ -147,7 +187,13 @@ export default function ChatScreen() {
     avatarAnimation.play('xiaolee_thinklow');
 
     try {
-      const result = await sendChatMessage({ message });
+      // Mesmo contexto que o web manda em cada mensagem: sem isso o agente
+      // não sabe qual carteira consultar e responde "conecte sua carteira".
+      const wallet = await getWallet();
+      const result = await sendChatMessage({
+        message,
+        ...(wallet && { wallet_address: wallet.address, wallet_chain: wallet.chain }),
+      });
       const reply = result.response?.[0]?.content?.trim();
 
       setMessages((current) => [
@@ -247,7 +293,20 @@ export default function ChatScreen() {
 
       {/* Depois do card para ficarem por cima dele, como nos frames do Figma. */}
       <NavMenu visible={panel === 'menu'} onDismiss={close} />
-      <ProfileMenu visible={panel === 'profile'} onDismiss={close} />
+      <ProfileMenu
+        visible={panel === 'profile'}
+        onDismiss={close}
+        handle={handle}
+        walletAddress={wallet}
+        signingIn={signingIn}
+        onSignIn={signIn}
+        onConnectWallet={() => setWalletSheet(true)}
+      />
+      <ConnectWalletSheet
+        visible={walletSheet}
+        onClose={() => setWalletSheet(false)}
+        onConnected={setWallet}
+      />
     </View>
   );
 }

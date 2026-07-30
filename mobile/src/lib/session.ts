@@ -11,6 +11,8 @@ import { Platform } from 'react-native';
  */
 const SESSION_KEY = 'xiaolee_session_id';
 const USER_ID_KEY = 'xiaolee_twitter_user_id';
+const WALLET_KEY = 'xiaolee_wallet_address';
+const WALLET_CHAIN_KEY = 'xiaolee_wallet_chain';
 
 const isWeb = Platform.OS === 'web';
 
@@ -76,5 +78,42 @@ export async function saveSession(session: Session): Promise<void> {
 }
 
 export async function clearSession(): Promise<void> {
-  await Promise.all([removeItem(SESSION_KEY), removeItem(USER_ID_KEY)]);
+  await Promise.all([
+    removeItem(SESSION_KEY),
+    removeItem(USER_ID_KEY),
+    removeItem(WALLET_KEY),
+    removeItem(WALLET_CHAIN_KEY),
+  ]);
+}
+
+/**
+ * Carteira de payout do usuário — o endereço para onde o agente manda USDC.
+ *
+ * Guardada aqui só como cache local do que o backend já tem: o vínculo real é
+ * feito por `POST /auth/wallet`, autenticado pela sessão. É o equivalente ao
+ * que o web mantém em `localStorage` para mandar em cada `/chat`.
+ */
+export interface ConnectedWallet {
+  address: string;
+  chain: string;
+}
+
+export async function getWallet(): Promise<ConnectedWallet | null> {
+  const [address, chain] = await Promise.all([
+    readItem(WALLET_KEY),
+    readItem(WALLET_CHAIN_KEY),
+  ]);
+  if (!address?.trim()) return null;
+  return { address: address.trim(), chain: chain?.trim() || 'arc' };
+}
+
+export async function saveWallet(wallet: ConnectedWallet): Promise<void> {
+  await Promise.all([
+    writeItem(WALLET_KEY, wallet.address),
+    writeItem(WALLET_CHAIN_KEY, wallet.chain),
+  ]);
+}
+
+export async function clearWallet(): Promise<void> {
+  await Promise.all([removeItem(WALLET_KEY), removeItem(WALLET_CHAIN_KEY)]);
 }

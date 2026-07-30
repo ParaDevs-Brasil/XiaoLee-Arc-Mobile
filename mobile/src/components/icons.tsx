@@ -118,6 +118,13 @@ export const IconCheck = (p: IconProps) => (
   </Svg>
 );
 
+export const IconClose = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Line x1="18" y1="6" x2="6" y2="18" />
+    <Line x1="6" y1="6" x2="18" y2="18" />
+  </Svg>
+);
+
 export const IconBarChart = (p: IconProps) => (
   <Svg {...base(p)}>
     <Line x1="18" y1="20" x2="18" y2="10" />

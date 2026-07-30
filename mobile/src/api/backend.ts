@@ -141,3 +141,38 @@ export function getTractionStats(): Promise<TractionSnapshot> {
 export function listCampaigns(): Promise<CampaignsResponse> {
   return apiFetch<CampaignsResponse>('/campaigns', { skipAuth: true });
 }
+
+/** `POST /campaigns/create` — `backend/server/campaigns_routes.py::create_campaign` */
+export interface CreateCampaignRequest {
+  title: string;
+  description: string;
+  /** `airdrop` | `engagement` | `referral` — os valores do select do web. */
+  campaign_type: string;
+  profile_to_follow?: string;
+  tweet_id_to_engage?: string;
+  reward_token: string;
+  reward_per_participant: number;
+  max_participants: number;
+}
+
+export interface CreateCampaignResponse {
+  success: boolean;
+  message: string;
+  campaign: Campaign;
+}
+
+/**
+ * Cria uma campanha. **Exige sessão**: a rota resolve o criador a partir do
+ * `Bearer` (`_resolve_user`), então esta é a única chamada de campanha sem
+ * `skipAuth`.
+ *
+ * `reward_pool` não vai no corpo de propósito — o backend o calcula como
+ * `reward_per_participant * max_participants`, e mandar daqui abriria espaço
+ * para os dois valores discordarem.
+ */
+export function createCampaign(request: CreateCampaignRequest): Promise<CreateCampaignResponse> {
+  return apiFetch<CreateCampaignResponse>('/campaigns/create', {
+    method: 'POST',
+    json: request,
+  });
+}

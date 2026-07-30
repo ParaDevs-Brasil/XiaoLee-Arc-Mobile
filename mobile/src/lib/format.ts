@@ -51,3 +51,19 @@ export function formatUSDC(value: number): string {
 export function shortHash(value: string): string {
   return value.length > 16 ? `${value.slice(0, 6)}…${value.slice(-6)}` : value;
 }
+
+/**
+ * Quantidade de token de campanha ($XLEE etc.). Diferente de `formatUSDC`: o
+ * backend devolve `50000.0` e `50.0`, e forçar duas casas aqui viraria
+ * "50,000.00" num cartão onde o número já briga por espaço.
+ */
+export function formatTokenAmount(value: number): string {
+  return value.toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+/** Data curta no locale do aparelho. Vazio se não parsear, como `timeAgo`. */
+export function formatDate(iso: string): string {
+  const at = parseTimestamp(iso);
+  if (Number.isNaN(at)) return '';
+  return new Date(at).toLocaleDateString();
+}

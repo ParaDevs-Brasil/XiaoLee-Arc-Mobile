@@ -187,6 +187,61 @@ export const IconZap = (p: IconProps) => (
   </Svg>
 );
 
+/** Alvo concêntrico — o marcador de "como funciona" e de campanha. */
+export const IconTarget = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Circle cx="12" cy="12" r="9" />
+    <Circle cx="12" cy="12" r="5" />
+    <Circle cx="12" cy="12" r="1.4" fill={p.color ?? 'currentColor'} stroke="none" />
+  </Svg>
+);
+
+export const IconChevronDown = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="6 9 12 15 18 9" />
+  </Svg>
+);
+
+export const IconChevronLeft = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="15 18 9 12 15 6" />
+  </Svg>
+);
+
+export const IconChevronRight = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="9 18 15 12 9 6" />
+  </Svg>
+);
+
+export const IconPlus = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Line x1="12" y1="5" x2="12" y2="19" />
+    <Line x1="5" y1="12" x2="19" y2="12" />
+  </Svg>
+);
+
+export const IconMegaphone = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M3 11l19-9-9 19-2-8-8-2z" />
+  </Svg>
+);
+
+export const IconRefresh = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="23 4 23 10 17 10" />
+    <Path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </Svg>
+);
+
+export const IconAlert = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Circle cx="12" cy="12" r="10" />
+    <Line x1="12" y1="8" x2="12" y2="12" />
+    <Line x1="12" y1="16" x2="12.01" y2="16" />
+  </Svg>
+);
+
 export const IconInbox = (p: IconProps) => (
   <Svg {...base(p)}>
     <Polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />

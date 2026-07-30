@@ -8,7 +8,14 @@
  */
 import assert from 'node:assert/strict';
 
-import { formatUSDC, parseTimestamp, shortHash, timeAgo } from './format.ts';
+import {
+  formatDate,
+  formatTokenAmount,
+  formatUSDC,
+  parseTimestamp,
+  shortHash,
+  timeAgo,
+} from './format.ts';
 
 function test(name: string, fn: () => void) {
   fn();
@@ -61,6 +68,19 @@ test('shortHash encurta só o que vale a pena encurtar', () => {
     '0xabc1…123456',
   );
   assert.equal(shortHash('0xabc123'), '0xabc123');
+});
+
+test('formatTokenAmount não força casas em valor inteiro', () => {
+  // Valores reais de `GET /campaigns`: pool 50000.0, por participante 50.0.
+  assert.equal(formatTokenAmount(50000), '50,000');
+  assert.equal(formatTokenAmount(50), '50');
+  assert.equal(formatTokenAmount(12.5), '12.5');
+});
+
+test('formatDate aceita o offset que o campo created_at usa', () => {
+  // `GET /campaigns` devolve "+00:00", não o "Z" do feed de traction.
+  assert.notEqual(formatDate('2026-07-28T00:34:56+00:00'), '');
+  assert.equal(formatDate('não é uma data'), '');
 });
 
 console.log('todos os checks passaram');

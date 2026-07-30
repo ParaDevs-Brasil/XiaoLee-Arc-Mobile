@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,7 +14,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { sendChatMessage } from '@/api/backend';
 import { ApiError } from '@/api/client';
-import { animationFromBackend, avatarAnimation } from '@/lib/avatar-animation';
+import {
+  animationFromBackend,
+  avatarAnimation,
+  type AnimationKey,
+} from '@/lib/avatar-animation';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
 import { HeaderBar } from '@/components/header-bar';
@@ -98,7 +101,23 @@ interface Message {
   id: string;
   author: 'user' | 'xiaolee';
   text: string;
+  /** Mesmo formato do web: `toLocaleTimeString` com hora e minuto. */
+  time: string;
 }
+
+function now(): string {
+  return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+/**
+ * Reações do rodapé da bolha — no web elas não registram nada, apenas fazem a
+ * personagem reagir. É personalidade, não telemetria.
+ */
+const REACTIONS: { emoji: string; key: AnimationKey; label: string }[] = [
+  { emoji: '💕', key: 'xiaolee_love', label: 'Love it!' },
+  { emoji: '👏', key: 'xiaolee_cheer', label: 'Cool!' },
+  { emoji: '😊', key: 'xiaolee_giggle', label: 'Funny!' },
+];
 
 export default function ChatScreen() {
   const [draft, setDraft] = useState('');
@@ -122,7 +141,7 @@ export default function ChatScreen() {
     setSending(true);
     setMessages((current) => [
       ...current,
-      { id: `u${Date.now()}`, author: 'user', text: message },
+      { id: `u${Date.now()}`, author: 'user', text: message, time: now() },
     ]);
     // Enquanto pensa, a personagem pensa junto.
     avatarAnimation.play('xiaolee_thinklow');
@@ -137,6 +156,7 @@ export default function ChatScreen() {
           id: `x${Date.now()}`,
           author: 'xiaolee',
           text: reply || 'Não consegui formular uma resposta agora.',
+          time: now(),
         },
       ]);
 
@@ -148,7 +168,7 @@ export default function ChatScreen() {
       const detail = error instanceof ApiError ? error.message : String(error);
       setMessages((current) => [
         ...current,
-        { id: `e${Date.now()}`, author: 'xiaolee', text: detail },
+        { id: `e${Date.now()}`, author: 'xiaolee', text: detail, time: now() },
       ]);
       avatarAnimation.play('xiaolee_ouch');
     } finally {
@@ -171,7 +191,10 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <View style={[styles.card, { marginBottom: Spacing.three - 4 + insets.bottom }]}>
-          <AssistantHeader />
+          {/* Na conversa o hero some, então a personagem passa a viver aqui —
+              sempre há exatamente uma avatar animada, e as reações têm onde
+              acontecer. */}
+          <AssistantHeader animated={!empty} />
 
           <ScrollView
             ref={scroller}
@@ -229,35 +252,93 @@ export default function ChatScreen() {
   );
 }
 
+/**
+ * Bolha de mensagem — mesma anatomia do `ChatPanel.tsx` do web: canto da
+ * "cauda" reduzido do lado de quem fala, largura máxima de 85%, e um rodapé
+ * com autor e horário. Na fala da Xiaolee, avatar à esquerda e as reações.
+ */
 function Bubble({ message }: { message: Message }) {
   const mine = message.author === 'user';
+
+  if (mine) {
+    return (
+      <View style={styles.rowUser}>
+        <View style={styles.bubbleWrap}>
+          <View style={[styles.bubble, styles.bubbleUser]}>
+            <Text style={styles.bubbleTextUser}>{message.text}</Text>
+          </View>
+          {/* Separador só quando há hora, como no web — sem isso sobra um
+              "You ·" pendurado se a mensagem vier sem timestamp. */}
+          <Text style={styles.metaRight}>You{message.time ? ` · ${message.time}` : ''}</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
-    <View style={[styles.bubble, mine ? styles.bubbleUser : styles.bubbleXiaolee]}>
-      <Text style={mine ? styles.bubbleTextUser : styles.bubbleText}>{message.text}</Text>
+    <View style={styles.rowXiaolee}>
+      <Image
+        source={require('../../assets/images/xiaolee-avatar.png')}
+        style={styles.msgAvatar}
+        contentFit="cover"
+      />
+      <View style={styles.bubbleWrap}>
+        <View style={[styles.bubble, styles.bubbleXiaolee]}>
+          <Text style={styles.bubbleText}>{message.text}</Text>
+        </View>
+        <View style={styles.meta}>
+          <Text style={styles.metaText}>Xiaolee{message.time ? ` · ${message.time}` : ''}</Text>
+          <View style={styles.reactions}>
+            {REACTIONS.map(({ emoji, key, label }) => (
+              <Pressable
+                key={emoji}
+                onPress={() => avatarAnimation.play(key)}
+                accessibilityRole="button"
+                accessibilityLabel={label}
+                hitSlop={Spacing.two}
+              >
+                <Text style={styles.reaction}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+      </View>
     </View>
   );
 }
 
-/** Placeholder enquanto o agente responde — a chamada passa por um LLM. */
+/** Três pontos enquanto o agente responde, como no web (sem rodapé). */
 function Typing() {
   return (
-    <View style={[styles.bubble, styles.bubbleXiaolee, styles.typing]}>
-      <ActivityIndicator size="small" color={Colors.light.accent} />
-      <Text style={styles.typingText}>Xiaolee está pensando…</Text>
+    <View style={styles.rowXiaolee}>
+      <Image
+        source={require('../../assets/images/xiaolee-avatar.png')}
+        style={styles.msgAvatar}
+        contentFit="cover"
+      />
+      <View style={[styles.bubble, styles.bubbleXiaolee, styles.typing]}>
+        {[0, 1, 2].map((i) => (
+          <View key={i} style={styles.dot} />
+        ))}
+      </View>
     </View>
   );
 }
 
 /** Faixa de identidade do assistente, fixa no topo do card. */
-function AssistantHeader() {
+function AssistantHeader({ animated }: { animated: boolean }) {
   return (
     <View style={styles.assistant}>
       <View>
-        <Image
-          source={require('../../assets/images/xiaolee-avatar.png')}
-          style={styles.assistantAvatar}
-          contentFit="cover"
-        />
+        {animated ? (
+          <AnimatedAvatar size={40} />
+        ) : (
+          <Image
+            source={require('../../assets/images/xiaolee-avatar.png')}
+            style={styles.assistantAvatar}
+            contentFit="cover"
+          />
+        )}
         <View style={styles.onlineDot} />
       </View>
 
@@ -456,32 +537,72 @@ const styles = StyleSheet.create({
 
   // ── Conversa ───────────────────────────────────────────────────────────
   thread: {
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.three - 2,
     paddingVertical: Spacing.three,
-    gap: Spacing.two + 2,
+    gap: Spacing.three - 4,
+  },
+  rowUser: { flexDirection: 'row', justifyContent: 'flex-end' },
+  rowXiaolee: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.two },
+  bubbleWrap: { maxWidth: '85%' },
+  msgAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.bg,
+    // Alinha com a bolha, não com o rodapé de horário.
+    marginBottom: 20,
   },
   bubble: {
-    maxWidth: '86%',
-    paddingHorizontal: Spacing.three - 2,
-    paddingVertical: Spacing.two + 2,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 10,
     borderRadius: Radius.lg,
+    ...CardShadow,
   },
-  bubbleUser: { alignSelf: 'flex-end', backgroundColor: Colors.light.accent },
+  // Canto da "cauda" reduzido do lado de quem fala, como no web.
+  bubbleUser: {
+    backgroundColor: Colors.light.accent,
+    borderBottomRightRadius: Radius.sm - 2,
+  },
   bubbleXiaolee: {
-    alignSelf: 'flex-start',
-    backgroundColor: Colors.light.bg,
+    backgroundColor: Colors.light.card,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: Colors.light.border,
+    borderBottomLeftRadius: Radius.sm - 2,
   },
-  bubbleText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 20, color: Colors.light.ink },
+  bubbleText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21, color: Colors.light.ink2 },
   bubbleTextUser: {
     fontFamily: Fonts.medium,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 21,
     color: Colors.light.card,
   },
-  typing: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
-  typingText: { fontFamily: Fonts.sans, fontSize: 13, color: Colors.light.ink2 },
+  meta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: Spacing.one,
+    paddingHorizontal: Spacing.one,
+  },
+  metaText: { fontFamily: Fonts.sans, fontSize: 10, color: Colors.light.ink3 },
+  metaRight: {
+    fontFamily: Fonts.sans,
+    fontSize: 10,
+    color: Colors.light.ink3,
+    textAlign: 'right',
+    marginTop: Spacing.one,
+    paddingRight: Spacing.one,
+  },
+  reactions: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + 2 },
+  // Meia opacidade como no web — presentes, mas sem competir com o texto.
+  reaction: { fontSize: 12, opacity: 0.5 },
+  typing: { flexDirection: 'row', alignItems: 'center', gap: Spacing.one + 1 },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.accent,
+    opacity: 0.6,
+  },
 
   // ── Cards de ação ──────────────────────────────────────────────────────
   actions: { alignSelf: 'stretch', gap: 10, marginTop: Spacing.four + 2 },

@@ -55,6 +55,14 @@ export default function RootLayout() {
               fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="traction" options={{ headerShown: false }} />
+          <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
+          {/* O formulário é a exceção: entra como modal e mantém a barra
+              nativa. Num formulário longo o usuário precisa de uma saída
+              sempre visível, e o wordmark do ScreenShell não é uma. */}
+          <Stack.Screen
+            name="campaigns/new"
+            options={{ presentation: 'modal', title: 'New Campaign' }}
+          />
           <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
         </Stack>
       </ThemeProvider>

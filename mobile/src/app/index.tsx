@@ -311,9 +311,11 @@ function Bubble({ message }: { message: Message }) {
 function Typing() {
   return (
     <View style={styles.rowXiaolee}>
+      {/* Sem o deslocamento das mensagens normais: aqui não há rodapé de
+          horário para compensar, e o offset deixaria o avatar solto acima. */}
       <Image
         source={require('../../assets/images/xiaolee-avatar.png')}
-        style={styles.msgAvatar}
+        style={[styles.msgAvatar, styles.msgAvatarTyping]}
         contentFit="cover"
       />
       <View style={[styles.bubble, styles.bubbleXiaolee, styles.typing]}>
@@ -549,9 +551,12 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: Radius.pill,
     backgroundColor: Colors.light.bg,
-    // Alinha com a bolha, não com o rodapé de horário.
-    marginBottom: 20,
+    // Sobe o avatar a altura do rodapé (10px + marginTop 4) para o alinhamento
+    // ser com a base da bolha, não com a base da linha inteira.
+    marginBottom: 18,
   },
+  /** Linha de digitando não tem rodapé, então nada a compensar. */
+  msgAvatarTyping: { marginBottom: 0 },
   bubble: {
     paddingHorizontal: Spacing.three,
     paddingVertical: 10,

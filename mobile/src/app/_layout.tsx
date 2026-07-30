@@ -50,9 +50,11 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: Colors.light.bg },
           }}
         >
-          {/* O chat traz o próprio HeaderBar (o wordmark do Figma), então a
-              barra nativa sairia duplicada. */}
+          {/* Estas telas trazem o próprio HeaderBar (o wordmark do Figma) via
+              `ScreenShell`, então a barra nativa sairia duplicada. A volta
+              fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
           <Stack.Screen name="index" options={{ headerShown: false }} />
+          <Stack.Screen name="traction" options={{ headerShown: false }} />
           <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
         </Stack>
       </ThemeProvider>

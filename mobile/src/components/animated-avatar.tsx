@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Animated, AppState, StyleSheet, View, type ViewStyle } from 'react-native';
 
 import { Colors } from '@/constants/theme';
-import { AvatarAnimation, type AnimationKey, type AnimationState } from '@/lib/avatar-animation';
+import { avatarAnimation, type AnimationKey, type AnimationState } from '@/lib/avatar-animation';
 
 /**
  * Avatar animado da Xiaolee — equivalente de `frontend/src/components/Pfp.tsx`.
@@ -47,10 +47,9 @@ interface AnimatedAvatarProps {
 }
 
 export function AnimatedAvatar({ size, style }: AnimatedAvatarProps) {
-  // useState com inicializador lazy, não useRef(new X()): aquele constrói o
-  // objeto a cada render só para descartar, e ler `.current` em render é
-  // proibido pelo React Compiler.
-  const [controller] = useState(() => new AvatarAnimation());
+  // Instância compartilhada: o chat também dispara animações, reagindo ao
+  // campo `animations` da resposta do agente.
+  const controller = avatarAnimation;
   const [fade] = useState(() => new Animated.Value(0));
 
   const [clipA, setClipA] = useState<AnimationState | null>(controller.state);

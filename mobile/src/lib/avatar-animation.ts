@@ -33,6 +33,49 @@ export type AnimationKey =
   | 'xiaolee_ouch'
   | 'xiaolee_thinklow';
 
+/**
+ * Nomes de animação que o backend devolve no campo `animations` de
+ * `POST /chat` — espelho de `ACTION_VIDEO_MAP` em `backend/config.py`.
+ *
+ * Vários nomes caem no mesmo clipe de propósito (Happy → kawaii,
+ * Excited → cheer): o modelo escolhe pelo sentimento, não pelo arquivo.
+ */
+const BACKEND_ANIMATIONS: Record<string, AnimationKey> = {
+  Cheer: 'xiaolee_cheer',
+  Giggle: 'xiaolee_giggle',
+  Kawaii: 'xiaolee_kawaii',
+  Love: 'xiaolee_love',
+  Hello: 'xiaolee_hello',
+  Surprise: 'xiaolee_surprise',
+  Uncomfortable: 'xiaolee_uncomfortable',
+  Ouch: 'xiaolee_ouch',
+  'Think Low': 'xiaolee_thinklow',
+  Salute: 'xiaolee_salute',
+  Happy: 'xiaolee_kawaii',
+  Excited: 'xiaolee_cheer',
+  Confused: 'xiaolee_thinklow',
+  Thinking: 'xiaolee_thinklow',
+  Standby: 'xiaolee_standby',
+  Standby2: 'xiaolee_standby2',
+  Standby3: 'xiaolee_standby3',
+  wave: 'xiaolee_hello',
+  celebration: 'xiaolee_cheer',
+  success: 'xiaolee_cheer',
+  error: 'xiaolee_ouch',
+};
+
+/**
+ * Converte o nome vindo do backend em chave de animação.
+ *
+ * Devolve `null` para nome desconhecido em vez de cair num padrão: o backend
+ * pode ganhar animações novas antes do app, e tocar o clipe errado é pior do
+ * que continuar no idle.
+ */
+export function animationFromBackend(name: unknown): AnimationKey | null {
+  if (typeof name !== 'string') return null;
+  return BACKEND_ANIMATIONS[name] ?? null;
+}
+
 /** Idles fazem loop e podem ser interrompidos a qualquer momento. */
 const IDLE: AnimationKey[] = ['xiaolee_standby', 'xiaolee_standby2', 'xiaolee_standby3'];
 
@@ -152,3 +195,10 @@ export class AvatarAnimation {
     }, delay);
   }
 }
+
+/**
+ * Instância compartilhada por quem exibe o avatar e por quem reage ao chat —
+ * o web usa uma classe estática pelo mesmo motivo. A classe segue
+ * instanciável para os testes não dividirem timer com o app.
+ */
+export const avatarAnimation = new AvatarAnimation();

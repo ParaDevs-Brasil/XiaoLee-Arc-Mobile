@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -11,6 +12,10 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { sendChatMessage } from '@/api/backend';
+import { ApiError } from '@/api/client';
+import { animationFromBackend, avatarAnimation } from '@/lib/avatar-animation';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
 import { HeaderBar } from '@/components/header-bar';
@@ -45,13 +50,39 @@ interface Action {
   Icon: (p: IconProps) => React.ReactElement;
   title: string;
   subtitle: string;
+  /** O que é enviado ao agente ao tocar — o card é um atalho de conversa. */
+  prompt: string;
 }
 
 const ACTIONS: Action[] = [
-  { key: 'campaign', Icon: IconGift, title: 'Create a campaign', subtitle: 'Reward your community' },
-  { key: 'dashboard', Icon: IconActivity, title: 'View dashboard', subtitle: 'Metrics and activity' },
-  { key: 'swap', Icon: IconSwap, title: 'Make a swap', subtitle: 'Exchange tokens by chat' },
-  { key: 'balance', Icon: IconWallet, title: 'Check balance', subtitle: 'See your wallet funds' },
+  {
+    key: 'campaign',
+    Icon: IconGift,
+    title: 'Create a campaign',
+    subtitle: 'Reward your community',
+    prompt: 'I want to create a campaign to reward my community',
+  },
+  {
+    key: 'dashboard',
+    Icon: IconActivity,
+    title: 'View dashboard',
+    subtitle: 'Metrics and activity',
+    prompt: 'Show me the dashboard metrics',
+  },
+  {
+    key: 'swap',
+    Icon: IconSwap,
+    title: 'Make a swap',
+    subtitle: 'Exchange tokens by chat',
+    prompt: 'I want to make a swap',
+  },
+  {
+    key: 'balance',
+    Icon: IconWallet,
+    title: 'Check balance',
+    subtitle: 'See your wallet funds',
+    prompt: 'What is my balance?',
+  },
 ];
 
 const SUGGESTIONS = [
@@ -63,16 +94,69 @@ const SUGGESTIONS = [
 /** Qual painel do header está aberto — só um por vez, como no Figma. */
 type OpenPanel = 'none' | 'menu' | 'profile';
 
+interface Message {
+  id: string;
+  author: 'user' | 'xiaolee';
+  text: string;
+}
+
 export default function ChatScreen() {
   const [draft, setDraft] = useState('');
   const [panel, setPanel] = useState<OpenPanel>('none');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [sending, setSending] = useState(false);
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
+  const scroller = useRef<ScrollView>(null);
 
   const close = () => setPanel('none');
   /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
   const toggle = (next: Exclude<OpenPanel, 'none'>) =>
     setPanel((current) => (current === next ? 'none' : next));
+
+  async function send(text: string) {
+    const message = text.trim();
+    if (!message || sending) return;
+
+    setDraft('');
+    setSending(true);
+    setMessages((current) => [
+      ...current,
+      { id: `u${Date.now()}`, author: 'user', text: message },
+    ]);
+    // Enquanto pensa, a personagem pensa junto.
+    avatarAnimation.play('xiaolee_thinklow');
+
+    try {
+      const result = await sendChatMessage({ message });
+      const reply = result.response?.[0]?.content?.trim();
+
+      setMessages((current) => [
+        ...current,
+        {
+          id: `x${Date.now()}`,
+          author: 'xiaolee',
+          text: reply || 'Não consegui formular uma resposta agora.',
+        },
+      ]);
+
+      // O agente escolhe a emoção; nome desconhecido volta para o idle.
+      const animation = animationFromBackend(result.animations);
+      if (animation) avatarAnimation.play(animation);
+      else avatarAnimation.expressionEnded();
+    } catch (error) {
+      const detail = error instanceof ApiError ? error.message : String(error);
+      setMessages((current) => [
+        ...current,
+        { id: `e${Date.now()}`, author: 'xiaolee', text: detail },
+      ]);
+      avatarAnimation.play('xiaolee_ouch');
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const empty = messages.length === 0;
 
   return (
     <View style={styles.screen}>
@@ -90,39 +174,76 @@ export default function ChatScreen() {
           <AssistantHeader />
 
           <ScrollView
-            contentContainerStyle={styles.body}
+            ref={scroller}
+            contentContainerStyle={empty ? styles.body : styles.thread}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: true })}
           >
-            {/* Animado só aqui. O avatar de 40dp do header ficaria com um
-                segundo decoder na mesma tela por ganho quase nulo. */}
-            <AnimatedAvatar size={104} />
+            {empty ? (
+              <>
+                {/* Animado só aqui. O avatar de 40dp do header ficaria com um
+                    segundo decoder na mesma tela por ganho quase nulo. */}
+                <AnimatedAvatar size={104} />
 
-            <Text style={styles.greeting}>Hi! I&apos;m Xiaolee ✨</Text>
-            <Text style={styles.pitch}>
-              Swaps, campaigns and payments — all by message. What would you like to do?
-            </Text>
+                <Text style={styles.greeting}>Hi! I&apos;m Xiaolee ✨</Text>
+                <Text style={styles.pitch}>
+                  Swaps, campaigns and payments — all by message. What would you like to do?
+                </Text>
 
-            <View style={styles.actions}>
-              {ACTIONS.map((action) => (
-                <ActionCard key={action.key} action={action} />
-              ))}
-            </View>
+                <View style={styles.actions}>
+                  {ACTIONS.map((action) => (
+                    <ActionCard key={action.key} action={action} onPress={() => send(action.prompt)} />
+                  ))}
+                </View>
 
-            <View style={styles.suggestions}>
-              {SUGGESTIONS.map((text) => (
-                <Suggestion key={text} text={text} onPress={() => setDraft(text)} />
-              ))}
-            </View>
+                <View style={styles.suggestions}>
+                  {SUGGESTIONS.map((text) => (
+                    <Suggestion key={text} text={text} onPress={() => send(text)} />
+                  ))}
+                </View>
+              </>
+            ) : (
+              <>
+                {messages.map((message) => (
+                  <Bubble key={message.id} message={message} />
+                ))}
+                {sending ? <Typing /> : null}
+              </>
+            )}
           </ScrollView>
 
-          <Composer value={draft} onChange={setDraft} />
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onSend={() => send(draft)}
+            disabled={sending}
+          />
         </View>
       </KeyboardAvoidingView>
 
       {/* Depois do card para ficarem por cima dele, como nos frames do Figma. */}
       <NavMenu visible={panel === 'menu'} onDismiss={close} />
       <ProfileMenu visible={panel === 'profile'} onDismiss={close} />
+    </View>
+  );
+}
+
+function Bubble({ message }: { message: Message }) {
+  const mine = message.author === 'user';
+  return (
+    <View style={[styles.bubble, mine ? styles.bubbleUser : styles.bubbleXiaolee]}>
+      <Text style={mine ? styles.bubbleTextUser : styles.bubbleText}>{message.text}</Text>
+    </View>
+  );
+}
+
+/** Placeholder enquanto o agente responde — a chamada passa por um LLM. */
+function Typing() {
+  return (
+    <View style={[styles.bubble, styles.bubbleXiaolee, styles.typing]}>
+      <ActivityIndicator size="small" color={Colors.light.accent} />
+      <Text style={styles.typingText}>Xiaolee está pensando…</Text>
     </View>
   );
 }
@@ -156,9 +277,16 @@ function AssistantHeader() {
   );
 }
 
-function ActionCard({ action: { Icon, title, subtitle } }: { action: Action }) {
+function ActionCard({
+  action: { Icon, title, subtitle },
+  onPress,
+}: {
+  action: Action;
+  onPress: () => void;
+}) {
   return (
     <Pressable
+      onPress={onPress}
       style={({ pressed }) => [styles.action, pressed && styles.pressed]}
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${subtitle}`}
@@ -187,8 +315,18 @@ function Suggestion({ text, onPress }: { text: string; onPress: () => void }) {
   );
 }
 
-function Composer({ value, onChange }: { value: string; onChange: (next: string) => void }) {
-  const canSend = value.trim().length > 0;
+function Composer({
+  value,
+  onChange,
+  onSend,
+  disabled,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  onSend: () => void;
+  disabled: boolean;
+}) {
+  const canSend = value.trim().length > 0 && !disabled;
 
   return (
     <View style={styles.composer}>
@@ -200,8 +338,11 @@ function Composer({ value, onChange }: { value: string; onChange: (next: string)
         style={styles.input}
         multiline
         maxLength={2000}
+        editable={!disabled}
+        onSubmitEditing={onSend}
       />
       <Pressable
+        onPress={onSend}
         disabled={!canSend}
         style={({ pressed }) => [
           styles.sendButton,
@@ -312,6 +453,35 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.two,
   },
+
+  // ── Conversa ───────────────────────────────────────────────────────────
+  thread: {
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.three,
+    gap: Spacing.two + 2,
+  },
+  bubble: {
+    maxWidth: '86%',
+    paddingHorizontal: Spacing.three - 2,
+    paddingVertical: Spacing.two + 2,
+    borderRadius: Radius.lg,
+  },
+  bubbleUser: { alignSelf: 'flex-end', backgroundColor: Colors.light.accent },
+  bubbleXiaolee: {
+    alignSelf: 'flex-start',
+    backgroundColor: Colors.light.bg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+  },
+  bubbleText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 20, color: Colors.light.ink },
+  bubbleTextUser: {
+    fontFamily: Fonts.medium,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.light.card,
+  },
+  typing: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two },
+  typingText: { fontFamily: Fonts.sans, fontSize: 13, color: Colors.light.ink2 },
 
   // ── Cards de ação ──────────────────────────────────────────────────────
   actions: { alignSelf: 'stretch', gap: 10, marginTop: Spacing.four + 2 },

@@ -87,6 +87,46 @@ export function loginWithFirebase(idToken: string): Promise<SessionResponse> {
   });
 }
 
+/** `POST /chat` — `backend/server/app.py::chat_compat` */
+export interface ChatResponse {
+  /** O backend devolve uma lista de blocos; hoje só `type: "text"` é usado. */
+  response: { type: string; content: string }[];
+  intent: { action: string; confidence: number; entities: Record<string, unknown> };
+  execution: Record<string, unknown>;
+  code: string | null;
+  /** Nome da animação a tocar — ver `animationFromBackend`. Pode vir null. */
+  animations: string | null;
+}
+
+export interface ChatRequest {
+  message: string;
+  /** Endereço de payout, quando há carteira conectada. */
+  wallet_address?: string;
+  wallet_chain?: string;
+}
+
+/**
+ * Manda a mensagem para o agente.
+ *
+ * Funciona sem sessão — o backend trata como `web_anonymous`. Com sessão, o
+ * `Bearer` é injetado pelo `apiFetch` e o agente responde no contexto do
+ * usuário (saldo, campanhas, histórico).
+ */
+export function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
+  return apiFetch<ChatResponse>('/chat', {
+    method: 'POST',
+    // `platform: "web"` de propósito, e não "mobile": o backend ramifica em
+    // `platform` para montar o prompt (`_wallet_ctx`, `_build_agentic_system_prompt`),
+    // e só "web", "telegram" e "x" têm caminho escrito e testado. Mandar um
+    // valor novo daqui criaria um comportamento que ninguém validou — o mobile
+    // é a mesma experiência do app web, então usa o mesmo contexto.
+    // Trocar para "mobile" só depois que o backend tratar o valor explicitamente.
+    json: { ...request, platform: 'web' },
+    // Timeout maior: a resposta depende de uma chamada a LLM.
+    timeoutMs: 60_000,
+  });
+}
+
 /** Rota pública — não exige sessão. */
 export function getHealth(): Promise<HealthResponse> {
   return apiFetch<HealthResponse>('/health', { skipAuth: true });

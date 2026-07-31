@@ -19,6 +19,7 @@ import {
   avatarAnimation,
   type AnimationKey,
 } from '@/lib/avatar-animation';
+import { appendChatMessage } from '@/lib/chat-history';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
 import {
@@ -134,22 +135,26 @@ export default function ChatScreen() {
       ...current,
       { id: `u${Date.now()}`, author: 'user', text: message, time: now() },
     ]);
+    // Fora do estado da tela, de propósito: o backend nunca grava conversa
+    // (`campaigns_routes.py:557` devolve `chat_history` vazio fixo), então sem
+    // isto a tela de Histórico não teria o que mostrar — mesmo acordo do web,
+    // que grava no `localStorage` em vez de esperar o backend (`lib/chat-history.ts`).
+    // Nunca rejeita, então não precisa de `catch` aqui.
+    appendChatMessage('user', message);
     // Enquanto pensa, a personagem pensa junto.
     avatarAnimation.play('xiaolee_thinklow');
 
     try {
       const result = await sendChatMessage({ message });
-      const reply = result.response?.[0]?.content?.trim();
+      const reply = result.response?.[0]?.content?.trim() || 'Não consegui formular uma resposta agora.';
 
       setMessages((current) => [
         ...current,
-        {
-          id: `x${Date.now()}`,
-          author: 'xiaolee',
-          text: reply || 'Não consegui formular uma resposta agora.',
-          time: now(),
-        },
+        { id: `x${Date.now()}`, author: 'xiaolee', text: reply, time: now() },
       ]);
+      // O texto gravado é o mesmo que foi para a bolha, fallback incluído —
+      // o histórico não deve divergir do que a tela mostrou.
+      appendChatMessage('assistant', reply);
 
       // O agente escolhe a emoção; nome desconhecido volta para o idle.
       const animation = animationFromBackend(result.animations);
@@ -161,6 +166,9 @@ export default function ChatScreen() {
         ...current,
         { id: `e${Date.now()}`, author: 'xiaolee', text: detail, time: now() },
       ]);
+      // O web também grava o texto de erro (`ChatPanel.tsx:256`) — uma
+      // conversa que travou continua sendo conversa.
+      appendChatMessage('assistant', detail);
       avatarAnimation.play('xiaolee_ouch');
     } finally {
       setSending(false);

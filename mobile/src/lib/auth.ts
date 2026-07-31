@@ -2,6 +2,7 @@ import auth, { type FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 import { loginWithFirebase } from '@/api/backend';
+import { clearChatHistory } from '@/lib/chat-history';
 import { clearSession, saveSession, type Session } from '@/lib/session';
 
 /**
@@ -107,8 +108,13 @@ export async function signInAndStartSession(): Promise<Session> {
   return session;
 }
 
-/** Encerra tudo: Google, Firebase e a sessão guardada do backend. */
+/**
+ * Encerra tudo: Google, Firebase, a sessão guardada do backend e o histórico
+ * de chat local — mesmo escopo do `clearData()` do web, que some com
+ * `xiaolee_chat_history` junto dos outros dados no logout (`UserData.tsx:395`).
+ */
 export async function signOutEverywhere(): Promise<void> {
   await signOut();
   await clearSession();
+  await clearChatHistory();
 }

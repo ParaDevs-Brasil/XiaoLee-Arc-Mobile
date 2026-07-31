@@ -30,16 +30,12 @@ interface ProfileMenuProps {
 }
 
 /**
- * As seis ações do frame. As que ainda não têm destino não têm por falta de
- * backend, não por falta de tela:
- *
- *  - `history` lê `chat_history` do dossiê de `GET /user/{id}`, que o backend
- *    devolve como lista vazia literal (`campaigns_routes.py:557`).
- *  - `connect`, `withdraw` e `deposit` dependem de um conector de carteira, que
- *    o mobile não tem — o web usa extensão de navegador (EIP-6963/Freighter),
- *    sem equivalente aqui sem WalletConnect.
+ * As seis ações do frame. As três primeiras já têm destino; `connect`,
+ * `withdraw` e `deposit` continuam inertes porque dependem de um conector de
+ * carteira que o mobile não tem — o web usa extensão de navegador
+ * (EIP-6963/Freighter), sem equivalente aqui sem WalletConnect.
  */
-const ACTIONS: (PanelItem & { href?: '/wallet' | '/transactions' })[] = [
+const ACTIONS: (PanelItem & { href?: '/wallet' | '/transactions' | '/history' })[] = [
   { key: 'wallet', Icon: IconWallet, title: 'wallet', subtitle: 'View token balance', href: '/wallet' },
   {
     key: 'transaction',
@@ -48,7 +44,13 @@ const ACTIONS: (PanelItem & { href?: '/wallet' | '/transactions' })[] = [
     subtitle: 'View swap history',
     href: '/transactions',
   },
-  { key: 'history', Icon: IconClock, title: 'History', subtitle: 'View conversations and activities' },
+  {
+    key: 'history',
+    Icon: IconClock,
+    title: 'History',
+    subtitle: 'View conversations and activities',
+    href: '/history',
+  },
   {
     key: 'connect',
     Icon: IconClipboard,

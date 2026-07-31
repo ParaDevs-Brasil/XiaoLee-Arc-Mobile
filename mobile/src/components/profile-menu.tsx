@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DropdownPanel, PanelRow, type PanelItem } from '@/components/dropdown-panel';
@@ -28,8 +29,19 @@ interface ProfileMenuProps {
   onSignIn?: () => void;
 }
 
-const ACTIONS: PanelItem[] = [
-  { key: 'wallet', Icon: IconWallet, title: 'wallet', subtitle: 'View token balance' },
+/**
+ * As seis ações do frame. `wallet` é a primeira a ganhar destino; as outras
+ * continuam inertes por falta de backend, não por falta de tela:
+ *
+ *  - `transaction` e `history` leem do dossiê de `GET /user/{id}`, que devolve
+ *    `swaps`, `transactions` e `chat_history` como listas vazias literais
+ *    (`campaigns_routes.py:555`). Ligar agora renderizaria vazio para sempre.
+ *  - `connect`, `withdraw` e `deposit` dependem de um conector de carteira, que
+ *    o mobile não tem — o web usa extensão de navegador (EIP-6963/Freighter),
+ *    sem equivalente aqui sem WalletConnect.
+ */
+const ACTIONS: (PanelItem & { href?: '/wallet' })[] = [
+  { key: 'wallet', Icon: IconWallet, title: 'wallet', subtitle: 'View token balance', href: '/wallet' },
   { key: 'transaction', Icon: IconClipboard, title: 'Transaction', subtitle: 'View swap history' },
   { key: 'history', Icon: IconClock, title: 'History', subtitle: 'View conversations and activities' },
   {
@@ -43,6 +55,8 @@ const ACTIONS: PanelItem[] = [
 ];
 
 export function ProfileMenu({ visible, onDismiss, handle, onSignIn }: ProfileMenuProps) {
+  const router = useRouter();
+
   return (
     <DropdownPanel visible={visible} onDismiss={onDismiss}>
       <View style={styles.identity}>
@@ -59,8 +73,22 @@ export function ProfileMenu({ visible, onDismiss, handle, onSignIn }: ProfileMen
         </View>
       </View>
 
-      {ACTIONS.map((item) => (
-        <PanelRow key={item.key} item={item} />
+      {ACTIONS.map(({ href, ...item }) => (
+        <PanelRow
+          key={item.key}
+          item={{
+            ...item,
+            // `push` e não `navigate`: a carteira é destino lateral, e o voltar
+            // do Android deve devolver o usuário à tela de onde ele abriu o
+            // painel — mesma escolha do sino no `ScreenShell`.
+            onPress: href
+              ? () => {
+                  onDismiss();
+                  router.push(href);
+                }
+              : undefined,
+          }}
+        />
       ))}
 
       <Pressable

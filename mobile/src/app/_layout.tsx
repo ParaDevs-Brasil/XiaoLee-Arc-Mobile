@@ -68,6 +68,7 @@ export default function RootLayout() {
           <Stack.Screen name="notifications" options={{ headerShown: false }} />
           <Stack.Screen name="dashboard" options={{ headerShown: false }} />
           <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
+          <Stack.Screen name="wallet" options={{ headerShown: false }} />
           {/* O formulário é a exceção: entra como modal e mantém a barra
               nativa. Num formulário longo o usuário precisa de uma saída
               sempre visível, e o wordmark do ScreenShell não é uma. */}

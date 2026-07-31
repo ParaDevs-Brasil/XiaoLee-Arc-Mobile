@@ -3,7 +3,6 @@ import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,6 +33,7 @@ import {
 } from '@/components/icons';
 import { ScreenShell } from '@/components/screen-shell';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useKeyboardVisible } from '@/hooks/use-keyboard-visible';
 
 /**
  * Tela de chat — a home do app.
@@ -121,6 +121,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
+  const keyboardVisible = useKeyboardVisible();
   const scroller = useRef<ScrollView>(null);
 
   async function send(text: string) {
@@ -172,10 +173,39 @@ export default function ChatScreen() {
     <ScreenShell>
       <KeyboardAvoidingView
         style={styles.flex}
-        // Sem isto o teclado cobre o input — o iOS não recua a view sozinho.
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        /**
+         * `padding` nas duas plataformas — no Android também, apesar de a doc
+         * da Expo mandar passar `undefined` lá.
+         *
+         * Aquele conselho é anterior ao edge-to-edge. Com `undefined` o
+         * componente cai no `default` do `render()` e devolve uma `View` comum
+         * (`KeyboardAvoidingView.js:286`): ele calcula a altura do teclado e
+         * não aplica em nada. Quem levantava o composer era o SO encolhendo a
+         * janela por `adjustResize`. Desde o SDK 54 o edge-to-edge é
+         * obrigatório e a janela não encolhe mais — o app desenha atrás do
+         * teclado, então o rodapé ficava coberto.
+         *
+         * O ramo `padding` não depende disso: ele mede pelo `endCoordinates` do
+         * evento `keyboardDidShow`, que o Android continua emitindo.
+         *
+         * Sem `keyboardVerticalOffset` de propósito: a conta do componente
+         * mistura o `y` do layout com o `screenY` do teclado, o que só fecha se
+         * a raiz React começar no topo da tela — e começa, porque esta tela roda
+         * com `headerShown: false` (ver `_layout.tsx`) e o header é nosso.
+         */
+        behavior="padding"
       >
-        <View style={[styles.card, { marginBottom: Spacing.three - 4 + insets.bottom }]}>
+        {/* O inset de baixo só vale com o teclado fechado. Ele existe para o
+            card não encostar na barra de gestos — mas o teclado cobre essa
+            barra, e aí o `insets.bottom` deixa de proteger de alguma coisa e
+            vira folga entre o composer e as teclas (no iOS somada à altura do
+            teclado, que o `KeyboardAvoidingView` já empurrou). */}
+        <View
+          style={[
+            styles.card,
+            { marginBottom: Spacing.three - 4 + (keyboardVisible ? 0 : insets.bottom) },
+          ]}
+        >
           {/* Na conversa o hero some, então a personagem passa a viver aqui —
               sempre há exatamente uma avatar animada, e as reações têm onde
               acontecer. */}

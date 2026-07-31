@@ -2,8 +2,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,6 +16,7 @@ import { ApiError } from '@/api/client';
 import { ErrorState } from '@/components/feedback';
 import { IconAlert } from '@/components/icons';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useKeyboard } from '@/hooks/use-keyboard';
 import { useSession } from '@/hooks/use-session';
 import { formatTokenAmount } from '@/lib/format';
 
@@ -71,6 +70,7 @@ const INITIAL: FormState = {
 export default function NewCampaignScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboard();
   const { hasSession } = useSession();
 
   const [form, setForm] = useState<FormState>(INITIAL);
@@ -126,13 +126,31 @@ export default function NewCampaignScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      // Sem isto o teclado cobre os campos de baixo — o iOS não recua sozinho.
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    /**
+     * A altura do teclado sai direto do evento do sistema, em vez de sair de um
+     * `KeyboardAvoidingView` como no chat.
+     *
+     * O KAV calcula o quanto recuar somando o `y` do próprio layout — que é
+     * relativo ao **pai** — com o `screenY` do teclado, que é absoluto. Isso só
+     * fecha quando a raiz React começa no topo da tela. O chat começa; esta
+     * tela não: ela entra como modal com header nativo (ver `_layout.tsx`), e
+     * no iOS `presentation: 'modal'` ainda é um sheet recuado do topo. Seriam
+     * dois deslocamentos para adivinhar, e o KAV recuaria de menos pela soma
+     * dos dois — deixando justamente os últimos campos embaixo do teclado.
+     *
+     * `endCoordinates.height` não tem esse problema: é o sistema dizendo quanto
+     * da tela o teclado ocupa, contado da base. Como o sheet vai até a base da
+     * tela nas duas plataformas, encolher este contêiner por esse tanto põe o
+     * fim do formulário exatamente na borda do teclado.
+     */
+    <View style={[styles.screen, { paddingBottom: keyboard.height }]}>
       <ScrollView
-        contentContainerStyle={[styles.content, { paddingBottom: Spacing.five + insets.bottom }]}
+        contentContainerStyle={[
+          styles.content,
+          // Com o teclado aberto o `insets.bottom` não protege de nada: a barra
+          // de gestos está coberta por ele, e o contêiner já recuou.
+          { paddingBottom: Spacing.five + (keyboard.visible ? 0 : insets.bottom) },
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -268,7 +286,7 @@ export default function NewCampaignScreen() {
           <Text style={styles.cancelText}>Cancel</Text>
         </Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

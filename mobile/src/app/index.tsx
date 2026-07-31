@@ -33,7 +33,7 @@ import {
 } from '@/components/icons';
 import { ScreenShell } from '@/components/screen-shell';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { useKeyboardVisible } from '@/hooks/use-keyboard-visible';
+import { useKeyboard } from '@/hooks/use-keyboard';
 
 /**
  * Tela de chat — a home do app.
@@ -121,7 +121,7 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false);
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
-  const keyboardVisible = useKeyboardVisible();
+  const keyboard = useKeyboard();
   const scroller = useRef<ScrollView>(null);
 
   async function send(text: string) {
@@ -203,7 +203,7 @@ export default function ChatScreen() {
         <View
           style={[
             styles.card,
-            { marginBottom: Spacing.three - 4 + (keyboardVisible ? 0 : insets.bottom) },
+            { marginBottom: Spacing.three - 4 + (keyboard.visible ? 0 : insets.bottom) },
           ]}
         >
           {/* Na conversa o hero some, então a personagem passa a viver aqui —

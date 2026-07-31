@@ -21,8 +21,15 @@ export function parseTimestamp(iso: string): number {
 
 /**
  * Distância até agora, na mesma escala do web (`app/traction/page.tsx`):
- * segundos, minutos, horas. Devolve string vazia se a data não parsear —
- * é melhor não mostrar hora nenhuma do que mostrar lixo.
+ * segundos, minutos, horas — e dias, que o web não tem aqui mas tem no seu
+ * próprio `timeAgo` de `Historico.tsx`. Nenhum outro chamador desta função
+ * precisava disso: Traction e Notifications mostram dado que nasce recente.
+ * `lib/chat-history.ts` é o primeiro com timestamp que sobrevive dias de
+ * verdade — persiste em `AsyncStorage` —, e sem o corte em dias uma conversa
+ * de uma semana atrás leria "168h ago".
+ *
+ * Devolve string vazia se a data não parsear — é melhor não mostrar hora
+ * nenhuma do que mostrar lixo.
  */
 export function timeAgo(iso: string, now: number = Date.now()): string {
   const at = parseTimestamp(iso);
@@ -36,7 +43,10 @@ export function timeAgo(iso: string, now: number = Date.now()): string {
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}min ago`;
 
-  return `${Math.floor(minutes / 60)}h ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 /** Duas casas sempre — valores de USDC não devem dançar de largura na lista. */

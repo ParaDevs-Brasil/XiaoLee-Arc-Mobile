@@ -42,10 +42,11 @@ test('parseTimestamp continua aceitando o formato de três casas', () => {
   );
 });
 
-test('timeAgo cobre as três escalas', () => {
+test('timeAgo cobre as quatro escalas', () => {
   assert.equal(timeAgo('2026-07-30T19:29:30.000Z', NOW), '30s ago');
   assert.equal(timeAgo('2026-07-30T19:05:00.000Z', NOW), '25min ago');
   assert.equal(timeAgo('2026-07-30T16:30:00.000Z', NOW), '3h ago');
+  assert.equal(timeAgo('2026-07-28T19:30:00.000Z', NOW), '2d ago');
 });
 
 test('timeAgo não mostra tempo negativo com relógio adiantado', () => {

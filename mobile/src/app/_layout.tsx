@@ -7,6 +7,7 @@ import {
 } from '@expo-google-fonts/quicksand';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -42,6 +43,15 @@ export default function RootLayout() {
     // SafeAreaProvider é obrigatório para `useSafeAreaInsets` devolver algo
     // diferente de zero — sem ele o header fica sob a status bar.
     <SafeAreaProvider>
+      {/* Relógio, wifi e bateria em escuro, sempre.
+          O padrão de `style` é `auto`, que segue o tema **do aparelho**: num
+          celular em modo escuro os ícones saem brancos — e a faixa da status
+          bar é pintada pelo `HeaderBar`, que é branco (`Colors.light.card`).
+          Branco no branco some, e o usuário perde o relógio e as notificações.
+          O app não acompanha o tema do sistema (ver `constants/theme.ts`: modo
+          escuro suspenso), então o conteúdo da barra também não deve. */}
+      <StatusBar style="dark" />
+
       <ThemeProvider value={DefaultTheme}>
         <Stack
           screenOptions={{

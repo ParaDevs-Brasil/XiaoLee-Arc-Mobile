@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "xiaolee",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "XiaoLee.mobile",
@@ -36,6 +36,12 @@
           "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
+        }
+      ],
+      [
+        "expo-status-bar",
+        {
+          "style": "dark"
         }
       ],
       "expo-secure-store",

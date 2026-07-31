@@ -19,6 +19,7 @@ import { Sparkline } from '@/components/sparkline';
 import { MiniStat, StatCard } from '@/components/stat-card';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useBackendData } from '@/hooks/use-backend-data';
+import { useTractionStream } from '@/hooks/use-traction-stream';
 import { isOnChainTx, txExplorerUrl } from '@/lib/explorer';
 import { formatUSDC, shortHash, timeAgo } from '@/lib/format';
 
@@ -46,6 +47,13 @@ export default function TractionScreen() {
   // hook não recarrega a cada render.
   const { data, error, loading, refreshing, reload } = useBackendData(getTractionStats);
 
+  // O stream é uma camada por cima, não um substituto: o polling continua
+  // sendo o que garante a primeira carga e o puxar-para-atualizar em rede que
+  // não sustenta conexão longa. Quando o stream conecta, ele manda um snapshot
+  // inteiro e passa a ser a fonte — daí `live` vencer `data` quando existe.
+  const { live, connected } = useTractionStream();
+  const snapshot = live ?? data;
+
   return (
     <ScreenShell>
       <ScrollView
@@ -71,55 +79,75 @@ export default function TractionScreen() {
           <ErrorState title="Couldn't load traction" message={error} onRetry={reload} />
         ) : null}
 
-        {loading && !data ? <TractionSkeleton /> : null}
+        {loading && !snapshot ? <TractionSkeleton /> : null}
 
-        {data ? (
+        {snapshot ? (
           <>
             <TractionHero
-              total={data.total_usdc}
-              payments={data.total_payments}
-              feed={data.feed}
+              total={snapshot.total_usdc}
+              payments={snapshot.total_payments}
+              feed={snapshot.feed}
             />
 
             <View style={styles.strip}>
               <MiniStat
                 Icon={IconActivity}
                 label="Payments"
-                value={String(data.total_payments)}
+                value={String(snapshot.total_payments)}
               />
               <MiniStat
                 Icon={IconUsers}
                 label="Active creators"
-                value={String(data.active_creators)}
+                value={String(snapshot.active_creators)}
               />
               <MiniStat
                 Icon={IconUser}
                 label="Registered"
-                value={String(data.registered_creators)}
+                value={String(snapshot.registered_creators)}
               />
             </View>
 
             <LatencyBar
-              avg={data.avg_latency_ms}
-              p95={data.p95_latency_ms}
-              payments={data.total_payments}
+              avg={snapshot.avg_latency_ms}
+              p95={snapshot.p95_latency_ms}
+              payments={snapshot.total_payments}
             />
 
-            <SectionCard title="Payment feed" subtitle="Newest first · tap a row to verify on Arc">
-              {data.feed.length === 0 ? (
+            <SectionCard
+              title="Payment feed"
+              subtitle="Newest first · tap a row to verify on Arc"
+              action={connected ? <LiveBadge /> : null}
+            >
+              {snapshot.feed.length === 0 ? (
                 <EmptyState
                   Icon={IconInbox}
                   title="No payments yet"
                   text="When the agent settles a nanopayment, it lands here."
                 />
               ) : (
-                data.feed.map((event) => <FeedRow key={event.intent_id} event={event} />)
+                snapshot.feed.map((event) => <FeedRow key={event.intent_id} event={event} />)
               )}
             </SectionCard>
           </>
         ) : null}
       </ScrollView>
     </ScreenShell>
+  );
+}
+
+/**
+ * Selo de stream conectado.
+ *
+ * Sem ele não há como distinguir "nada aconteceu" de "a conexão caiu e a tela
+ * congelou" — e as duas coisas parecem idênticas numa tela parada. Fica no
+ * cabeçalho do feed porque é ali que as linhas novas nascem.
+ */
+function LiveBadge() {
+  return (
+    <View style={styles.live}>
+      <View style={styles.liveDot} />
+      <Text style={styles.liveText}>Live</Text>
+    </View>
   );
 }
 
@@ -379,6 +407,30 @@ const styles = StyleSheet.create({
   // Três colunas fixas: são números curtos, e um `wrap` deixaria o terceiro
   // cartão sozinho numa linha só em aparelho estreito.
   strip: { flexDirection: 'row', gap: Spacing.two + 2 },
+
+  // ── Selo de stream ─────────────────────────────────────────────────────
+  live: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two - 3,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.successSoft,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.success,
+  },
+  liveText: {
+    fontFamily: Fonts.bold,
+    fontSize: 9,
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    color: Colors.light.success,
+  },
   skeleton: { gap: Spacing.three - 4 },
 
   // ── Barra de latência ──────────────────────────────────────────────────

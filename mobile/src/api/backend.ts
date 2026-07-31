@@ -1,4 +1,4 @@
-import { apiFetch } from '@/api/client';
+import { ApiError, apiFetch } from '@/api/client';
 
 /**
  * Chamadas tipadas do backend. Os tipos espelham os response models do
@@ -175,4 +175,56 @@ export function createCampaign(request: CreateCampaignRequest): Promise<CreateCa
     method: 'POST',
     json: request,
   });
+}
+
+/**
+ * Item de `GET /v1/notifications/me` — `backend/server/notifications_routes.py::NotificationResponse`
+ *
+ * Repare que **não há timestamp**: o schema do backend não expõe `created_at`,
+ * mesmo o modelo tendo a coluna. O tipo do web declara o campo, mas ele nunca
+ * chega — então esta tela ordena por `id` (o backend já devolve desc) e não
+ * mostra "há quanto tempo".
+ */
+export interface NotificationItem {
+  id: number;
+  channel: string;
+  title: string;
+  body: string;
+  /** `delivered` depois do ack; qualquer outro valor conta como pendente. */
+  status: string;
+  related_signature: string | null;
+  metadata: Record<string, unknown>;
+}
+
+interface NotificationsResponse {
+  success: boolean;
+  notifications: NotificationItem[];
+}
+
+export interface AckResponse {
+  success: boolean;
+  notification_id: number;
+  status: string;
+}
+
+/**
+ * `GET /v1/notifications/me` — **exige sessão**: a rota resolve o usuário pelo
+ * `Bearer` e responde 401 sem ele.
+ */
+export async function listNotifications(): Promise<NotificationItem[]> {
+  const response = await apiFetch<NotificationsResponse>('/v1/notifications/me');
+
+  // O corpo traz um `success` além do status HTTP. Hoje o backend sempre manda
+  // `true`, mas tratar `false` como lista vazia esconderia uma falha atrás de
+  // um estado vazio legítimo — melhor errar alto, como o web faz.
+  if (!response.success) {
+    throw new ApiError('The backend could not read your notifications', null, false);
+  }
+
+  return response.notifications ?? [];
+}
+
+/** `POST /v1/notifications/{id}/ack` — marca como `delivered`. */
+export function ackNotification(id: number): Promise<AckResponse> {
+  return apiFetch<AckResponse>(`/v1/notifications/${id}/ack`, { method: 'POST' });
 }

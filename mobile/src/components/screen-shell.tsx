@@ -33,9 +33,14 @@ export function ScreenShell({ children }: { children: ReactNode }) {
 
   return (
     <View style={styles.screen}>
-      {/* O sino ainda não navega: a tela de notificações não existe, e com
-          `typedRoutes` ligado um href inexistente nem compila. */}
       <HeaderBar
+        // `push` e não `navigate`: notificações é um destino lateral, e o
+        // voltar do Android deve devolver o usuário à tela de onde ele tocou
+        // no sino, não à raiz.
+        onPressNotifications={() => {
+          close();
+          router.push('/notifications');
+        }}
         onPressMenu={() => toggle('menu')}
         onPressProfile={() => toggle('profile')}
         // `navigate` e não `push`: o chat é a raiz da pilha, então empilhar

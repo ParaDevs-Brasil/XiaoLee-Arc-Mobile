@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -224,7 +225,7 @@ export default function ChatScreen() {
             value={draft}
             onChange={setDraft}
             onSend={() => send(draft)}
-            disabled={sending}
+            sending={sending}
           />
         </View>
       </KeyboardAvoidingView>
@@ -382,14 +383,15 @@ function Composer({
   value,
   onChange,
   onSend,
-  disabled,
+  sending,
 }: {
   value: string;
   onChange: (next: string) => void;
   onSend: () => void;
-  disabled: boolean;
+  /** O agente está respondendo — diferente de "não há o que enviar". */
+  sending: boolean;
 }) {
-  const canSend = value.trim().length > 0 && !disabled;
+  const canSend = value.trim().length > 0 && !sending;
 
   return (
     <View style={styles.composer}>
@@ -401,7 +403,21 @@ function Composer({
         style={styles.input}
         multiline
         maxLength={2000}
-        editable={!disabled}
+        editable={!sending}
+        /**
+         * Sem isto o `onSubmitEditing` abaixo é prop morta: num campo
+         * `multiline` o RN resolve `submitBehavior` para `'newline'`
+         * (`TextInput.js:567`), então a tecla de retorno insere quebra de linha
+         * e o handler nunca dispara — era o caso aqui.
+         *
+         * `'submit'` e não `'blurAndSubmit'`: envia **sem** tirar o foco, então
+         * dá para emendar a próxima mensagem sem reabrir o teclado. O texto
+         * ainda quebra sozinho e o campo cresce até `maxHeight`; o que se perde
+         * é a quebra manual, que num chat com o agente quase não aparece.
+         */
+        submitBehavior="submit"
+        // A tecla passa a se chamar "send" — ela envia, então deve dizer isso.
+        returnKeyType="send"
         onSubmitEditing={onSend}
       />
       <Pressable
@@ -409,13 +425,24 @@ function Composer({
         disabled={!canSend}
         style={({ pressed }) => [
           styles.sendButton,
-          !canSend && styles.sendButtonIdle,
+          // Esmaece só quando não há o que enviar. Enquanto o agente responde o
+          // botão fica cheio com o spinner: esmaecido ele leria como desligado,
+          // e não é isso — está trabalhando.
+          !canSend && !sending && styles.sendButtonIdle,
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Enviar"
+        accessibilityLabel={sending ? 'Sending' : 'Send'}
+        accessibilityState={{ disabled: !canSend, busy: sending }}
       >
-        <IconSend size={18} color={Colors.light.card} />
+        {/* A resposta depende de uma chamada a LLM, com timeout de 60s
+            (`api/backend.ts`). Um botão parado nesse intervalo não distingue
+            "mandei" de "não pegou". */}
+        {sending ? (
+          <ActivityIndicator size="small" color={Colors.light.card} />
+        ) : (
+          <IconSend size={18} color={Colors.light.card} />
+        )}
       </Pressable>
     </View>
   );
@@ -650,6 +677,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.medium,
     fontSize: 14,
     color: Colors.light.ink,
+    // Android centraliza o texto de um campo multiline na altura disponível, e
+    // aí a segunda linha empurra a primeira para cima em vez de o texto crescer
+    // para baixo. Mesmo ajuste do formulário de campanha (`campaigns/new.tsx`).
+    textAlignVertical: 'top',
   },
   sendButton: {
     width: 50,

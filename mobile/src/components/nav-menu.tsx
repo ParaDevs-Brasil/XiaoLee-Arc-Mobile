@@ -20,9 +20,8 @@ interface NavMenuProps {
 export function NavMenu({ visible, onDismiss }: NavMenuProps) {
   const router = useRouter();
 
-  // Dashboard segue apontando para o diagnóstico até a tela própria existir.
   const items = [
-    { key: 'dashboard', Icon: IconBarChart, label: 'Dashboard', href: '/diagnostics' as const },
+    { key: 'dashboard', Icon: IconBarChart, label: 'Dashboard', href: '/dashboard' as const },
     { key: 'traction', Icon: IconDollar, label: 'Traction', href: '/traction' as const },
     { key: 'campaigns', Icon: IconRocket, label: 'Campaigns', href: '/campaigns' as const },
   ];

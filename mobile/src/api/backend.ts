@@ -228,3 +228,90 @@ export async function listNotifications(): Promise<NotificationItem[]> {
 export function ackNotification(id: number): Promise<AckResponse> {
   return apiFetch<AckResponse>(`/v1/notifications/${id}/ack`, { method: 'POST' });
 }
+
+/**
+ * Tesouraria por chain, com o Arc como hub — `frontend/src/hooks/useTreasury.ts`.
+ *
+ *   GET /v1/arc/wallet/balance            (`server/routes/arc_routes.py:99`)
+ *   GET /v1/cctp/treasury/{chain}/balance (`server/routes/cctp_routes.py:44`)
+ */
+export type TreasuryChain = 'arc' | 'solana' | 'stellar';
+
+/** `disabled` não é falha: é a flag da chain desligada no backend. */
+export type TreasuryStatus = 'ok' | 'disabled' | 'error';
+
+export interface TreasuryBalance {
+  chain: TreasuryChain;
+  status: TreasuryStatus;
+  /** Stellar não expõe saldo no client, então vem `null` mesmo com status ok. */
+  usdc: number | null;
+  address?: string;
+  sandbox?: boolean;
+}
+
+interface BalancePayload {
+  usdc_balance?: number;
+  sandbox?: boolean;
+  address?: string;
+}
+
+const TREASURY_CHAINS: TreasuryChain[] = ['arc', 'solana', 'stellar'];
+
+async function fetchChainBalance(chain: TreasuryChain): Promise<TreasuryBalance> {
+  const path = chain === 'arc' ? '/v1/arc/wallet/balance' : `/v1/cctp/treasury/${chain}/balance`;
+
+  try {
+    const payload = await apiFetch<BalancePayload>(path);
+    return {
+      chain,
+      status: 'ok',
+      usdc: payload.usdc_balance ?? null,
+      address: payload.address,
+      sandbox: payload.sandbox,
+    };
+  } catch (err) {
+    // 503 é a chain desligada por flag (`SOLANA_CCTP_ENABLED` etc.), não uma
+    // falha — vira badge na tela em vez de derrubar o cartão inteiro.
+    const disabled = err instanceof ApiError && err.status === 503;
+    return { chain, status: disabled ? 'disabled' : 'error', usdc: null };
+  }
+}
+
+/**
+ * As três chains em paralelo. Cada uma resolve o próprio status, então uma
+ * chain fora do ar não apaga o saldo das outras.
+ */
+export function getTreasury(): Promise<TreasuryBalance[]> {
+  return Promise.all(TREASURY_CHAINS.map(fetchChainBalance));
+}
+
+/** `GET /campaigns/me` — `campaigns_routes.py::UserCampaignParticipation` */
+export interface UserCampaignParticipation {
+  id: number;
+  name: string;
+  description: string;
+  reward_token: string;
+  reward_per_participant: number;
+  campaign_type: string;
+  /** `tasks_verified` é o estado que libera o resgate. */
+  participation_status: string;
+  tasks_verified_at: string | null;
+  tasks_claimed: boolean;
+  claim_receipt_id: string | null;
+}
+
+interface UserCampaignsResponse {
+  success: boolean;
+  campaigns: UserCampaignParticipation[];
+}
+
+/** **Exige sessão**: a rota resolve o participante pelo `Bearer`. */
+export async function listMyCampaigns(): Promise<UserCampaignParticipation[]> {
+  const response = await apiFetch<UserCampaignsResponse>('/campaigns/me');
+
+  if (!response.success) {
+    throw new ApiError('The backend could not read your campaigns', null, false);
+  }
+
+  return response.campaigns ?? [];
+}

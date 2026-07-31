@@ -156,7 +156,7 @@ function TractionHero({
   return (
     <StatCard
       size="lg"
-      tone="success"
+      tone="accent"
       Icon={IconDollar}
       label="USDC settled by the agent"
       value={`$${formatUSDC(total)}`}
@@ -216,6 +216,11 @@ function heroSubLabel(payments: number, feed: PaymentEvent[]): string {
  * Três estados, não dois: rápido, degradado e sem medida. Degradado é âmbar
  * (`warn`) e não vermelho — o pagamento liquidou, só que devagar, e pintar
  * isso de `danger` faria a tela anunciar uma falha que não houve.
+ *
+ * O verde daqui é o único que **não** virou acento quando o resto da tela
+ * padronizou em rosa: verde/âmbar/vermelho aqui é escala de estado, não
+ * decoração. Pintar "rápido" de rosa deixaria "degradado" em âmbar sem começo
+ * de escala, e a linha pararia de comunicar saúde.
  */
 function LatencyBar({ avg, p95, payments }: { avg: number; p95: number; payments: number }) {
   // Sem pagamento nenhum a média chega como 0, que passa no teste de "rápido"
@@ -283,7 +288,7 @@ function FeedRow({ event }: { event: PaymentEvent }) {
   const content = (
     <>
       <View style={styles.feedIcon}>
-        <IconDollar size={14} color={Colors.light.success} />
+        <IconDollar size={14} color={Colors.light.accent} />
       </View>
 
       <View style={styles.flex}>
@@ -419,9 +424,9 @@ const styles = StyleSheet.create({
     borderRadius: Radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.light.successSoft,
+    backgroundColor: Colors.light.accentSoft,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light.successBorder,
+    borderColor: Colors.light.border,
   },
   feedCreator: { fontFamily: Fonts.semibold, fontSize: 13, color: Colors.light.ink },
   feedTx: { fontFamily: Fonts.mono, fontSize: 10, color: Colors.light.ink3, marginTop: 2 },

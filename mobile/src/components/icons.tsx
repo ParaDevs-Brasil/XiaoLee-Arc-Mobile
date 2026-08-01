@@ -1,4 +1,4 @@
-import { Circle, Line, Path, Polyline, Svg } from 'react-native-svg';
+import { Circle, Line, Path, Polygon, Polyline, Svg } from 'react-native-svg';
 
 /**
  * Ícones SVG inline — porta direta de `frontend/src/components/icons.tsx`.
@@ -175,6 +175,84 @@ export const IconUpload = (p: IconProps) => (
   <Svg {...base(p)}>
     <Path d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1" />
     <Path d="M12 16V4m0 0 4 4m-4-4-4 4" />
+  </Svg>
+);
+
+/** Duas silhuetas — `IconUser` é a de uma pessoa só. */
+export const IconUsers = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <Circle cx="9" cy="7" r="4" />
+    <Path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <Path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </Svg>
+);
+
+export const IconZap = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </Svg>
+);
+
+/** Alvo concêntrico — o marcador de "como funciona" e de campanha. */
+export const IconTarget = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Circle cx="12" cy="12" r="9" />
+    <Circle cx="12" cy="12" r="5" />
+    <Circle cx="12" cy="12" r="1.4" fill={p.color ?? 'currentColor'} stroke="none" />
+  </Svg>
+);
+
+export const IconChevronDown = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="6 9 12 15 18 9" />
+  </Svg>
+);
+
+export const IconChevronLeft = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="15 18 9 12 15 6" />
+  </Svg>
+);
+
+export const IconChevronRight = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="9 18 15 12 9 6" />
+  </Svg>
+);
+
+export const IconPlus = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Line x1="12" y1="5" x2="12" y2="19" />
+    <Line x1="5" y1="12" x2="19" y2="12" />
+  </Svg>
+);
+
+export const IconMegaphone = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M3 11l19-9-9 19-2-8-8-2z" />
+  </Svg>
+);
+
+export const IconRefresh = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="23 4 23 10 17 10" />
+    <Path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+  </Svg>
+);
+
+export const IconAlert = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Circle cx="12" cy="12" r="10" />
+    <Line x1="12" y1="8" x2="12" y2="12" />
+    <Line x1="12" y1="16" x2="12.01" y2="16" />
+  </Svg>
+);
+
+export const IconInbox = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
+    <Path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
   </Svg>
 );
 

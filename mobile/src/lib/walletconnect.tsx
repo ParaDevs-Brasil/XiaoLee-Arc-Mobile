@@ -53,24 +53,36 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
     getWallet().then(setStoredWallet);
   }, []);
 
-  // Quando conecta via WalletConnect, vincula ao backend
+  // Quando conecta via WalletConnect, vincula ao backend.
+  //
+  // O corpo do efeito não chama `setState` direto (o lint do React barra, e com
+  // razão: dispararia render em cascata) — quem chama é a cadeia da promise,
+  // que já roda fora do render.
   useEffect(() => {
     if (!isConnected || !address) return;
     if (storedWallet && storedWallet.address.toLowerCase() === address.toLowerCase()) return;
 
-    setIsLinking(true);
-    setLinkError(null);
+    let cancelled = false;
+    async function link(wallet: string) {
+      setIsLinking(true);
+      setLinkError(null);
+      try {
+        const linked = await linkWallet(wallet, 'arc');
+        const connected = { address: linked.address, chain: linked.chain };
+        await saveWallet(connected);
+        if (!cancelled) setStoredWallet(connected);
+      } catch (err) {
+        if (!cancelled) setLinkError(err instanceof ApiError ? err.message : String(err));
+      } finally {
+        if (!cancelled) setIsLinking(false);
+      }
+    }
+    link(address);
 
-    linkWallet(address, 'arc')
-      .then((linked) => {
-        const wallet = { address: linked.address, chain: linked.chain };
-        return saveWallet(wallet).then(() => setStoredWallet(wallet));
-      })
-      .catch((err) => {
-        setLinkError(err instanceof ApiError ? err.message : String(err));
-      })
-      .finally(() => setIsLinking(false));
-  }, [isConnected, address]);
+    return () => {
+      cancelled = true;
+    };
+  }, [isConnected, address, storedWallet]);
 
   const openModal = () => open();
 

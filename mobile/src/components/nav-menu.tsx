@@ -20,12 +20,10 @@ interface NavMenuProps {
 export function NavMenu({ visible, onDismiss }: NavMenuProps) {
   const router = useRouter();
 
-  // Traction e Campaigns ainda não têm rota; navegar agora daria erro de
-  // rota inexistente, então só o Dashboard está ligado.
   const items = [
-    { key: 'dashboard', Icon: IconBarChart, label: 'Dashboard', href: '/diagnostics' as const },
-    { key: 'traction', Icon: IconDollar, label: 'Traction', href: null },
-    { key: 'campaigns', Icon: IconRocket, label: 'Campaigns', href: null },
+    { key: 'dashboard', Icon: IconBarChart, label: 'Dashboard', href: '/dashboard' as const },
+    { key: 'traction', Icon: IconDollar, label: 'Traction', href: '/traction' as const },
+    { key: 'campaigns', Icon: IconRocket, label: 'Campaigns', href: '/campaigns' as const },
   ];
 
   return (

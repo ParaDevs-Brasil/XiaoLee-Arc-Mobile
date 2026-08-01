@@ -1,4 +1,4 @@
-import { apiFetch } from '@/api/client';
+import { ApiError, apiFetch } from '@/api/client';
 
 /**
  * Chamadas tipadas do backend. Os tipos espelham os response models do
@@ -161,4 +161,178 @@ export function getTractionStats(): Promise<TractionSnapshot> {
 /** Rota pública — a lista de campanhas não filtra por usuário. */
 export function listCampaigns(): Promise<CampaignsResponse> {
   return apiFetch<CampaignsResponse>('/campaigns', { skipAuth: true });
+}
+
+/** `POST /campaigns/create` — `backend/server/campaigns_routes.py::create_campaign` */
+export interface CreateCampaignRequest {
+  title: string;
+  description: string;
+  /** `airdrop` | `engagement` | `referral` — os valores do select do web. */
+  campaign_type: string;
+  profile_to_follow?: string;
+  tweet_id_to_engage?: string;
+  reward_token: string;
+  reward_per_participant: number;
+  max_participants: number;
+}
+
+export interface CreateCampaignResponse {
+  success: boolean;
+  message: string;
+  campaign: Campaign;
+}
+
+/**
+ * Cria uma campanha. **Exige sessão**: a rota resolve o criador a partir do
+ * `Bearer` (`_resolve_user`), então esta é a única chamada de campanha sem
+ * `skipAuth`.
+ *
+ * `reward_pool` não vai no corpo de propósito — o backend o calcula como
+ * `reward_per_participant * max_participants`, e mandar daqui abriria espaço
+ * para os dois valores discordarem.
+ */
+export function createCampaign(request: CreateCampaignRequest): Promise<CreateCampaignResponse> {
+  return apiFetch<CreateCampaignResponse>('/campaigns/create', {
+    method: 'POST',
+    json: request,
+  });
+}
+
+/**
+ * Item de `GET /v1/notifications/me` — `backend/server/notifications_routes.py::NotificationResponse`
+ *
+ * Repare que **não há timestamp**: o schema do backend não expõe `created_at`,
+ * mesmo o modelo tendo a coluna. O tipo do web declara o campo, mas ele nunca
+ * chega — então esta tela ordena por `id` (o backend já devolve desc) e não
+ * mostra "há quanto tempo".
+ */
+export interface NotificationItem {
+  id: number;
+  channel: string;
+  title: string;
+  body: string;
+  /** `delivered` depois do ack; qualquer outro valor conta como pendente. */
+  status: string;
+  related_signature: string | null;
+  metadata: Record<string, unknown>;
+}
+
+interface NotificationsResponse {
+  success: boolean;
+  notifications: NotificationItem[];
+}
+
+export interface AckResponse {
+  success: boolean;
+  notification_id: number;
+  status: string;
+}
+
+/**
+ * `GET /v1/notifications/me` — **exige sessão**: a rota resolve o usuário pelo
+ * `Bearer` e responde 401 sem ele.
+ */
+export async function listNotifications(): Promise<NotificationItem[]> {
+  const response = await apiFetch<NotificationsResponse>('/v1/notifications/me');
+
+  // O corpo traz um `success` além do status HTTP. Hoje o backend sempre manda
+  // `true`, mas tratar `false` como lista vazia esconderia uma falha atrás de
+  // um estado vazio legítimo — melhor errar alto, como o web faz.
+  if (!response.success) {
+    throw new ApiError('The backend could not read your notifications', null, false);
+  }
+
+  return response.notifications ?? [];
+}
+
+/** `POST /v1/notifications/{id}/ack` — marca como `delivered`. */
+export function ackNotification(id: number): Promise<AckResponse> {
+  return apiFetch<AckResponse>(`/v1/notifications/${id}/ack`, { method: 'POST' });
+}
+
+/**
+ * Tesouraria por chain, com o Arc como hub — `frontend/src/hooks/useTreasury.ts`.
+ *
+ *   GET /v1/arc/wallet/balance            (`server/routes/arc_routes.py:99`)
+ *   GET /v1/cctp/treasury/{chain}/balance (`server/routes/cctp_routes.py:44`)
+ */
+export type TreasuryChain = 'arc' | 'solana' | 'stellar';
+
+/** `disabled` não é falha: é a flag da chain desligada no backend. */
+export type TreasuryStatus = 'ok' | 'disabled' | 'error';
+
+export interface TreasuryBalance {
+  chain: TreasuryChain;
+  status: TreasuryStatus;
+  /** Stellar não expõe saldo no client, então vem `null` mesmo com status ok. */
+  usdc: number | null;
+  address?: string;
+  sandbox?: boolean;
+}
+
+interface BalancePayload {
+  usdc_balance?: number;
+  sandbox?: boolean;
+  address?: string;
+}
+
+const TREASURY_CHAINS: TreasuryChain[] = ['arc', 'solana', 'stellar'];
+
+async function fetchChainBalance(chain: TreasuryChain): Promise<TreasuryBalance> {
+  const path = chain === 'arc' ? '/v1/arc/wallet/balance' : `/v1/cctp/treasury/${chain}/balance`;
+
+  try {
+    const payload = await apiFetch<BalancePayload>(path);
+    return {
+      chain,
+      status: 'ok',
+      usdc: payload.usdc_balance ?? null,
+      address: payload.address,
+      sandbox: payload.sandbox,
+    };
+  } catch (err) {
+    // 503 é a chain desligada por flag (`SOLANA_CCTP_ENABLED` etc.), não uma
+    // falha — vira badge na tela em vez de derrubar o cartão inteiro.
+    const disabled = err instanceof ApiError && err.status === 503;
+    return { chain, status: disabled ? 'disabled' : 'error', usdc: null };
+  }
+}
+
+/**
+ * As três chains em paralelo. Cada uma resolve o próprio status, então uma
+ * chain fora do ar não apaga o saldo das outras.
+ */
+export function getTreasury(): Promise<TreasuryBalance[]> {
+  return Promise.all(TREASURY_CHAINS.map(fetchChainBalance));
+}
+
+/** `GET /campaigns/me` — `campaigns_routes.py::UserCampaignParticipation` */
+export interface UserCampaignParticipation {
+  id: number;
+  name: string;
+  description: string;
+  reward_token: string;
+  reward_per_participant: number;
+  campaign_type: string;
+  /** `tasks_verified` é o estado que libera o resgate. */
+  participation_status: string;
+  tasks_verified_at: string | null;
+  tasks_claimed: boolean;
+  claim_receipt_id: string | null;
+}
+
+interface UserCampaignsResponse {
+  success: boolean;
+  campaigns: UserCampaignParticipation[];
+}
+
+/** **Exige sessão**: a rota resolve o participante pelo `Bearer`. */
+export async function listMyCampaigns(): Promise<UserCampaignParticipation[]> {
+  const response = await apiFetch<UserCampaignsResponse>('/campaigns/me');
+
+  if (!response.success) {
+    throw new ApiError('The backend could not read your campaigns', null, false);
+  }
+
+  return response.campaigns ?? [];
 }

@@ -1,8 +1,8 @@
 import { Image } from 'expo-image';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,12 +19,10 @@ import {
   avatarAnimation,
   type AnimationKey,
 } from '@/lib/avatar-animation';
-import { GoogleSignInCancelled, signInAndStartSession } from '@/lib/auth';
-import { getSession, getWallet } from '@/lib/session';
-import { useWalletConnect } from '@/lib/walletconnect';
+import { appendChatMessage } from '@/lib/chat-history';
+import { getWallet } from '@/lib/session';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
-import { HeaderBar } from '@/components/header-bar';
 import {
   IconActivity,
   IconChat,
@@ -35,10 +33,9 @@ import {
   IconWallet,
   type IconProps,
 } from '@/components/icons';
-import { ConnectWalletSheet } from '@/components/connect-wallet-sheet';
-import { NavMenu } from '@/components/nav-menu';
-import { ProfileMenu } from '@/components/profile-menu';
+import { ScreenShell } from '@/components/screen-shell';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useKeyboard } from '@/hooks/use-keyboard';
 
 /**
  * Tela de chat — a home do app.
@@ -98,9 +95,6 @@ const SUGGESTIONS = [
   'Show my recent transactions',
 ];
 
-/** Qual painel do header está aberto — só um por vez, como no Figma. */
-type OpenPanel = 'none' | 'menu' | 'profile';
-
 interface Message {
   id: string;
   author: 'user' | 'xiaolee';
@@ -125,64 +119,12 @@ const REACTIONS: { emoji: string; key: AnimationKey; label: string }[] = [
 
 export default function ChatScreen() {
   const [draft, setDraft] = useState('');
-  const [panel, setPanel] = useState<OpenPanel>('none');
   const [messages, setMessages] = useState<Message[]>([]);
   const [sending, setSending] = useState(false);
-  const [handle, setHandle] = useState<string>();
-  const [wallet, setWallet] = useState<string>();
-  const [signingIn, setSigningIn] = useState(false);
-  const [walletSheet, setWalletSheet] = useState(false);
   // Barra de gestos do Android come a margem de baixo do card sem este inset.
   const insets = useSafeAreaInsets();
+  const keyboard = useKeyboard();
   const scroller = useRef<ScrollView>(null);
-
-  // WalletConnect sincroniza endereço automaticamente
-  const wc = useWalletConnect();
-
-  const close = () => setPanel('none');
-  /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
-  const toggle = (next: Exclude<OpenPanel, 'none'>) =>
-    setPanel((current) => (current === next ? 'none' : next));
-
-  // Sessão e carteira sobrevivem ao fechamento do app (SecureStore), então o
-  // estado é restaurado na montagem em vez de começar deslogado.
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([getSession(), getWallet()]).then(([session, stored]) => {
-      if (cancelled) return;
-      if (session?.twitterUserId) setHandle(session.twitterUserId);
-      if (stored) setWallet(stored.address);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Mantém wallet em sync com WalletConnect
-  useEffect(() => {
-    if (wc.isConnected && wc.address) {
-      setWallet(wc.address);
-    }
-  }, [wc.isConnected, wc.address]);
-
-  async function signIn() {
-    setSigningIn(true);
-    try {
-      const session = await signInAndStartSession();
-      setHandle(session.twitterUserId);
-      close();
-    } catch (error) {
-      // Desistir do login não é erro — não vale poluir a conversa com isso.
-      if (error instanceof GoogleSignInCancelled) return;
-      const detail = error instanceof ApiError ? error.message : String(error);
-      setMessages((current) => [
-        ...current,
-        { id: `e${Date.now()}`, author: 'xiaolee', text: detail, time: now() },
-      ]);
-    } finally {
-      setSigningIn(false);
-    }
-  }
 
   async function send(text: string) {
     const message = text.trim();
@@ -194,6 +136,12 @@ export default function ChatScreen() {
       ...current,
       { id: `u${Date.now()}`, author: 'user', text: message, time: now() },
     ]);
+    // Fora do estado da tela, de propósito: o backend nunca grava conversa
+    // (`campaigns_routes.py:557` devolve `chat_history` vazio fixo), então sem
+    // isto a tela de Histórico não teria o que mostrar — mesmo acordo do web,
+    // que grava no `localStorage` em vez de esperar o backend (`lib/chat-history.ts`).
+    // Nunca rejeita, então não precisa de `catch` aqui.
+    appendChatMessage('user', message);
     // Enquanto pensa, a personagem pensa junto.
     avatarAnimation.play('xiaolee_thinklow');
 
@@ -205,17 +153,16 @@ export default function ChatScreen() {
         message,
         ...(wallet && { wallet_address: wallet.address, wallet_chain: wallet.chain }),
       });
-      const reply = result.response?.[0]?.content?.trim();
+      const reply =
+        result.response?.[0]?.content?.trim() || 'Não consegui formular uma resposta agora.';
 
       setMessages((current) => [
         ...current,
-        {
-          id: `x${Date.now()}`,
-          author: 'xiaolee',
-          text: reply || 'Não consegui formular uma resposta agora.',
-          time: now(),
-        },
+        { id: `x${Date.now()}`, author: 'xiaolee', text: reply, time: now() },
       ]);
+      // O texto gravado é o mesmo que foi para a bolha, fallback incluído —
+      // o histórico não deve divergir do que a tela mostrou.
+      appendChatMessage('assistant', reply);
 
       // O agente escolhe a emoção; nome desconhecido volta para o idle.
       const animation = animationFromBackend(result.animations);
@@ -227,6 +174,9 @@ export default function ChatScreen() {
         ...current,
         { id: `e${Date.now()}`, author: 'xiaolee', text: detail, time: now() },
       ]);
+      // O web também grava o texto de erro (`ChatPanel.tsx:256`) — uma
+      // conversa que travou continua sendo conversa.
+      appendChatMessage('assistant', detail);
       avatarAnimation.play('xiaolee_ouch');
     } finally {
       setSending(false);
@@ -236,18 +186,42 @@ export default function ChatScreen() {
   const empty = messages.length === 0;
 
   return (
-    <View style={styles.screen}>
-      <HeaderBar
-        onPressMenu={() => toggle('menu')}
-        onPressProfile={() => toggle('profile')}
-      />
-
+    <ScreenShell>
       <KeyboardAvoidingView
         style={styles.flex}
-        // Sem isto o teclado cobre o input — o iOS não recua a view sozinho.
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        /**
+         * `padding` nas duas plataformas — no Android também, apesar de a doc
+         * da Expo mandar passar `undefined` lá.
+         *
+         * Aquele conselho é anterior ao edge-to-edge. Com `undefined` o
+         * componente cai no `default` do `render()` e devolve uma `View` comum
+         * (`KeyboardAvoidingView.js:286`): ele calcula a altura do teclado e
+         * não aplica em nada. Quem levantava o composer era o SO encolhendo a
+         * janela por `adjustResize`. Desde o SDK 54 o edge-to-edge é
+         * obrigatório e a janela não encolhe mais — o app desenha atrás do
+         * teclado, então o rodapé ficava coberto.
+         *
+         * O ramo `padding` não depende disso: ele mede pelo `endCoordinates` do
+         * evento `keyboardDidShow`, que o Android continua emitindo.
+         *
+         * Sem `keyboardVerticalOffset` de propósito: a conta do componente
+         * mistura o `y` do layout com o `screenY` do teclado, o que só fecha se
+         * a raiz React começar no topo da tela — e começa, porque esta tela roda
+         * com `headerShown: false` (ver `_layout.tsx`) e o header é nosso.
+         */
+        behavior="padding"
       >
-        <View style={[styles.card, { marginBottom: Spacing.three - 4 + insets.bottom }]}>
+        {/* O inset de baixo só vale com o teclado fechado. Ele existe para o
+            card não encostar na barra de gestos — mas o teclado cobre essa
+            barra, e aí o `insets.bottom` deixa de proteger de alguma coisa e
+            vira folga entre o composer e as teclas (no iOS somada à altura do
+            teclado, que o `KeyboardAvoidingView` já empurrou). */}
+        <View
+          style={[
+            styles.card,
+            { marginBottom: Spacing.three - 4 + (keyboard.visible ? 0 : insets.bottom) },
+          ]}
+        >
           {/* Na conversa o hero some, então a personagem passa a viver aqui —
               sempre há exatamente uma avatar animada, e as reações têm onde
               acontecer. */}
@@ -297,28 +271,11 @@ export default function ChatScreen() {
             value={draft}
             onChange={setDraft}
             onSend={() => send(draft)}
-            disabled={sending}
+            sending={sending}
           />
         </View>
       </KeyboardAvoidingView>
-
-      {/* Depois do card para ficarem por cima dele, como nos frames do Figma. */}
-      <NavMenu visible={panel === 'menu'} onDismiss={close} />
-      <ProfileMenu
-        visible={panel === 'profile'}
-        onDismiss={close}
-        handle={handle}
-        walletAddress={wallet}
-        signingIn={signingIn}
-        onSignIn={signIn}
-        onConnectWallet={() => setWalletSheet(true)}
-      />
-      <ConnectWalletSheet
-        visible={walletSheet}
-        onClose={() => setWalletSheet(false)}
-        onConnected={setWallet}
-      />
-    </View>
+    </ScreenShell>
   );
 }
 
@@ -472,14 +429,15 @@ function Composer({
   value,
   onChange,
   onSend,
-  disabled,
+  sending,
 }: {
   value: string;
   onChange: (next: string) => void;
   onSend: () => void;
-  disabled: boolean;
+  /** O agente está respondendo — diferente de "não há o que enviar". */
+  sending: boolean;
 }) {
-  const canSend = value.trim().length > 0 && !disabled;
+  const canSend = value.trim().length > 0 && !sending;
 
   return (
     <View style={styles.composer}>
@@ -491,7 +449,21 @@ function Composer({
         style={styles.input}
         multiline
         maxLength={2000}
-        editable={!disabled}
+        editable={!sending}
+        /**
+         * Sem isto o `onSubmitEditing` abaixo é prop morta: num campo
+         * `multiline` o RN resolve `submitBehavior` para `'newline'`
+         * (`TextInput.js:567`), então a tecla de retorno insere quebra de linha
+         * e o handler nunca dispara — era o caso aqui.
+         *
+         * `'submit'` e não `'blurAndSubmit'`: envia **sem** tirar o foco, então
+         * dá para emendar a próxima mensagem sem reabrir o teclado. O texto
+         * ainda quebra sozinho e o campo cresce até `maxHeight`; o que se perde
+         * é a quebra manual, que num chat com o agente quase não aparece.
+         */
+        submitBehavior="submit"
+        // A tecla passa a se chamar "send" — ela envia, então deve dizer isso.
+        returnKeyType="send"
         onSubmitEditing={onSend}
       />
       <Pressable
@@ -499,20 +471,30 @@ function Composer({
         disabled={!canSend}
         style={({ pressed }) => [
           styles.sendButton,
-          !canSend && styles.sendButtonIdle,
+          // Esmaece só quando não há o que enviar. Enquanto o agente responde o
+          // botão fica cheio com o spinner: esmaecido ele leria como desligado,
+          // e não é isso — está trabalhando.
+          !canSend && !sending && styles.sendButtonIdle,
           pressed && styles.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Enviar"
+        accessibilityLabel={sending ? 'Sending' : 'Send'}
+        accessibilityState={{ disabled: !canSend, busy: sending }}
       >
-        <IconSend size={18} color={Colors.light.card} />
+        {/* A resposta depende de uma chamada a LLM, com timeout de 60s
+            (`api/backend.ts`). Um botão parado nesse intervalo não distingue
+            "mandei" de "não pegou". */}
+        {sending ? (
+          <ActivityIndicator size="small" color={Colors.light.card} />
+        ) : (
+          <IconSend size={18} color={Colors.light.card} />
+        )}
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: Colors.light.bg },
   flex: { flex: 1 },
 
   card: {
@@ -741,6 +723,10 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.medium,
     fontSize: 14,
     color: Colors.light.ink,
+    // Android centraliza o texto de um campo multiline na altura disponível, e
+    // aí a segunda linha empurra a primeira para cima em vez de o texto crescer
+    // para baixo. Mesmo ajuste do formulário de campanha (`campaigns/new.tsx`).
+    textAlignVertical: 'top',
   },
   sendButton: {
     width: 50,

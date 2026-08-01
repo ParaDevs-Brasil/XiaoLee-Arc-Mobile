@@ -7,6 +7,7 @@ import {
 } from '@expo-google-fonts/quicksand';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -43,6 +44,15 @@ export default function RootLayout() {
     // SafeAreaProvider é obrigatório para `useSafeAreaInsets` devolver algo
     // diferente de zero — sem ele o header fica sob a status bar.
     <SafeAreaProvider>
+      {/* Relógio, wifi e bateria em escuro, sempre.
+          O padrão de `style` é `auto`, que segue o tema **do aparelho**: num
+          celular em modo escuro os ícones saem brancos — e a faixa da status
+          bar é pintada pelo `HeaderBar`, que é branco (`Colors.light.card`).
+          Branco no branco some, e o usuário perde o relógio e as notificações.
+          O app não acompanha o tema do sistema (ver `constants/theme.ts`: modo
+          escuro suspenso), então o conteúdo da barra também não deve. */}
+      <StatusBar style="dark" />
+
       <WalletConnectProvider>
         <ThemeProvider value={DefaultTheme}>
           <Stack
@@ -52,9 +62,24 @@ export default function RootLayout() {
               contentStyle: { backgroundColor: Colors.light.bg },
             }}
           >
-            {/* O chat traz o próprio HeaderBar (o wordmark do Figma), então a
-                barra nativa sairia duplicada. */}
+            {/* Estas telas trazem o próprio HeaderBar (o wordmark do Figma) via
+                `ScreenShell`, então a barra nativa sairia duplicada. A volta
+                fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
             <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="traction" options={{ headerShown: false }} />
+            <Stack.Screen name="notifications" options={{ headerShown: false }} />
+            <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+            <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
+            <Stack.Screen name="wallet" options={{ headerShown: false }} />
+            <Stack.Screen name="transactions" options={{ headerShown: false }} />
+            <Stack.Screen name="history" options={{ headerShown: false }} />
+            {/* O formulário é a exceção: entra como modal e mantém a barra
+                nativa. Num formulário longo o usuário precisa de uma saída
+                sempre visível, e o wordmark do ScreenShell não é uma. */}
+            <Stack.Screen
+              name="campaigns/new"
+              options={{ presentation: 'modal', title: 'New Campaign' }}
+            />
             <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
           </Stack>
         </ThemeProvider>

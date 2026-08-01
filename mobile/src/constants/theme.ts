@@ -36,6 +36,21 @@ const palette = {
   successBorder: '#d0fae5',
   danger: '#c23a3a',
   dangerSoft: '#fef2f2',
+
+  /**
+   * Âmbar de "degradado" — o estado que não é sucesso nem falha.
+   *
+   * Nasceu no mobile antes de existir no Figma: a barra de latência da Traction
+   * pintava lentidão de `danger`, e vermelho ali lê como pagamento quebrado
+   * quando o pagamento liquidou, só que devagar. Conferido para AA — `warn`
+   * sobre `warnSoft` dá 4.8:1 e sobre `card` 5.0:1.
+   *
+   * Pendência: levar de volta para `docs/DESIGN_SYSTEM.md` e para o arquivo
+   * Figma, senão o web e o mobile divergem na próxima revisão da paleta.
+   */
+  warn: '#b45309',
+  warnSoft: '#fffbeb',
+  warnBorder: '#fde68a',
 } as const;
 
 /**

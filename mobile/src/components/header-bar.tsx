@@ -17,12 +17,15 @@ interface HeaderBarProps {
   onPressNotifications?: () => void;
   onPressMenu?: () => void;
   onPressProfile?: () => void;
+  /** Volta para o chat. Sem handler o wordmark fica inerte, como era antes. */
+  onPressLogo?: () => void;
 }
 
 export function HeaderBar({
   onPressNotifications,
   onPressMenu,
   onPressProfile,
+  onPressLogo,
 }: HeaderBarProps) {
   // O frame do Figma começa em y=0 porque não desenha a status bar. No
   // aparelho, sem este inset o wordmark fica embaixo do relógio e da bateria.
@@ -31,8 +34,18 @@ export function HeaderBar({
   return (
     <View style={[styles.bar, { paddingTop: insets.top, height: 53 + insets.top }]}>
       {/* Logo idêntico ao da navbar web: "Xiao" neutro + "lee" no acento em
-          Candice, seguido da faísca como SVG (não como caractere). */}
-      <View style={styles.logo}>
+          Candice, seguido da faísca como SVG (não como caractere). Também
+          leva ao chat como lá, onde é um `<Link href="/">` — nas telas
+          internas é a única volta visível, já que o desenho do header não
+          tem seta e o menu não lista o chat. */}
+      <Pressable
+        onPress={onPressLogo}
+        disabled={!onPressLogo}
+        style={styles.logo}
+        accessibilityRole={onPressLogo ? 'link' : undefined}
+        accessibilityLabel={onPressLogo ? 'Xiaolee — ir para o chat' : undefined}
+        hitSlop={Spacing.two}
+      >
         <Text style={styles.wordmark}>
           Xiao<Text style={styles.wordmarkAccent}>lee</Text>
         </Text>
@@ -40,7 +53,7 @@ export function HeaderBar({
         <View style={styles.spark}>
           <IconSpark size={13} color={Colors.light.accent} />
         </View>
-      </View>
+      </Pressable>
 
       <View style={styles.actions}>
         <Pressable

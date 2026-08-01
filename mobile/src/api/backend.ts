@@ -306,6 +306,94 @@ export function getTreasury(): Promise<TreasuryBalance[]> {
   return Promise.all(TREASURY_CHAINS.map(fetchChainBalance));
 }
 
+/**
+ * `GET /v1/arc/chain-config` — parâmetros do Arc no formato que a carteira
+ * espera em `wallet_switchEthereumChain` / `wallet_addEthereumChain`.
+ *
+ * O `rpcUrls` aponta para o proxy do backend (`/v1/arc/rpc`), não para o RPC
+ * autenticado do Canteen: a carteira fala com o RPC direto, e a URL com token
+ * não é utilizável fora do servidor (ver a docstring da rota).
+ */
+export interface ArcChainConfig {
+  chainIdHex: string;
+  chainId: number;
+  chainName: string;
+  rpcUrls: string[];
+  blockExplorerUrls: string[];
+  nativeCurrency: { name: string; symbol: string; decimals: number };
+}
+
+export function getArcChainConfig(): Promise<ArcChainConfig> {
+  return apiFetch<ArcChainConfig>('/v1/arc/chain-config');
+}
+
+/**
+ * `GET /v1/arc/gas-fees` — fee EIP-1559 lido do RPC do Arc.
+ *
+ * Existe porque a carteira não consegue estimar fee sozinha num testnet custom:
+ * sem estes valores explícitos a MetaMask mostra "Network fee: Unavailable" e
+ * não libera a assinatura.
+ */
+export interface ArcGasFees {
+  maxFeePerGasHex: string;
+  maxPriorityFeePerGasHex: string;
+}
+
+export function getArcGasFees(): Promise<ArcGasFees> {
+  return apiFetch<ArcGasFees>('/v1/arc/gas-fees');
+}
+
+/**
+ * `GET /v1/arc/usdc/authorization-domain` — domínio EIP-712 do USDC do Arc.
+ *
+ * Vem do backend, que lê `name()`/`version()` on-chain: qualquer campo errado
+ * aqui produz uma assinatura que o contrato rejeita sem dizer o motivo.
+ */
+export interface UsdcAuthorizationDomain {
+  name: string;
+  version: string;
+  chainId: number;
+  verifyingContract: string;
+}
+
+export function getUsdcAuthorizationDomain(): Promise<UsdcAuthorizationDomain> {
+  return apiFetch<UsdcAuthorizationDomain>('/v1/arc/usdc/authorization-domain');
+}
+
+/**
+ * `POST /v1/arc/usdc/relay-authorization` — o backend submete no Arc a
+ * transferência que o usuário autorizou por assinatura, pagando o gas.
+ *
+ * É o que dispensa a carteira de estar na rede Arc: assinar typed data funciona
+ * em qualquer chain, ao contrário de `eth_sendTransaction`.
+ */
+export interface RelayAuthorizationRequest {
+  from_address: string;
+  to_address: string;
+  value: number;
+  valid_after: number;
+  valid_before: number;
+  nonce: string;
+  signature: string;
+}
+
+export interface RelayAuthorizationResponse {
+  tx_hash: string;
+  confirmed: boolean;
+  gas_used: number;
+  sandbox: boolean;
+}
+
+export function relayUsdcAuthorization(
+  request: RelayAuthorizationRequest,
+): Promise<RelayAuthorizationResponse> {
+  return apiFetch<RelayAuthorizationResponse>('/v1/arc/usdc/relay-authorization', {
+    method: 'POST',
+    json: request,
+    skipAuth: true,
+  });
+}
+
 /** `GET /campaigns/me` — `campaigns_routes.py::UserCampaignParticipation` */
 export interface UserCampaignParticipation {
   id: number;

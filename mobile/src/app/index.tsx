@@ -20,7 +20,9 @@ import {
   type AnimationKey,
 } from '@/lib/avatar-animation';
 import { appendChatMessage } from '@/lib/chat-history';
+import { shortHash } from '@/lib/format';
 import { getWallet } from '@/lib/session';
+import { useWalletConnect } from '@/lib/walletconnect';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
 import {
@@ -101,6 +103,39 @@ interface Message {
   text: string;
   /** Mesmo formato do web: `toLocaleTimeString` com hora e minuto. */
   time: string;
+  /**
+   * Transferência que o backend preparou para esta mensagem
+   * (`execution.transfer`), quando a intenção era enviar USDC. Vira o botão de
+   * autorizar na bolha.
+   *
+   * Fica na mensagem, e não numa gaveta da tela, porque é dela: a conversa pode
+   * seguir com outras mensagens e o botão precisa continuar preso ao resumo que
+   * a Xiaolee deu. Some depois de assinado — o mesmo pedido não se assina duas
+   * vezes (mesmo acordo do web, `ChatPanel.tsx:181`).
+   */
+  transfer?: PendingTransfer;
+  /** Hash devolvido pela carteira, quando já assinou. */
+  txHash?: string;
+}
+
+/** O que o usuário vai autorizar: destino e valor, como o backend os preparou. */
+interface PendingTransfer {
+  to: string;
+  amountUsdc: number;
+}
+
+/**
+ * O recorte de `execution` que interessa aqui. O resto é opaco de propósito.
+ *
+ * Lê `transfer` e não `evm_tx`: a assinatura é de uma autorização EIP-3009, não
+ * de uma transação montada. A calldata que o backend também manda serve ao web,
+ * que assina `eth_sendTransaction` porque lá a extensão consegue trocar de rede.
+ */
+function transferFrom(execution: Record<string, unknown> | undefined): PendingTransfer | undefined {
+  if (!execution || execution.status !== 'evm_tx_ready') return undefined;
+  const t = execution.transfer as { to?: string; amount_usdc?: number } | undefined;
+  if (!t?.to || !t.amount_usdc || t.amount_usdc <= 0) return undefined;
+  return { to: t.to, amountUsdc: t.amount_usdc };
 }
 
 function now(): string {
@@ -125,6 +160,19 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboard();
   const scroller = useRef<ScrollView>(null);
+  const wc = useWalletConnect();
+
+  /**
+   * Troca o botão pelo hash na mensagem que foi assinada.
+   *
+   * Limpar o `transfer` é o que impede assinar o mesmo pedido duas vezes — o web
+   * faz igual (`ChatPanel.tsx:181`).
+   */
+  function markSigned(id: string, hash: string) {
+    setMessages((current) =>
+      current.map((m) => (m.id === id ? { ...m, transfer: undefined, txHash: hash } : m)),
+    );
+  }
 
   async function send(text: string) {
     const message = text.trim();
@@ -148,7 +196,15 @@ export default function ChatScreen() {
     try {
       // Mesmo contexto que o web manda em cada mensagem: sem isso o agente
       // não sabe qual carteira consultar e responde "conecte sua carteira".
-      const wallet = await getWallet();
+      //
+      // A sessão viva do WalletConnect vem primeiro, e o SecureStore é só o
+      // fallback de quando o app reabre sem relay. Depender só do gravado
+      // amarraria o chat ao login, porque quem grava é o `linkWallet` — e ele
+      // exige sessão (`POST /auth/wallet` responde 401 sem ela).
+      const stored = await getWallet();
+      const wallet = wc.address
+        ? { address: wc.address, chain: wc.chain ?? 'evm' }
+        : stored;
       const result = await sendChatMessage({
         message,
         ...(wallet && { wallet_address: wallet.address, wallet_chain: wallet.chain }),
@@ -158,7 +214,13 @@ export default function ChatScreen() {
 
       setMessages((current) => [
         ...current,
-        { id: `x${Date.now()}`, author: 'xiaolee', text: reply, time: now() },
+        {
+          id: `x${Date.now()}`,
+          author: 'xiaolee',
+          text: reply,
+          time: now(),
+          transfer: transferFrom(result.execution),
+        },
       ]);
       // O texto gravado é o mesmo que foi para a bolha, fallback incluído —
       // o histórico não deve divergir do que a tela mostrou.
@@ -260,7 +322,7 @@ export default function ChatScreen() {
             ) : (
               <>
                 {messages.map((message) => (
-                  <Bubble key={message.id} message={message} />
+                  <Bubble key={message.id} message={message} onSigned={markSigned} />
                 ))}
                 {sending ? <Typing /> : null}
               </>
@@ -284,7 +346,87 @@ export default function ChatScreen() {
  * "cauda" reduzido do lado de quem fala, largura máxima de 85%, e um rodapé
  * com autor e horário. Na fala da Xiaolee, avatar à esquerda e as reações.
  */
-function Bubble({ message }: { message: Message }) {
+/**
+ * Botão de assinar dentro da bolha — espelho do que o web mostra quando o
+ * backend devolve `evm_tx` (`ChatPanel.tsx:333`).
+ *
+ * Fica na bolha, não num rodapé fixo: o resumo que a Xiaolee escreveu (valor,
+ * destino, rede) é o contexto do que se está assinando, e separar os dois faria
+ * o usuário assinar um número que não está vendo.
+ */
+function SignTxButton({
+  message,
+  onSigned,
+}: {
+  message: Message;
+  onSigned: (id: string, hash: string) => void;
+}) {
+  const { isConnected, signAndRelay } = useWalletConnect();
+  const [signing, setSigning] = useState(false);
+  const [error, setError] = useState<string>();
+
+  if (message.txHash) {
+    return (
+      <View style={styles.txDone}>
+        <IconCheck size={14} color={Colors.light.success} />
+        <Text style={styles.txDoneText}>Sent · {shortHash(message.txHash)}</Text>
+      </View>
+    );
+  }
+
+  if (!isConnected) {
+    return <Text style={styles.txHint}>Connect a wallet to sign this transfer.</Text>;
+  }
+
+  async function sign() {
+    if (!message.transfer) return;
+    setSigning(true);
+    setError(undefined);
+    try {
+      const { to, amountUsdc } = message.transfer;
+      onSigned(message.id, await signAndRelay(to, amountUsdc));
+    } catch (err) {
+      // Erro de carteira vem como `{code, message}` puro, não Error — por isso
+      // não dá para usar `instanceof` aqui.
+      const detail =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : String(err);
+      setError(detail);
+    } finally {
+      setSigning(false);
+    }
+  }
+
+  return (
+    <>
+      <Pressable
+        onPress={sign}
+        disabled={signing}
+        style={({ pressed }) => [styles.signButton, pressed && styles.signButtonPressed]}
+        accessibilityRole="button"
+      >
+        {signing ? (
+          <ActivityIndicator size="small" color={Colors.light.card} />
+        ) : (
+          <>
+            <IconWallet size={15} color={Colors.light.card} />
+            <Text style={styles.signButtonText}>Sign in wallet</Text>
+          </>
+        )}
+      </Pressable>
+      {error ? <Text style={styles.txError}>{error}</Text> : null}
+    </>
+  );
+}
+
+function Bubble({
+  message,
+  onSigned,
+}: {
+  message: Message;
+  onSigned: (id: string, hash: string) => void;
+}) {
   const mine = message.author === 'user';
 
   if (mine) {
@@ -312,6 +454,9 @@ function Bubble({ message }: { message: Message }) {
       <View style={styles.bubbleWrap}>
         <View style={[styles.bubble, styles.bubbleXiaolee]}>
           <Text style={styles.bubbleText}>{message.text}</Text>
+          {message.transfer || message.txHash ? (
+            <SignTxButton message={message} onSigned={onSigned} />
+          ) : null}
         </View>
         <View style={styles.meta}>
           <Text style={styles.metaText}>Xiaolee{message.time ? ` · ${message.time}` : ''}</Text>
@@ -627,6 +772,43 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: Radius.sm - 2,
   },
   bubbleText: { fontFamily: Fonts.sans, fontSize: 14, lineHeight: 21, color: Colors.light.ink2 },
+
+  // Assinatura de transação dentro da bolha.
+  signButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two - 2,
+    height: 38,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.accent,
+    marginTop: Spacing.two,
+  },
+  signButtonPressed: { opacity: 0.7 },
+  signButtonText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.card },
+  txDone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.one,
+    paddingVertical: Spacing.two - 2,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.successSoft,
+    marginTop: Spacing.two,
+  },
+  txDoneText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.ink },
+  txHint: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    color: Colors.light.ink3,
+    marginTop: Spacing.two - 2,
+  },
+  txError: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.light.danger,
+    marginTop: Spacing.one,
+  },
   bubbleTextUser: {
     fontFamily: Fonts.medium,
     fontSize: 14,

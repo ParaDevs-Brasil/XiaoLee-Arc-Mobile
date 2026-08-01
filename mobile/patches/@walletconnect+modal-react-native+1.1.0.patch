@@ -1,0 +1,39 @@
+diff --git a/node_modules/@walletconnect/modal-react-native/src/utils/AssetUtil.ts b/node_modules/@walletconnect/modal-react-native/src/utils/AssetUtil.ts
+index ef218f3..075de13 100644
+--- a/node_modules/@walletconnect/modal-react-native/src/utils/AssetUtil.ts
++++ b/node_modules/@walletconnect/modal-react-native/src/utils/AssetUtil.ts
+@@ -1,10 +1,32 @@
+ import { AssetCtrl } from '../controllers/AssetCtrl';
+ import type { WcWallet } from '../types/controllerTypes';
+ 
++/**
++ * PATCH XiaoLee — ver patches/@walletconnect+modal-react-native+1.1.0.patch
++ *
++ * Duas coisas mudaram no servidor da Reown depois que este SDK foi publicado, e
++ * juntas deixavam TODOS os ícones de carteira em branco:
++ *
++ *  1. `image_url` hoje vem como objeto `{sm, md, lg}`, não string. O código
++ *     original devolvia o objeto, que o `<Image>` não renderiza.
++ *  2. O fallback por `image_id` monta `/getWalletImage/{id}`, endpoint que a
++ *     Reown removeu (404). O atual é `/v3/logo/md/{id}`.
++ *
++ * Só o item 1 é corrigido aqui: a listagem v3 traz `image_url` para toda
++ * carteira, então o fallback do item 2 nunca chega a ser alcançado.
++ */
++type ImageUrls = { sm?: string; md?: string; lg?: string };
++
+ export const AssetUtil = {
+   getWalletImage(wallet?: WcWallet) {
+-    if (wallet?.image_url) {
+-      return wallet?.image_url;
++    const image = wallet?.image_url as string | ImageUrls | undefined;
++
++    if (typeof image === 'string') {
++      return image;
++    }
++
++    if (image && typeof image === 'object') {
++      return image.md ?? image.sm ?? image.lg;
+     }
+ 
+     if (wallet?.image_id) {

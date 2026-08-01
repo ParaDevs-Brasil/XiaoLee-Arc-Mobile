@@ -47,15 +47,20 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~57.0.0",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "//overrides": "@napi-rs/wasm-runtime declara peerDependency de @emnapi/* num range de PRERELEASE (^2.0.0-alpha.3). O npm install resolve isso para o alpha mais recente publicado, então o lockfile envelhece sozinho e `npm ci` passa a acusar drift — foi o que quebrou a Mobile CI duas vezes. O consumidor real (@unrs/resolver-binding-wasm32-wasi, o fallback wasm do unrs-resolver que vem do eslint-config-expo) fixa 1.10.0, então travamos aqui. Reavaliar quando @emnapi 2.x sair de alpha.",
+  "//overrides-react-native-modal": "@walletconnect/modal-react-native@1.1.0 depende de react-native-modal@13, que chama BackHandler.removeEventListener no componentWillUnmount — API removida do React Native (a 0.86 só tem addEventListener, que devolve subscription com .remove()). O modal do WalletConnect crashava com 'undefined is not a function' ao desmontar. A 14.0.0-rc.1 usa a API nova. ponytail: é um RC de dependência transitiva de um pacote descontinuado — o conserto de verdade é migrar para @reown/appkit-wagmi-react-native (wagmi e viem já estão instalados), e aí este override sai junto.",
   "overrides": {
     "@emnapi/core": "1.10.0",
     "@emnapi/runtime": "1.10.0",
-    "@emnapi/wasi-threads": "1.2.1"
+    "@emnapi/wasi-threads": "1.2.1",
+    "react-native-modal": "14.0.0-rc.1"
   },
+  "//postinstall": "Reaplica patches/ após qualquer install. Sem isto o `npm ci` da CI derruba a correção dos ícones do modal do WalletConnect e o app volta a mostrar carteira sem logo.",
   "scripts": {
+    "postinstall": "patch-package",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",

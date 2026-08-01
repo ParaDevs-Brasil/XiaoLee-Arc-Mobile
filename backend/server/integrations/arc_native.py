@@ -61,6 +61,50 @@ _ERC20_ABI = [
         ],
         "outputs": [{"name": "", "type": "bool"}],
     },
+    # EIP-3009 — transferência autorizada por assinatura. É o que permite o
+    # usuário transferir USDC sem ter a rede Arc cadastrada na carteira e sem
+    # ter USDC para o gas: ele só assina, e quem submete (e paga) é a treasury.
+    {
+        "name": "transferWithAuthorization",
+        "type": "function",
+        "stateMutability": "nonpayable",
+        "inputs": [
+            {"name": "from",        "type": "address"},
+            {"name": "to",          "type": "address"},
+            {"name": "value",       "type": "uint256"},
+            {"name": "validAfter",  "type": "uint256"},
+            {"name": "validBefore", "type": "uint256"},
+            {"name": "nonce",       "type": "bytes32"},
+            {"name": "v",           "type": "uint8"},
+            {"name": "r",           "type": "bytes32"},
+            {"name": "s",           "type": "bytes32"},
+        ],
+        "outputs": [],
+    },
+    {
+        "name": "authorizationState",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [
+            {"name": "authorizer", "type": "address"},
+            {"name": "nonce",      "type": "bytes32"},
+        ],
+        "outputs": [{"name": "", "type": "bool"}],
+    },
+    {
+        "name": "version",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "string"}],
+    },
+    {
+        "name": "name",
+        "type": "function",
+        "stateMutability": "view",
+        "inputs": [],
+        "outputs": [{"name": "", "type": "string"}],
+    },
 ]
 
 _MSG_TRANSMITTER_ABI = [
@@ -250,6 +294,138 @@ class ArcNativeClient:
             raise RuntimeError(f"[arc_native] USDC transfer reverted: tx={tx_hash}")
 
         LOG.info("[arc_native] USDC transfer confirmed tx=%s gas_used=%d", tx_hash, result.gas_used)
+        return result
+
+    # ------------------------------------------------------------------
+    # EIP-3009 — transferência autorizada por assinatura (gasless para o usuário)
+    # ------------------------------------------------------------------
+
+    async def get_eip712_domain(self) -> dict:
+        """
+        Domínio EIP-712 do contrato USDC, lido on-chain.
+
+        Lido e não fixado no código porque `name` e `version` são do contrato:
+        chutá-los produz uma assinatura que o `transferWithAuthorization`
+        rejeita sem dizer por quê. Conferido contra `DOMAIN_SEPARATOR()`.
+        """
+        from web3 import Web3
+
+        w3 = self._web3()
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(self.usdc_address),
+            abi=_ERC20_ABI,
+        )
+
+        def _read() -> dict:
+            return {
+                "name": contract.functions.name().call(),
+                "version": contract.functions.version().call(),
+                "chainId": self._chain_id or w3.eth.chain_id,
+                "verifyingContract": Web3.to_checksum_address(self.usdc_address),
+            }
+
+        return await asyncio.get_event_loop().run_in_executor(None, _read)
+
+    async def relay_transfer_authorization(
+        self,
+        *,
+        from_address: str,
+        to_address:   str,
+        value:        int,
+        valid_after:  int,
+        valid_before: int,
+        nonce:        str,
+        signature:    str,
+    ) -> TxResult:
+        """
+        Submete no Arc uma transferência que o usuário autorizou por assinatura.
+
+        O usuário nunca toca na chain: ele assina um typed data (funciona em
+        qualquer rede, é só uma assinatura) e a treasury paga o gas. É o que
+        torna o fluxo viável no mobile, onde a carteira não aceita
+        `wallet_addEthereumChain` (a Rabby responde -32601).
+
+        A autorização é auto-contida e o contrato valida tudo: assinatura,
+        janela de validade e nonce já usado. Este método não pode gastar nada
+        além do que a assinatura autoriza.
+        """
+        from web3 import Web3
+
+        if self.sandbox:
+            fake = f"sandbox_auth_tx_{nonce[:12]}"
+            LOG.info("[arc_native] SANDBOX transferWithAuthorization %s → %s | tx=%s",
+                     from_address, to_address, fake)
+            return TxResult(tx_hash=fake, confirmed=True, status=1)
+
+        w3 = self._web3()
+        acc = self._account()
+        contract = w3.eth.contract(
+            address=Web3.to_checksum_address(self.usdc_address),
+            abi=_ERC20_ABI,
+        )
+
+        nonce_bytes = Web3.to_bytes(hexstr=nonce)
+        if len(nonce_bytes) != 32:
+            raise ValueError("nonce deve ter 32 bytes")
+
+        sig = Web3.to_bytes(hexstr=signature)
+        if len(sig) != 65:
+            raise ValueError("signature deve ter 65 bytes (r||s||v)")
+        r, s, v = sig[:32], sig[32:64], sig[64]
+        # Carteiras divergem: umas devolvem v em {0,1}, outras em {27,28}. O
+        # contrato só aceita a segunda forma.
+        if v < 27:
+            v += 27
+
+        # Falha cedo e com mensagem clara em vez de gastar gas numa tx que o
+        # contrato reverteria — o revert de nonce usado não diz o que houve.
+        already_used = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: contract.functions.authorizationState(
+                Web3.to_checksum_address(from_address), nonce_bytes
+            ).call(),
+        )
+        if already_used:
+            raise RuntimeError("autorização já utilizada (nonce gasto)")
+
+        tx = contract.functions.transferWithAuthorization(
+            Web3.to_checksum_address(from_address),
+            Web3.to_checksum_address(to_address),
+            value,
+            valid_after,
+            valid_before,
+            nonce_bytes,
+            v,
+            r,
+            s,
+        ).build_transaction({
+            "from":     acc.address,
+            "nonce":    w3.eth.get_transaction_count(acc.address),
+            "chainId":  self._chain_id or w3.eth.chain_id,
+            "gasPrice": w3.eth.gas_price,
+        })
+        tx["gas"] = w3.eth.estimate_gas(tx)
+
+        signed = acc.sign_transaction(tx)
+        tx_hash = w3.eth.send_raw_transaction(signed.raw_transaction).hex()
+        LOG.info("[arc_native] transferWithAuthorization enviada tx=%s %s → %s valor=%d",
+                 tx_hash, from_address, to_address, value)
+
+        receipt = await asyncio.get_event_loop().run_in_executor(
+            None,
+            lambda: w3.eth.wait_for_transaction_receipt(tx_hash, timeout=_TX_TIMEOUT_S),
+        )
+        result = TxResult(
+            tx_hash=tx_hash,
+            confirmed=receipt["status"] == 1,
+            gas_used=receipt.get("gasUsed", 0),
+            status=receipt["status"],
+        )
+        if not result.confirmed:
+            raise RuntimeError(f"[arc_native] transferWithAuthorization revertida: tx={tx_hash}")
+
+        LOG.info("[arc_native] transferWithAuthorization confirmada tx=%s gas=%d",
+                 tx_hash, result.gas_used)
         return result
 
     # ------------------------------------------------------------------

@@ -21,6 +21,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from server.integrations.arc_client import ArcClient
+from server.rate_limiter import get_rate_limiter
 from server.settings import settings
 
 LOG = logging.getLogger(__name__)
@@ -64,6 +65,17 @@ def _cctp_client():
         source_rpc=settings.cctp_source_rpc,
         arc_rpc=settings.arc_rpc_url,
         signer_key=settings.cctp_signer_private_key,
+        sandbox=settings.arc_sandbox,
+    )
+
+
+def _arc_native():
+    from server.integrations.arc_native import ArcNativeClient
+    return ArcNativeClient(
+        rpc_url=settings.arc_rpc_url,
+        private_key=settings.arc_agent_private_key,
+        usdc_address=settings.arc_usdc_address,
+        chain_id=settings.arc_chain_id or None,
         sandbox=settings.arc_sandbox,
     )
 
@@ -225,6 +237,99 @@ async def get_gas_fees():
         "maxPriorityFeePerGasHex": hex(fees["maxPriorityFeePerGas"]),
         "maxFeePerGas": fees["maxFeePerGas"],
         "maxPriorityFeePerGas": fees["maxPriorityFeePerGas"],
+    }
+
+
+_EVM_ADDR_RE = __import__("re").compile(r"^0x[0-9a-fA-F]{40}$")
+
+
+class AuthorizationRelayRequest(BaseModel):
+    """Autorização EIP-3009 assinada pelo usuário, pronta para submissão."""
+
+    from_address: str
+    to_address:   str
+    value:        int          # unidades mínimas do token (USDC = 6 decimais)
+    valid_after:  int
+    valid_before: int
+    nonce:        str          # bytes32 hex
+    signature:    str          # 65 bytes hex (r||s||v)
+
+
+@router.get("/usdc/authorization-domain")
+async def usdc_authorization_domain():
+    """
+    Domínio EIP-712 do USDC do Arc, para o cliente montar o typed data.
+
+    Lido on-chain (`name()`/`version()`) e não fixado: errar qualquer campo aqui
+    gera assinatura que o contrato rejeita sem explicar o motivo.
+    """
+    if not settings.arc_usdc_address:
+        raise HTTPException(status_code=503, detail="ARC_USDC_ADDRESS not configured")
+    try:
+        return await _arc_native().get_eip712_domain()
+    except Exception as exc:
+        LOG.warning("arc.usdc domain read failed: %s", exc)
+        raise HTTPException(status_code=503, detail=f"arc rpc read failed: {exc}")
+
+
+@router.post("/usdc/relay-authorization")
+async def relay_usdc_authorization(payload: AuthorizationRelayRequest):
+    """
+    Submete no Arc uma transferência USDC que o usuário autorizou por assinatura
+    (EIP-3009 `transferWithAuthorization`), com o gas pago pela treasury.
+
+    É o que torna o fluxo possível no mobile: a carteira do celular não aceita
+    `wallet_addEthereumChain` sobre WalletConnect (a Rabby devolve -32601), então
+    o usuário não consegue nem entrar na rede Arc. Assinar typed data, por outro
+    lado, funciona em qualquer rede — é só uma assinatura.
+
+    A rota não precisa de sessão: quem autoriza é a assinatura, e o contrato a
+    valida. Sem assinatura válida do dono do saldo, nada acontece.
+    """
+    if not settings.arc_usdc_address:
+        raise HTTPException(status_code=503, detail="ARC_USDC_ADDRESS not configured")
+
+    for label, addr in (("from_address", payload.from_address), ("to_address", payload.to_address)):
+        if not _EVM_ADDR_RE.match(addr):
+            raise HTTPException(status_code=422, detail=f"{label} must be a 0x EVM address")
+    if payload.value <= 0:
+        raise HTTPException(status_code=422, detail="value must be positive")
+
+    # Quem paga o gas aqui somos nós (~0.002 USDC por transferência), e a rota
+    # é aberta por natureza: quem autoriza é a assinatura, não uma sessão. Sem
+    # teto, alguém drena a conta do relay pedindo transferências de 0.01 USDC em
+    # série. O limite é por endereço de origem, que é justamente o que a
+    # assinatura prova — não dá para forjar sem a chave privada.
+    limiter = await get_rate_limiter()
+    await limiter.check(
+        key=f"arc_relay:{payload.from_address.lower()}",
+        limit=settings.arc_relay_rate_limit_per_hour,
+        window_seconds=3600,
+    )
+
+    try:
+        result = await _arc_native().relay_transfer_authorization(
+            from_address=payload.from_address,
+            to_address=payload.to_address,
+            value=payload.value,
+            valid_after=payload.valid_after,
+            valid_before=payload.valid_before,
+            nonce=payload.nonce,
+            signature=payload.signature,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    except Exception as exc:
+        LOG.warning("arc.relay authorization failed: %s", exc)
+        raise HTTPException(status_code=502, detail=f"relay failed: {exc}")
+
+    return {
+        "tx_hash": result.tx_hash,
+        "confirmed": result.confirmed,
+        "gas_used": result.gas_used,
+        "sandbox": settings.arc_sandbox,
     }
 
 

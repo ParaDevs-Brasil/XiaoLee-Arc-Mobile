@@ -95,6 +95,10 @@ class Settings:
     arc_agent_private_key: str = os.getenv("ARC_AGENT_PRIVATE_KEY", "")
     arc_usdc_address:      str = os.getenv("ARC_USDC_ADDRESS",      "")
     arc_chain_id:          int = int(os.getenv("ARC_CHAIN_ID",      "0"))  # 0 = auto
+    # Teto de transferências gasless (EIP-3009) por endereço, por hora. O gas de
+    # cada uma sai da conta do relay (~0.002 USDC), e a rota é autorizada por
+    # assinatura, não por sessão — sem teto, a conta é drenável por repetição.
+    arc_relay_rate_limit_per_hour: int = int(os.getenv("ARC_RELAY_RATE_LIMIT_PER_HOUR", "20"))
 
     # ── CCTP V2 — Solana (domain 5) ───────────────────────────────────────────────
     # Program IDs reais da Circle (devnet == mainnet, confirmado em developers.circle.com).

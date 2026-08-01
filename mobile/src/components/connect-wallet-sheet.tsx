@@ -15,7 +15,6 @@ import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 interface ConnectWalletSheetProps {
   visible: boolean;
   onClose: () => void;
-  onConnected: (address: string) => void;
 }
 
 /** Abrevia o endereço como no perfil (0x1234…5678). */
@@ -23,15 +22,14 @@ function short(address: string): string {
   return address.length <= 16 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
-export function ConnectWalletSheet({ visible, onClose, onConnected }: ConnectWalletSheetProps) {
+export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps) {
   const { isConnected, address, isLinking, linkError, openModal } = useWalletConnect();
 
+  // Conectou: o sheet cumpriu o papel e sai da frente. Quem lê o endereço é o
+  // `useWallet`, direto do provider — não há estado para devolver para cima.
   useEffect(() => {
-    if (isConnected && address && visible) {
-      onConnected(address);
-      onClose();
-    }
-  }, [isConnected, address]);
+    if (isConnected && address && visible) onClose();
+  }, [isConnected, address, visible, onClose]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

@@ -1,17 +1,19 @@
-import { useRouter } from 'expo-router';
+import { usePathname, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ApiError } from '@/api/client';
 import { ConnectWalletSheet } from '@/components/connect-wallet-sheet';
 import { HeaderBar } from '@/components/header-bar';
+import { IconChat } from '@/components/icons';
 import { NavMenu } from '@/components/nav-menu';
 import { ProfileMenu } from '@/components/profile-menu';
-import { Colors, Fonts, Spacing } from '@/constants/theme';
+import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useWallet } from '@/hooks/use-wallet';
 import { GoogleSignInCancelled, signInAndStartSession } from '@/lib/auth';
-import { getSession, getWallet } from '@/lib/session';
-import { useWalletConnect } from '@/lib/walletconnect';
+import { getSession } from '@/lib/session';
 
 /**
  * Moldura comum a todas as telas: a barra do topo e os dois painéis que ela
@@ -30,31 +32,24 @@ type OpenPanel = 'none' | 'menu' | 'profile';
 export function ScreenShell({ children }: { children: ReactNode }) {
   const [panel, setPanel] = useState<OpenPanel>('none');
   const [handle, setHandle] = useState<string>();
-  const [storedWallet, setStoredWallet] = useState<string>();
   const [signingIn, setSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string>();
   const [walletSheet, setWalletSheet] = useState(false);
   const router = useRouter();
-  // O provider já vincula o endereço ao backend e grava no SecureStore; aqui
-  // só interessa refletir no painel quem está conectado. Uma sessão viva do
-  // WalletConnect manda sobre o que ficou gravado — é a carteira que o usuário
-  // acabou de abrir.
-  const wc = useWalletConnect();
-  const wallet = (wc.isConnected && wc.address) || storedWallet;
+  const { address: wallet } = useWallet();
 
   const close = () => setPanel('none');
   /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
   const toggle = (next: Exclude<OpenPanel, 'none'>) =>
     setPanel((current) => (current === next ? 'none' : next));
 
-  // Sessão e carteira sobrevivem ao fechamento do app (SecureStore), então o
-  // estado é restaurado na montagem em vez de começar deslogado.
+  // A sessão sobrevive ao fechamento do app (SecureStore), então é restaurada
+  // na montagem em vez de começar deslogado. A carteira vem do `useWallet`.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getSession(), getWallet()]).then(([session, stored]) => {
+    getSession().then((session) => {
       if (cancelled) return;
       if (session?.twitterUserId) setHandle(session.twitterUserId);
-      if (stored) setStoredWallet(stored.address);
     });
     return () => {
       cancelled = true;
@@ -108,12 +103,50 @@ export function ScreenShell({ children }: { children: ReactNode }) {
         onSignIn={signIn}
         onConnectWallet={() => setWalletSheet(true)}
       />
-      <ConnectWalletSheet
-        visible={walletSheet}
-        onClose={() => setWalletSheet(false)}
-        onConnected={setStoredWallet}
-      />
+      <ConnectWalletSheet visible={walletSheet} onClose={() => setWalletSheet(false)} />
+
+      <BackToChat />
     </View>
+  );
+}
+
+/**
+ * Atalho flutuante para o chat.
+ *
+ * O wordmark do header já leva para lá, mas ninguém descobre isso sozinho — a
+ * conversa é a tela principal do produto e precisa de uma porta visível de
+ * qualquer lugar.
+ *
+ * Vive aqui, e não em cada tela, porque o `ScreenShell` é justamente o que todas
+ * compartilham: uma cópia por tela seria oito lugares para esquecer de mexer.
+ */
+function BackToChat() {
+  const router = useRouter();
+  const pathname = usePathname();
+  // A barra de gestos do Android comeria o botão sem este inset.
+  const insets = useSafeAreaInsets();
+
+  // No próprio chat o atalho não faz sentido — e o `ScreenShell` também embrulha
+  // a tela inicial.
+  if (pathname === '/') return null;
+
+  return (
+    <Pressable
+      // `navigate` e não `push`: o chat é a raiz da pilha, e empilhar uma
+      // segunda cópia dele prenderia o voltar do Android num vaivém entre dois
+      // chats idênticos — mesma escolha do wordmark no header.
+      onPress={() => router.navigate('/')}
+      style={({ pressed }) => [
+        styles.backToChat,
+        { bottom: Spacing.three + insets.bottom },
+        pressed && styles.backToChatPressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel="Voltar para o chat"
+    >
+      <IconChat size={17} color={Colors.light.card} />
+      <Text style={styles.backToChatText}>Chat</Text>
+    </Pressable>
   );
 }
 
@@ -132,6 +165,22 @@ export function PageHeading({ title, subtitle }: { title: string; subtitle: stri
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: Colors.light.bg },
+  backToChat: {
+    ...CardShadow,
+    position: 'absolute',
+    // À esquerda de propósito: o dev client da Expo põe a própria bolha no
+    // canto direito, e sobrepor as duas deixa o botão inalcançável em dev.
+    left: Spacing.three,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two - 2,
+    paddingHorizontal: Spacing.three,
+    height: 44,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.accent,
+  },
+  backToChatPressed: { opacity: 0.85 },
+  backToChatText: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.light.card },
   heading: { alignItems: 'center', gap: Spacing.two - 2 },
   title: { fontFamily: Fonts.bold, fontSize: 24, color: Colors.light.ink },
   subtitle: {

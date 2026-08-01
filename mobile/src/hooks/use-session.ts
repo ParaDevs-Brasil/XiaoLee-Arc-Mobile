@@ -5,10 +5,9 @@ import { getSession, type Session } from '@/lib/session';
 /**
  * Sessão guardada do backend, lida do armazenamento seguro.
  *
- * Hoje devolve sempre `null`: quem grava é `signInAndStartSession`
- * (`lib/auth.ts`), que ainda não é chamado por nenhuma tela. Mesmo assim as
- * telas leem daqui em vez de um `false` fixo — no dia em que o login for
- * ligado, elas passam a ver a sessão sem precisar de mais nenhuma alteração.
+ * Quem grava é `signInAndStartSession` (`lib/auth.ts`), chamado pelo botão de
+ * login do `ProfileMenu` — que vive no `ScreenShell`, logo em todas as telas.
+ * Lido na montagem porque a sessão sobrevive ao fechamento do app.
  */
 export function useSession(): { session: Session | null; hasSession: boolean; loading: boolean } {
   const [session, setSession] = useState<Session | null>(null);

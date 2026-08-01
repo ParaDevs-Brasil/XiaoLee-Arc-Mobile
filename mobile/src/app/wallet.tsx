@@ -11,8 +11,10 @@ import { MiniStat, StatCard } from '@/components/stat-card';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useBackendData } from '@/hooks/use-backend-data';
 import { useSession } from '@/hooks/use-session';
+import { useWallet } from '@/hooks/use-wallet';
 import { formatTokenAmount, formatUSDC } from '@/lib/format';
 import { getSession } from '@/lib/session';
+import { useWalletConnect } from '@/lib/walletconnect';
 
 /**
  * Tela de Wallet — destino da primeira linha do `ProfileMenu`, que até aqui não
@@ -169,10 +171,14 @@ export default function WalletScreen() {
                 tallies.map((tally) => <TokenRow key={tally.token} tally={tally} />)
               )}
             </SectionCard>
-
-            <NoWalletNote />
           </>
         ) : null}
+
+        {/* Fora do bloco de sessão: conectar carteira não depende de login. São
+            coisas distintas — a sessão diz quem você é, a carteira diz para
+            onde vai o USDC — e exigir a primeira para fazer a segunda tranca o
+            usuário num fluxo que não precisa existir. */}
+        <WalletConnection />
       </ScrollView>
     </ScreenShell>
   );
@@ -228,21 +234,68 @@ function TokenRow({ tally }: { tally: TokenTally }) {
 }
 
 /**
- * O web tem uma carteira conectada e mostra o saldo on-chain dela. O mobile não
- * tem conector, e uma tela chamada "Wallet" que não diz isso deixa o usuário
- * procurando um botão de conectar que não existe.
+ * A carteira de payout — o endereço para onde o agente manda USDC.
+ *
+ * Separada das recompensas acima de propósito: elas são do usuário pela sessão,
+ * a carteira é o destino do dinheiro. Este card era a nota que dizia não haver
+ * conector no mobile; agora há (WalletConnect, ver `lib/walletconnect.tsx`), e o
+ * lugar de conectar é este.
  */
-function NoWalletNote() {
+function WalletConnection() {
+  const { address } = useWallet();
+  const { openModal, disconnect, isLinking, linkError } = useWalletConnect();
+
   return (
-    <SectionCard title="No wallet connected">
-      <Text style={styles.noteText}>
-        Rewards are tied to your Testnet session, not to a wallet on this device. Connecting one —
-        Arc, Solana or Stellar — is available on the web app, and lands here once the mobile
-        connector ships.
-      </Text>
+    <SectionCard
+      title={address ? 'Wallet connected' : 'No wallet connected'}
+      subtitle="Where the agent sends your USDC"
+    >
+      {address ? (
+        <>
+          <View style={styles.connected}>
+            <IconWallet size={16} color={Colors.light.success} />
+            <Text style={styles.connectedAddress}>{shortAddress(address)}</Text>
+          </View>
+          {/* Desconectar é a única saída dentro do app: a Rabby mobile não tem
+              tela de "connected dapps", então sem isto uma sessão presa só sai
+              limpando os dados do aplicativo. */}
+          <Pressable
+            onPress={disconnect}
+            style={({ pressed }) => [styles.disconnect, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.disconnectText}>Disconnect</Text>
+          </Pressable>
+        </>
+      ) : (
+        <>
+          <Text style={styles.noteText}>
+            Rewards are tied to your Testnet session. Connect a wallet on Arc to receive the USDC
+            they pay out.
+          </Text>
+          <Pressable
+            onPress={openModal}
+            disabled={isLinking}
+            style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
+            accessibilityRole="button"
+          >
+            <Text style={styles.guestButtonText}>
+              {isLinking ? 'Connecting…' : 'Connect Wallet'}
+            </Text>
+          </Pressable>
+        </>
+      )}
+
+      {linkError ? <Text style={styles.linkError}>{linkError}</Text> : null}
+
       <Text style={styles.footer}>Secured by XiaoLee · USDC · x402</Text>
     </SectionCard>
   );
+}
+
+/** Abrevia o endereço como o painel de perfil: começo e fim, meio elidido. */
+function shortAddress(address: string): string {
+  return address.length <= 16 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
 
 /**
@@ -344,6 +397,32 @@ const styles = StyleSheet.create({
 
   // ── Aviso de carteira ──────────────────────────────────────────────────
   noteText: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 20, color: Colors.light.ink2 },
+  connected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two - 2,
+    paddingVertical: Spacing.two,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.successSoft,
+  },
+  connectedAddress: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.ink },
+  disconnect: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 34,
+    borderRadius: Radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+    marginTop: Spacing.two - 2,
+  },
+  disconnectText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.ink2 },
+  linkError: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.light.danger,
+    marginTop: Spacing.one,
+  },
   footer: {
     fontFamily: Fonts.bold,
     fontSize: 9,

@@ -21,6 +21,7 @@ import {
 } from '@/lib/avatar-animation';
 import { GoogleSignInCancelled, signInAndStartSession } from '@/lib/auth';
 import { getSession, getWallet } from '@/lib/session';
+import { useWalletConnect } from '@/lib/walletconnect';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
 import { HeaderBar } from '@/components/header-bar';
@@ -135,6 +136,9 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const scroller = useRef<ScrollView>(null);
 
+  // WalletConnect sincroniza endereço automaticamente
+  const wc = useWalletConnect();
+
   const close = () => setPanel('none');
   /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
   const toggle = (next: Exclude<OpenPanel, 'none'>) =>
@@ -153,6 +157,13 @@ export default function ChatScreen() {
       cancelled = true;
     };
   }, []);
+
+  // Mantém wallet em sync com WalletConnect
+  useEffect(() => {
+    if (wc.isConnected && wc.address) {
+      setWallet(wc.address);
+    }
+  }, [wc.isConnected, wc.address]);
 
   async function signIn() {
     setSigningIn(true);

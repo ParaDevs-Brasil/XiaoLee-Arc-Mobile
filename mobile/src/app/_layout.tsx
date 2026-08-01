@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
+import { WalletConnectProvider } from '@/lib/walletconnect';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -42,20 +43,22 @@ export default function RootLayout() {
     // SafeAreaProvider é obrigatório para `useSafeAreaInsets` devolver algo
     // diferente de zero — sem ele o header fica sob a status bar.
     <SafeAreaProvider>
-      <ThemeProvider value={DefaultTheme}>
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: Colors.light.card },
-            headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
-            contentStyle: { backgroundColor: Colors.light.bg },
-          }}
-        >
-          {/* O chat traz o próprio HeaderBar (o wordmark do Figma), então a
-              barra nativa sairia duplicada. */}
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
-        </Stack>
-      </ThemeProvider>
+      <WalletConnectProvider>
+        <ThemeProvider value={DefaultTheme}>
+          <Stack
+            screenOptions={{
+              headerStyle: { backgroundColor: Colors.light.card },
+              headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
+              contentStyle: { backgroundColor: Colors.light.bg },
+            }}
+          >
+            {/* O chat traz o próprio HeaderBar (o wordmark do Figma), então a
+                barra nativa sairia duplicada. */}
+            <Stack.Screen name="index" options={{ headerShown: false }} />
+            <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
+          </Stack>
+        </ThemeProvider>
+      </WalletConnectProvider>
     </SafeAreaProvider>
   );
 }

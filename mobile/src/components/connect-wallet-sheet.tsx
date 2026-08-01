@@ -1,21 +1,15 @@
-import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useEffect } from 'react';
 
 import { IconClose, IconWallet } from '@/components/icons';
-import { linkWallet } from '@/api/backend';
-import { ApiError } from '@/api/client';
+import { useWalletConnect } from '@/lib/walletconnect';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { saveWallet } from '@/lib/session';
 
 /**
- * Vínculo do endereço de payout.
+ * Modal nativo de conexão de carteira via WalletConnect.
  *
- * A carteira é do usuário: a chave privada nunca chega ao servidor, só o
- * endereço. É o mesmo modelo do web (lá o Web3Auth deriva a chave no browser e
- * manda só o endereço), sem arrastar um SDK de carteira para o app.
- *
- * O backend valida o formato e confere o dono pela sessão — colar o endereço
- * de outra pessoa só faria você pagar a ela.
+ * Abre o picker de wallets EVM do celular (Metamask, Rainbow, Trust Wallet, etc.)
+ * e vincula o endereço ao backend automaticamente via POST /auth/wallet.
  */
 
 interface ConnectWalletSheetProps {
@@ -24,37 +18,20 @@ interface ConnectWalletSheetProps {
   onConnected: (address: string) => void;
 }
 
+/** Abrevia o endereço como no perfil (0x1234…5678). */
+function short(address: string): string {
+  return address.length <= 16 ? address : `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
 export function ConnectWalletSheet({ visible, onClose, onConnected }: ConnectWalletSheetProps) {
-  const [address, setAddress] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
+  const { isConnected, address, isLinking, linkError, openModal } = useWalletConnect();
 
-  async function connect() {
-    const value = address.trim();
-    if (!value || saving) return;
-
-    setSaving(true);
-    setError(null);
-    try {
-      const linked = await linkWallet(value);
-      await saveWallet({ address: linked.address, chain: linked.chain });
-      onConnected(linked.address);
-      setAddress('');
+  useEffect(() => {
+    if (isConnected && address && visible) {
+      onConnected(address);
       onClose();
-    } catch (err) {
-      // 401 aqui quase sempre significa "ainda não entrou", não token inválido.
-      const status = err instanceof ApiError ? err.status : null;
-      setError(
-        status === 401
-          ? 'Entre com o Google antes de conectar a carteira.'
-          : err instanceof ApiError
-            ? err.message
-            : String(err),
-      );
-    } finally {
-      setSaving(false);
     }
-  }
+  }, [isConnected, address]);
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -66,51 +43,50 @@ export function ConnectWalletSheet({ visible, onClose, onConnected }: ConnectWal
             </View>
             <View style={styles.headerText}>
               <Text style={styles.title}>Connect Wallet</Text>
-              <Text style={styles.subtitle}>ARC · Solana · Stellar · USDC</Text>
+              <Text style={styles.subtitle}>ARC · EVM · USDC</Text>
             </View>
             <Pressable onPress={onClose} hitSlop={Spacing.two} accessibilityLabel="Fechar">
               <IconClose size={18} color={Colors.light.ink3} />
             </Pressable>
           </View>
 
-          <Text style={styles.hint}>
-            Cole o endereço da sua carteira EVM. É para onde a Xiaolee vai mandar seus USDC — a
-            chave privada nunca sai do seu aparelho.
-          </Text>
+          {isConnected && address ? (
+            <>
+              <Text style={styles.hint}>
+                Carteira conectada. O endereço {short(address)} está vinculado à sua conta.
+              </Text>
+              <View style={styles.connectedBox}>
+                <IconWallet size={16} color={Colors.light.success} />
+                <Text style={styles.connectedAddress}>{short(address)}</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <Text style={styles.hint}>
+                Conecte sua carteira EVM para receber USDC. A Xiaolee usa WalletConnect — sua
+                chave privada nunca sai do aparelho.
+              </Text>
 
-          <TextInput
-            value={address}
-            onChangeText={(next) => {
-              setAddress(next);
-              setError(null);
-            }}
-            placeholder="0x…"
-            placeholderTextColor={Colors.light.ink3}
-            style={[styles.input, error ? styles.inputError : null]}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!saving}
-            onSubmitEditing={connect}
-          />
+              {linkError ? <Text style={styles.error}>{linkError}</Text> : null}
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Pressable
-            onPress={connect}
-            disabled={saving || address.trim().length === 0}
-            style={({ pressed }) => [
-              styles.button,
-              (saving || address.trim().length === 0) && styles.buttonIdle,
-              pressed && styles.pressed,
-            ]}
-            accessibilityRole="button"
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color={Colors.light.card} />
-            ) : (
-              <Text style={styles.buttonLabel}>Conectar</Text>
-            )}
-          </Pressable>
+              <Pressable
+                onPress={openModal}
+                disabled={isLinking}
+                style={({ pressed }) => [
+                  styles.button,
+                  isLinking && styles.buttonIdle,
+                  pressed && styles.pressed,
+                ]}
+                accessibilityRole="button"
+              >
+                {isLinking ? (
+                  <ActivityIndicator size="small" color={Colors.light.card} />
+                ) : (
+                  <Text style={styles.buttonLabel}>Conectar WalletConnect</Text>
+                )}
+              </Pressable>
+            </>
+          )}
         </Pressable>
       </Pressable>
     </Modal>
@@ -149,19 +125,22 @@ const styles = StyleSheet.create({
   title: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.light.ink },
   subtitle: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.light.ink2, marginTop: 1 },
   hint: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19, color: Colors.light.ink2 },
-  input: {
-    height: 48,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Radius.md,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light.border,
-    backgroundColor: Colors.light.bg,
-    fontFamily: Fonts.mono,
-    fontSize: 13,
-    color: Colors.light.ink,
-  },
-  inputError: { borderColor: Colors.light.danger },
   error: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.danger },
+  connectedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    padding: Spacing.three - 2,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.successSoft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.successBorder,
+  },
+  connectedAddress: {
+    fontFamily: Fonts.mono,
+    fontSize: 14,
+    color: Colors.light.success,
+  },
   button: {
     height: 46,
     borderRadius: Radius.md,

@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "347296354021-4or02jv8m2o211ceb2mr2ksd8oci3kp0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "XiaoLee.app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
           "client_id": "347296354021-6euqql8brrk4smtvrudp3kp7muj66ekp.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

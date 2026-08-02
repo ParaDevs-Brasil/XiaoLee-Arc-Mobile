@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '@/api/client';
+import { useSession } from '@/hooks/use-session';
 
 /**
  * Busca dado do backend com o ciclo que toda tela de lista precisa: primeira
@@ -24,6 +25,15 @@ export interface BackendData<T> {
 }
 
 export function useBackendData<T>(fetcher: () => Promise<T>): BackendData<T> {
+  // Quem busca é dono do dado de *uma* sessão. Entrar ou sair troca de quem é
+  // esse dado, e sem refazer a busca a tela fica com o resultado do usuário
+  // anterior: o `[]` que o convidado recebeu seguia na tela depois do login, e
+  // a Wallet mostrava zeros onde já havia recompensa.
+  const { session, loading: sessionLoading } = useSession();
+  // `undefined` = storage ainda não lido. Buscar antes disso mandaria a
+  // requisição sem o Bearer e a resposta vazia seria a que ficaria na tela.
+  const sessionId = sessionLoading ? undefined : (session?.sessionId ?? null);
+
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,10 +72,11 @@ export function useBackendData<T>(fetcher: () => Promise<T>): BackendData<T> {
   }, []);
 
   useEffect(() => {
+    if (sessionId === undefined) return;
     run().then(() => {
       if (mounted.current) setLoading(false);
     });
-  }, [run]);
+  }, [run, sessionId]);
 
   const reload = useCallback(() => {
     setRefreshing(true);

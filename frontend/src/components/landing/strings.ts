@@ -9,7 +9,6 @@ export const LANDING_STRINGS: Record<"en" | "pt", Dict> = {
   en: {
     "nav.product": "Product",
     "nav.how": "How it works",
-    "nav.token": "$XLEE",
     "nav.dev": "Developers",
     "nav.launch": "Launch app",
 
@@ -31,7 +30,6 @@ export const LANDING_STRINGS: Record<"en" | "pt", Dict> = {
   pt: {
     "nav.product": "Produto",
     "nav.how": "Como funciona",
-    "nav.token": "$XLEE",
     "nav.dev": "Desenvolvedores",
     "nav.launch": "Abrir app",
 

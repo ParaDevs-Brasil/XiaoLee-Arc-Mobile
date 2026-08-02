@@ -2,7 +2,7 @@
 import { useLandingT, APP_URL } from "./strings";
 import { Reveal, SectionHead, Eyebrow, XiaoleeBubble } from "./primitives";
 import {
-  IconGift, IconChat, IconBolt, IconShield, IconCheck, IconCoin, IconLock, IconCpu,
+  IconGift, IconChat, IconBolt, IconShield, IconCheck, IconLock, IconCpu,
   IconStar, IconRoute, IconWallet, IconGlobe, IconTarget, IconLayers, IconSend,
   IconArrow, IconSwap, IconSpark, IconX, IconTelegram, IconGithub, IconDiscord,
 } from "./icons";
@@ -18,7 +18,7 @@ export function Pillars() {
       body: "Swaps, balances and sends — all by message. “Trade 50 USDC for EURC” and Xiaolee quotes the best route on Arc. You confirm, your wallet signs.",
       tags: ["x402 payments", "Live quotes", "@handle sends"] },
     { icon: IconTarget, tone: "purple", title: "Creator campaigns",
-      body: "Creators post social tasks; fans complete them; Xiaolee verifies and pays out $XLEE or USDC straight to the wallet — no code, no custody, auditable on-chain.",
+      body: "Creators post social tasks; fans complete them; Xiaolee verifies and pays out USDC straight to the wallet — no code, no custody, auditable on-chain.",
       tags: ["x402 receipts", "Join · Verify · Claim", "0.5% fee"] },
     { icon: IconBolt, tone: "sky", title: "Pix & LATAM gateway",
       body: "On/off-ramp via EtherFuse. Enter with Pix, operate in USDC on Arc, and cash out whenever — no exchange account, no international card.",
@@ -58,7 +58,7 @@ export function Pillars() {
 /* --------------------------- CONVERSATIONAL GRID ------------------------- */
 export function SayItGrid() {
   const rows: { icon: IC; say: string; get: string }[] = [
-    { icon: IconWallet, say: "What's in my wallet?", get: "120 USDC · 45 EURC · 0 XLEE" },
+    { icon: IconWallet, say: "What's in my wallet?", get: "120 USDC · 45 EURC" },
     { icon: IconSwap, say: "Swap 50 USDC → EURC", get: "Best route on Arc, you confirm" },
     { icon: IconSend, say: "Send 10 USDC to @maria", get: "By @handle or 0x-address" },
     { icon: IconBolt, say: "Deposit R$100 via Pix", get: "EtherFuse on-ramp, instant" },
@@ -135,8 +135,8 @@ function CampaignCardMock() {
     { t: "Comment your favorite feature", done: false },
   ];
   const stats = [
-    { v: "10", l: "Reward", u: "$XLEE" },
-    { v: "5,000", l: "Pool", u: "$XLEE" },
+    { v: "0.3", l: "Reward", u: "USDC" },
+    { v: "300", l: "Pool", u: "USDC" },
     { v: "312", l: "Spots", u: "of 500" },
   ];
   return (
@@ -167,7 +167,7 @@ function CampaignCardMock() {
           </div>
         ))}
       </div>
-      <button className="btn-primary mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[14.5px] font-bold text-white"><IconGift size={17} /> Claim 10 $XLEE</button>
+      <button className="btn-primary mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[14.5px] font-bold text-white"><IconGift size={17} /> Claim 0.3 USDC</button>
       <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11.5px] font-medium text-gray-400"><IconCpu size={13} className="text-fuchsia-300" /> Settled on-chain via x402</div>
     </div>
   );
@@ -187,7 +187,7 @@ export function Campaigns() {
           <Reveal delay={1}>
             <h2 className="mt-5 font-display text-[clamp(28px,4.4vw,46px)] font-extrabold leading-[1.08] tracking-[-0.02em] text-ink">Creator campaigns,<br /><span className="text-grad">real on-chain rewards.</span></h2>
           </Reveal>
-          <Reveal delay={2}><p className="mt-4 max-w-lg text-[17px] leading-relaxed text-gray-500">Set up a campaign in ten minutes. Your audience completes social tasks and gets paid in $XLEE or USDC — straight to the wallet, 40× cheaper than legacy creator platforms.</p></Reveal>
+          <Reveal delay={2}><p className="mt-4 max-w-lg text-[17px] leading-relaxed text-gray-500">Set up a campaign in ten minutes. Your audience completes social tasks and gets paid in USDC — straight to the wallet, 40× cheaper than legacy creator platforms.</p></Reveal>
           <div className="mt-8 space-y-5">
             {bullets.map((x, i) => {
               const Ic = x.icon;
@@ -203,63 +203,6 @@ export function Campaigns() {
           </div>
         </div>
         <Reveal delay={2}><CampaignCardMock /></Reveal>
-      </div>
-    </section>
-  );
-}
-
-/* --------------------------------- TOKEN --------------------------------- */
-export function Token() {
-  const rows = [
-    { k: "Standard", v: "ERC-20 on Arc" },
-    { k: "Network", v: "Arc · Circle" },
-    { k: "Transfer fee (burn)", v: "0.5% native" },
-    { k: "Rewards", v: "Distributed via x402" },
-    { k: "Contract (mint)", v: "Awaiting mainnet deploy", mono: true },
-  ];
-  const feats: { icon: IC; t: string; b: string }[] = [
-    { icon: IconLock, t: "Chargeback-proof", b: "Blockchain settlement is irreversible — zero chargebacks, ever." },
-    { icon: IconShield, t: "Pseudonymous", b: "A wallet, not a bank statement. Discreet by default." },
-    { icon: IconCoin, t: "40× cheaper", b: "0.5% campaign fee vs. the 20–50% legacy platforms take." },
-  ];
-  return (
-    <section id="token" className="mx-auto max-w-[1180px] scroll-mt-24 px-4 py-16 sm:px-6">
-      <div className="grid items-center gap-12 lg:grid-cols-[0.85fr_1fr]">
-        <Reveal delay={1}>
-          <div className="glass ring-soft rounded-3xl border border-white/70 p-6 shadow-xl">
-            <div className="flex items-center gap-3">
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-amber-300 to-fuchsia-500 text-white shadow-md"><IconCoin size={24} /></div>
-              <div><div className="font-display text-[22px] font-extrabold text-ink">$XLEE</div><div className="text-[12.5px] font-semibold text-gray-400">Tokenomics</div></div>
-            </div>
-            <div className="mt-5 divide-y divide-gray-100">
-              {rows.map((r) => (
-                <div key={r.k} className="flex items-center justify-between py-3">
-                  <span className="text-[14px] text-gray-500">{r.k}</span>
-                  <span className={`text-[14px] font-bold text-ink ${r.mono ? "font-mono text-[12.5px] text-gray-400" : ""}`}>{r.v}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Reveal>
-        <div>
-          <Reveal><Eyebrow tone="pink"><IconCoin size={13} /> Built for creators</Eyebrow></Reveal>
-          <Reveal delay={1}><h2 className="mt-5 font-display text-[clamp(28px,4.4vw,46px)] font-extrabold leading-[1.08] tracking-[-0.02em] text-ink">Money that <span className="text-grad">can&apos;t be blocked.</span></h2></Reveal>
-          <Reveal delay={2}><p className="mt-4 max-w-lg text-[17px] leading-relaxed text-gray-500">$XLEE is a standard ERC-20 on Arc, so it plugs into the USDC economy from day one and distributes through audited x402 nanopayments — no custom token risk.</p></Reveal>
-          <div className="mt-8 grid gap-4 sm:grid-cols-3">
-            {feats.map((f, i) => {
-              const Ic = f.icon;
-              return (
-                <Reveal key={i} delay={(i + 2) as 2 | 3 | 4}>
-                  <div className="lift glass h-full rounded-2xl border border-white/70 p-4 shadow-sm">
-                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-emerald-500"><Ic size={19} /></div>
-                    <h4 className="mt-3 text-[15px] font-bold text-ink">{f.t}</h4>
-                    <p className="mt-1 text-[13px] leading-relaxed text-gray-500">{f.b}</p>
-                  </div>
-                </Reveal>
-              );
-            })}
-          </div>
-        </div>
       </div>
     </section>
   );
@@ -341,7 +284,7 @@ export function FinalCTA() {
 export function Footer() {
   const t = useLandingT();
   const cols = [
-    { h: "Product", links: ["Conversational DeFi", "Campaigns", "$XLEE", "Pix on-ramp"] },
+    { h: "Product", links: ["Conversational DeFi", "Campaigns", "Pix on-ramp"] },
     { h: "Developers", links: ["Payment contract", "API reference", "Agent API", "x402 payments"] },
     { h: "Community", links: ["X / Twitter", "Telegram", "Discord", "GitHub"] },
   ];

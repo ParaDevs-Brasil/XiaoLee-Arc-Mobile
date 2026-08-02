@@ -170,7 +170,7 @@ MCP_TOOLS_SCHEMAS = [{
     "type": "function",
     "function": {
         "name": "transfer_token",
-        "description": "Send tokens to another user identified by their @handle (Twitter, Telegram, or any platform username). Use this tool whenever a user says things like 'send X tokens to @someone', 'manda X XLEE pra @alguem', 'transfer X SOL to @handle', 'enviar tokens para @usuario'. The amount must be a positive number. If the user provides a negative number or zero, reject the operation.",
+        "description": "Send tokens to another user identified by their @handle (Twitter, Telegram, or any platform username). Use this tool whenever a user says things like 'send X tokens to @someone', 'manda X USDC pra @alguem', 'transfer X SOL to @handle', 'enviar tokens para @usuario'. The amount must be a positive number. If the user provides a negative number or zero, reject the operation.",
         "parameters": {
             "type": "object",
             "properties": {

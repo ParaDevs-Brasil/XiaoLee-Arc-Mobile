@@ -22,6 +22,7 @@ import {
   relayUsdcAuthorization,
 } from '@/api/backend';
 import { ApiError } from '@/api/client';
+import { useSession } from '@/hooks/use-session';
 import { clearWallet, getWallet, saveWallet, type ConnectedWallet } from '@/lib/session';
 
 /**
@@ -85,6 +86,17 @@ interface WalletConnectContextValue {
    * coisas distintas.
    */
   chain: string | undefined;
+  /**
+   * Se a carteira conhece a rede Arc — lido do escopo da sessão.
+   *
+   * Falso é o caso comum e não tem conserto pelo app: nenhuma carteira traz o
+   * Arc Testnet de fábrica, e cadastrá-la por WalletConnect não é possível (a
+   * Rabby avisa "wallet_addEthereumChain not supported"; a MetaMask engole o
+   * pedido). Enquanto for falso, assinar qualquer coisa do Arc é recusado com
+   * `-32602`, então vale avisar antes em vez de deixar o usuário descobrir no
+   * meio de uma transferência.
+   */
+  hasArcNetwork: boolean;
   isLinking: boolean;
   linkError: string | null;
   openModal: () => void;
@@ -140,16 +152,15 @@ const SESSION_PARAMS = {
   // recusada — nenhuma carteira a declara (conferido no explorer da Reown).
   namespaces: {
     eip155: {
-      methods: [
-        'eth_sendTransaction',
-        'personal_sign',
-        'eth_signTypedData_v4',
-        // Declarados para que o cliente deixe o pedido chegar à carteira. Sem
-        // isto ele recusa antes, com "Missing or invalid. request() method:", e
-        // aí não dá para saber se a carteira suporta ou não.
-        'wallet_switchEthereumChain',
-        'wallet_addEthereumChain',
-      ],
+      // Só o que **toda** carteira implementa. Método obrigatório que a carteira
+      // não tem bloqueia a conexão inteira: a Rabby avisa na tela com
+      // "Unsupported required WalletConnect request: 1 method
+      // (wallet_addEthereumChain) not supported" e não deixa conectar.
+      //
+      // Os métodos de rede (`wallet_switchEthereumChain`/`wallet_addEthereumChain`)
+      // ficam em `optionalNamespaces`: quem tiver, oferece; quem não tiver,
+      // conecta do mesmo jeito.
+      methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4'],
       chains: ['eip155:1'],
       events: ['chainChanged', 'accountsChanged'],
       rpcMap: {},
@@ -593,6 +604,7 @@ const WCContext = createContext<WalletConnectContextValue | null>(null);
 
 export function WalletConnectProvider({ children }: { children: ReactNode }) {
   const { isConnected, address, open, provider } = useWalletConnectModal();
+  const { hasSession } = useSession();
   const [isLinking, setIsLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [storedWallet, setStoredWallet] = useState<ConnectedWallet | null>(null);
@@ -604,6 +616,21 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     getWallet().then(setStoredWallet);
   }, []);
+
+  // A marca de "já tentei" morre quando a sessão aparece.
+  //
+  // Conectar a carteira antes de entrar na conta é o caminho comum, e ali o
+  // vínculo falha com 401 `Sign in required` — a rota tira o dono do Bearer.
+  // Sem zerar a marca, o login não re-tentava nada: a carteira ficava conectada
+  // na tela, o erro pendurado embaixo dela, e vincular exigia desconectar e
+  // reconectar. Roda antes do efeito de vínculo, que tem `hasSession` nas deps.
+  //
+  // Só mexe no ref: limpar o erro aqui seria `setState` no corpo do efeito, que
+  // o lint barra com razão. Quem limpa é o `link()`, ao recomeçar.
+  useEffect(() => {
+    if (!hasSession) return;
+    attempted.current = undefined;
+  }, [hasSession]);
 
   // Quando conecta via WalletConnect, vincula ao backend.
   //
@@ -619,9 +646,8 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
     // um 401 (login ausente) deixava a guarda acima sempre aberta — quatro
     // chamadas em sequência foi o que apareceu no log do backend.
     //
-    // ponytail: a marca não é limpa quando o usuário entra na conta depois, então
-    // vincular exige reconectar a carteira. Se isso incomodar, limpar `attempted`
-    // quando a sessão aparecer resolve.
+    // A marca é zerada quando a sessão aparece (efeito acima), que é o caso em
+    // que a tentativa anterior morreu de 401 e merece uma segunda chance.
     if (attempted.current === address.toLowerCase()) return;
     attempted.current = address.toLowerCase();
 
@@ -668,8 +694,9 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
     };
     // `provider` entra nas deps porque a chain sai da sessão dele. Reexecutar
     // é barato: a checagem de `storedWallet` acima corta antes de vincular de
-    // novo o mesmo endereço.
-  }, [isConnected, address, storedWallet, provider]);
+    // novo o mesmo endereço. `hasSession` entra para que o login re-dispare a
+    // tentativa que falhou deslogada.
+  }, [isConnected, address, storedWallet, provider, hasSession]);
 
   const openModal = () => open();
 
@@ -734,6 +761,9 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
       isConnected,
       address,
       chain: liveChain ?? storedWallet?.chain,
+      hasArcNetwork: (provider?.session?.namespaces?.eip155?.chains ?? []).includes(
+        `eip155:${ARC_CHAIN_ID}`,
+      ),
       isLinking,
       linkError,
       openModal,

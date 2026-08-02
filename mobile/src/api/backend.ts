@@ -276,6 +276,19 @@ interface BalancePayload {
   address?: string;
 }
 
+/**
+ * `GET /v1/arc/balance/{address}` — saldo USDC on-chain de um endereço qualquer,
+ * lido direto no RPC do Arc (`server/routes/arc_routes.py:336`).
+ *
+ * Não confundir com `/v1/arc/wallet/balance`, que é a tesouraria do agente. Este
+ * é o saldo da carteira do usuário, e é leitura pública: não exige sessão, o
+ * endereço já é público na chain.
+ */
+export async function getAddressBalance(address: string): Promise<number | null> {
+  const payload = await apiFetch<BalancePayload>(`/v1/arc/balance/${address}`);
+  return payload.usdc_balance ?? null;
+}
+
 const TREASURY_CHAINS: TreasuryChain[] = ['arc', 'solana', 'stellar'];
 
 async function fetchChainBalance(chain: TreasuryChain): Promise<TreasuryBalance> {
@@ -423,4 +436,114 @@ export async function listMyCampaigns(): Promise<UserCampaignParticipation[]> {
   }
 
   return response.campaigns ?? [];
+}
+
+/**
+ * Join → verify → claim, os três passos que o `StepRail` do cartão desenha.
+ *
+ * Todas exigem sessão: `_resolve_user` tira o participante do `Bearer`, e é por
+ * isso que nenhuma leva `skipAuth`. O corpo é o `CampaignActionRequest` do
+ * backend, cujo `campaign_identifier` é string mesmo sendo um id numérico — a
+ * rota faz `int(...)` do outro lado.
+ *
+ * As três devolvem `success: false` com mensagem em vez de status HTTP de erro
+ * nos casos de regra de negócio ("já resgatou", "verifique as tarefas antes").
+ * Quem chama precisa olhar o corpo, não só o status — daí `CampaignActionResult`
+ * carregar os dois campos.
+ */
+interface CampaignActionResult {
+  success: boolean;
+  /** Presente no caminho feliz. */
+  message?: string;
+  /** Presente quando a regra de negócio recusa. */
+  error?: string;
+}
+
+/** Texto para a UI, venha ele de `message` ou de `error`. */
+function actionText(result: CampaignActionResult, fallback: string): string {
+  return result.message ?? result.error ?? fallback;
+}
+
+export async function joinCampaign(campaignId: number): Promise<string> {
+  const result = await apiFetch<CampaignActionResult>('/campaigns/join', {
+    method: 'POST',
+    json: { campaign_identifier: String(campaignId) },
+  });
+
+  if (!result.success) {
+    throw new ApiError(actionText(result, 'Could not join this campaign'), null, false);
+  }
+
+  return actionText(result, 'Joined');
+}
+
+export interface VerifyResult {
+  message: string;
+  allTasksCompleted: boolean;
+}
+
+/**
+ * Diferente de join e claim, uma verificação reprovada é resultado normal, não
+ * erro: o backend checa a tarefa de verdade (API do X, Helius, ou contagem de
+ * indicados) e "você ainda não seguiu o perfil" é uma resposta legítima que a
+ * tela precisa mostrar sem virar estado de falha.
+ */
+export async function verifyCampaignTasks(campaignId: number): Promise<VerifyResult> {
+  const result = await apiFetch<CampaignActionResult & { all_tasks_completed?: boolean }>(
+    '/campaigns/verify',
+    { method: 'POST', json: { campaign_identifier: String(campaignId) } },
+  );
+
+  return {
+    message: actionText(result, 'Could not verify your tasks'),
+    allTasksCompleted: Boolean(result.all_tasks_completed),
+  };
+}
+
+export interface ClaimResult {
+  message: string;
+  receiptId: string | null;
+  rewardAmount: number | null;
+  rewardToken: string | null;
+}
+
+/**
+ * O `proof_message` precisa bater com o prefixo exato que
+ * `_verify_claim_proof` monta, senão a rota recusa com 400. Sessão custodial
+ * (Google/Telegram/Firebase) dispensa a assinatura de carteira — o dono já veio
+ * provado no `Bearer` —, então aqui mandamos só a mensagem e o endereço de
+ * payout. Carteira externa exigiria assinar `proof_message` e enviar em
+ * `wallet_signature`; quando o app suportar isso, é este ponto que muda.
+ */
+export async function claimCampaignReward(
+  campaignId: number,
+  sessionToken: string,
+  walletAddress: string,
+): Promise<ClaimResult> {
+  const result = await apiFetch<
+    CampaignActionResult & {
+      claim_receipt_id?: string;
+      reward_amount?: number;
+      reward_token?: string;
+    }
+  >('/campaigns/claim', {
+    method: 'POST',
+    json: {
+      campaign_identifier: String(campaignId),
+      wallet_public_key: walletAddress,
+      proof_message: `XiaoLee Devnet claim|campaign:${campaignId}|session:${sessionToken}|wallet:${walletAddress}`,
+      proof_encoding: 'none',
+    },
+  });
+
+  if (!result.success) {
+    throw new ApiError(actionText(result, 'Could not claim this reward'), null, false);
+  }
+
+  return {
+    message: actionText(result, 'Reward claimed'),
+    receiptId: result.claim_receipt_id ?? null,
+    rewardAmount: result.reward_amount ?? null,
+    rewardToken: result.reward_token ?? null,
+  };
 }

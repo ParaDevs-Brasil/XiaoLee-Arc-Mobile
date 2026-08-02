@@ -1,10 +1,23 @@
-import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { listMyCampaigns, type UserCampaignParticipation } from '@/api/backend';
-import { EmptyState, ErrorState, Skeleton } from '@/components/feedback';
-import { IconCheck, IconClock, IconGift, IconTarget, IconUser, IconWallet } from '@/components/icons';
+import {
+  getAddressBalance,
+  listMyCampaigns,
+  type UserCampaignParticipation,
+} from '@/api/backend';
+import { ArcNetworkSheet } from '@/components/arc-network-sheet';
+import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
+import {
+  IconAlert,
+  IconCheck,
+  IconClock,
+  IconGift,
+  IconTarget,
+  IconUser,
+  IconWallet,
+} from '@/components/icons';
 import { PageHeading, ScreenShell } from '@/components/screen-shell';
 import { SectionCard } from '@/components/section-card';
 import { MiniStat, StatCard } from '@/components/stat-card';
@@ -40,8 +53,8 @@ import { useWalletConnect } from '@/lib/walletconnect';
  * participante e o estado de cada participação. É daí que esta tela vive.
  *
  * O total é por token, nunca somado entre tokens. O web soma `valueUSD`, um
- * campo que o backend nunca preenche — somar USDC com $XLEE precisaria de preço,
- * e não há cotação para token de campanha.
+ * campo que o backend nunca preenche — somar USDC com um token de campanha de
+ * terceiro precisaria de preço, e não há cotação para esses.
  */
 
 /** O trilho do produto é USDC (ver `ARC_LEPTON_ARCHITECTURE.md`); o resto é token de campanha. */
@@ -189,8 +202,9 @@ export default function WalletScreen() {
  *
  * O número grande é só o USDC resgatado, então esta linha carrega o que ele
  * deixou de fora: o que ainda dá para resgatar, e que existem outros tokens.
- * Sem isso, alguém com 500 $XLEE resgatados leria "$0.00" como "não ganhei
- * nada".
+ * As campanhas do produto pagam em USDC, mas `reward_token` é campo livre na
+ * criação — sem esta linha, quem só participou de campanha de terceiro num
+ * símbolo qualquer leria "$0.00" como "não ganhei nada".
  */
 function heroSubLabel(usdc: TokenTally | undefined, others: TokenTally[]): string {
   const parts: string[] = [];
@@ -243,7 +257,8 @@ function TokenRow({ tally }: { tally: TokenTally }) {
  */
 function WalletConnection() {
   const { address } = useWallet();
-  const { openModal, disconnect, isLinking, linkError } = useWalletConnect();
+  const { openModal, disconnect, isLinking, linkError, hasArcNetwork } = useWalletConnect();
+  const [arcSheet, setArcSheet] = useState(false);
 
   return (
     <SectionCard
@@ -256,6 +271,28 @@ function WalletConnection() {
             <IconWallet size={16} color={Colors.light.success} />
             <Text style={styles.connectedAddress}>{shortAddress(address)}</Text>
           </View>
+
+          {/* `key` no endereço: `useBackendData` refaz a busca quando a sessão
+              muda, não quando o endereço muda — e o saldo depende do endereço.
+              Remontar é o jeito barato de refazer sem duplicar o hook. */}
+          <WalletBalance key={address} address={address} />
+
+          {/* Conectado não basta. Sem a rede Arc na carteira, assinar é recusado
+              com -32602 — e o usuário só descobriria isso no meio da
+              transferência, sem entender o motivo. */}
+          {hasArcNetwork ? null : (
+            <Pressable
+              onPress={() => setArcSheet(true)}
+              style={({ pressed }) => [styles.arcWarn, pressed && styles.pressed]}
+              accessibilityRole="button"
+            >
+              <IconAlert size={15} color={Colors.light.warn} />
+              <Text style={styles.arcWarnText}>
+                Arc Testnet not detected in your wallet.{' '}
+                <Text style={styles.arcWarnLink}>Tap here before using it.</Text>
+              </Text>
+            </Pressable>
+          )}
           {/* Desconectar é a única saída dentro do app: a Rabby mobile não tem
               tela de "connected dapps", então sem isto uma sessão presa só sai
               limpando os dados do aplicativo. */}
@@ -289,7 +326,35 @@ function WalletConnection() {
       {linkError ? <Text style={styles.linkError}>{linkError}</Text> : null}
 
       <Text style={styles.footer}>Secured by XiaoLee · USDC · x402</Text>
+
+      <ArcNetworkSheet visible={arcSheet} onClose={() => setArcSheet(false)} />
     </SectionCard>
+  );
+}
+
+/**
+ * Saldo USDC on-chain da carteira conectada.
+ *
+ * É outra coisa do que o card de cima, e por isso vive aqui embaixo: lá são as
+ * recompensas que o XiaoLee deve ao usuário (`GET /campaigns/me`, atreladas à
+ * sessão); aqui é o que a carteira dele de fato tem no Arc, lido no RPC. Somar
+ * os dois seria mentira — o que foi pago já está no saldo, o que não foi ainda
+ * não existe on-chain.
+ *
+ * Leitura pública: não exige sessão, o endereço já é público na chain. Falha
+ * fica contida numa linha; o RPC do Arc cair não pode derrubar o card da
+ * carteira nem esconder o botão de desconectar.
+ */
+function WalletBalance({ address }: { address: string }) {
+  const { data, error, loading } = useBackendData(() => getAddressBalance(address));
+
+  if (loading) return <Text style={styles.balanceLoading}>Loading balance…</Text>;
+  if (error || data === null) return <Text style={styles.balanceError}>Balance unavailable</Text>;
+
+  return (
+    <Text style={styles.balance}>
+      {formatUSDC(data)} <Text style={styles.balanceUnit}>USDC on Arc</Text>
+    </Text>
   );
 }
 
@@ -299,12 +364,12 @@ function shortAddress(address: string): string {
 }
 
 /**
- * Estado de convidado. O destino é o chat, que é onde a autenticação acontece —
- * mesma escolha do banner da Campaigns e do vazio das Notifications.
+ * Estado de convidado. O login acontece aqui mesmo — mandar "para o chat" era
+ * mandar para uma tela onde o botão de entrar também não está à vista: ele mora
+ * no painel de perfil, atrás do avatar do header. Mesma escolha das
+ * Notifications e das Transactions.
  */
 function GuestState() {
-  const router = useRouter();
-
   return (
     <SectionCard title="Your rewards" subtitle="Tied to your Testnet session">
       <View style={styles.guest}>
@@ -313,15 +378,9 @@ function GuestState() {
         </View>
         <Text style={styles.guestTitle}>No session yet</Text>
         <Text style={styles.guestText}>
-          Sign in from the chat to see the rewards you have earned from campaigns.
+          Sign in to see the rewards you have earned from campaigns.
         </Text>
-        <Pressable
-          onPress={() => router.navigate('/')}
-          style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
-          accessibilityRole="button"
-        >
-          <Text style={styles.guestButtonText}>Go to chat</Text>
-        </Pressable>
+        <SignInButton />
       </View>
     </SectionCard>
   );
@@ -407,6 +466,28 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.successSoft,
   },
   connectedAddress: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.ink },
+  balance: {
+    fontFamily: Fonts.bold,
+    fontSize: 18,
+    color: Colors.light.ink,
+    textAlign: 'center',
+    marginTop: Spacing.two - 2,
+  },
+  balanceUnit: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.light.ink2 },
+  balanceLoading: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.light.ink2,
+    textAlign: 'center',
+    marginTop: Spacing.two - 2,
+  },
+  balanceError: {
+    fontFamily: Fonts.sans,
+    fontSize: 11,
+    color: Colors.light.ink2,
+    textAlign: 'center',
+    marginTop: Spacing.two - 2,
+  },
   disconnect: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -417,6 +498,23 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two - 2,
   },
   disconnectText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.ink2 },
+  arcWarn: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two - 2,
+    padding: Spacing.two,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.warnSoft,
+    marginTop: Spacing.two - 2,
+  },
+  arcWarnText: {
+    flex: 1,
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.light.ink2,
+  },
+  arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
   linkError: {
     fontFamily: Fonts.sans,
     fontSize: 11,

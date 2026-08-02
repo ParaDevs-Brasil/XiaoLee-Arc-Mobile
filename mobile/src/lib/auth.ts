@@ -61,7 +61,14 @@ export async function signInWithGoogle(): Promise<FirebaseAuthTypes.UserCredenti
 
   if (!idToken) throw new Error('Google não devolveu idToken.');
 
-  const credential = auth.GoogleAuthProvider.credential(idToken);
+  // O accessToken é obrigatório na prática, mesmo a assinatura dizendo o
+  // contrário. `credential(idToken)` sozinho faz o RNFB mandar `""` no slot do
+  // accessToken (`OAuthCredential.ts`, fallback `?? ''`), e o
+  // `GoogleAuthCredential` nativo rejeita string vazia — não-nula e de tamanho
+  // zero — com `accessToken cannot be empty`. `null` passaria; `""` não.
+  const { accessToken } = await GoogleSignin.getTokens();
+
+  const credential = auth.GoogleAuthProvider.credential(idToken, accessToken);
   return auth().signInWithCredential(credential);
 }
 
@@ -102,8 +109,14 @@ export async function signInAndStartSession(): Promise<Session> {
   const idToken = await getFirebaseIdToken();
   if (!idToken) throw new Error('Firebase não devolveu ID token após o login.');
 
-  const { session_id, twitter_user_id } = await loginWithFirebase(idToken);
-  const session: Session = { sessionId: session_id, twitterUserId: twitter_user_id };
+  const { session_id, twitter_user_id, username } = await loginWithFirebase(idToken);
+  const session: Session = {
+    sessionId: session_id,
+    twitterUserId: twitter_user_id,
+    // `twitter_user_id` é `firebase_<uid>`: serve para o backend, não para o
+    // painel de perfil. O nome legível é o `username`.
+    handle: username?.trim() || undefined,
+  };
   await saveSession(session);
   return session;
 }

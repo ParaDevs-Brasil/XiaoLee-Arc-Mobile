@@ -63,9 +63,12 @@ export function shortHash(value: string): string {
 }
 
 /**
- * Quantidade de token de campanha ($XLEE etc.). Diferente de `formatUSDC`: o
- * backend devolve `50000.0` e `50.0`, e forçar duas casas aqui viraria
- * "50,000.00" num cartão onde o número já briga por espaço.
+ * Quantidade de token de campanha. Hoje o trilho é USDC, mas `reward_token` é
+ * campo livre na criação e o cartão precisa renderizar qualquer símbolo.
+ * Diferente de `formatUSDC`: sem casas fixas. O backend devolve tanto o pool
+ * (`300.0`) quanto o reward por participante (`0.3`) — forçar duas casas viraria
+ * "300.00" num cartão onde o número já briga por espaço, e cortar para zero
+ * apagaria o `0.3` inteiro.
  */
 export function formatTokenAmount(value: number): string {
   return value.toLocaleString('en-US', { maximumFractionDigits: 2 });

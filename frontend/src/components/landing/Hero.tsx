@@ -35,7 +35,6 @@ export function Nav() {
   const links = [
     { k: "nav.product", href: "#product" },
     { k: "nav.how", href: "#how" },
-    { k: "nav.token", href: "#token" },
     { k: "nav.dev", href: "#dev" },
   ];
   return (

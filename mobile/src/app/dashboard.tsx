@@ -12,7 +12,7 @@ import {
   type TreasuryChain,
   type UserCampaignParticipation,
 } from '@/api/backend';
-import { EmptyState, ErrorState, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
 import {
   IconActivity,
   IconCheck,
@@ -318,7 +318,8 @@ function MyCampaignsSection({
         <EmptyState
           Icon={IconUser}
           title="No session yet"
-          text="Sign in from the chat to see the campaigns you joined."
+          text="Sign in to see the campaigns you joined."
+          action={<SignInButton />}
         />
       </SectionCard>
     );

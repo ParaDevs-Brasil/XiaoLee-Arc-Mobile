@@ -24,8 +24,10 @@ import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 interface ProfileMenuProps {
   visible: boolean;
   onDismiss: () => void;
-  /** Handle do usuário, quando há sessão. */
+  /** Nome de exibição, quando há sessão. */
   handle?: string;
+  /** Id interno da sessão (`firebase_<uid>`). Só a linha de baixo mostra. */
+  userId?: string;
   /** Endereço de payout vinculado, quando há. */
   walletAddress?: string;
   onSignIn?: () => void;
@@ -74,6 +76,7 @@ export function ProfileMenu({
   visible,
   onDismiss,
   handle,
+  userId,
   walletAddress,
   onSignIn,
   onConnectWallet,
@@ -92,8 +95,10 @@ export function ProfileMenu({
           <Text style={styles.handle} numberOfLines={1}>
             {handle ? `@${handle}` : '@User'}
           </Text>
+          {/* Repetia o handle nas duas linhas. O id é outra coisa — é ele que
+              identifica a sessão no backend, e é o que vale mostrar aqui. */}
           <Text style={styles.userId} numberOfLines={1}>
-            {handle ? `ID: @${handle}` : 'ID: @user…'}
+            {handle ? `ID: ${userId ?? handle}` : 'ID: @user…'}
           </Text>
         </View>
       </View>
@@ -105,7 +110,7 @@ export function ProfileMenu({
             ...item,
             // A linha de conectar mostra o endereço vinculado quando há um.
             ...(item.key === 'connect' && walletAddress
-              ? { title: 'Wallet conectada', subtitle: short(walletAddress) }
+              ? { title: 'Wallet connected', subtitle: short(walletAddress) }
               : null),
             // `push` e não `navigate`: a carteira é destino lateral, e o voltar
             // do Android deve devolver o usuário à tela de onde ele abriu o

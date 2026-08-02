@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +8,7 @@ import {
   type NotificationItem,
   type UserCampaignParticipation,
 } from '@/api/backend';
-import { EmptyState, ErrorState, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
 import { IconClipboard, IconGift, IconSwap, IconUser, type IconProps } from '@/components/icons';
 import { PageHeading, ScreenShell } from '@/components/screen-shell';
 import { SectionCard } from '@/components/section-card';
@@ -337,12 +336,10 @@ function emptyText(tab: Tab): string {
 }
 
 /**
- * Estado de convidado. O destino é o chat, que é onde a autenticação acontece —
- * mesma escolha da Wallet, das Notifications e do banner da Campaigns.
+ * Estado de convidado. O login acontece aqui mesmo — mandar para o chat era
+ * mandar para uma tela onde o botão de entrar também não está à vista.
  */
 function GuestState() {
-  const router = useRouter();
-
   return (
     <SectionCard title="Your activity" subtitle="Tied to your Testnet session">
       <View style={styles.guest}>
@@ -351,15 +348,9 @@ function GuestState() {
         </View>
         <Text style={styles.guestTitle}>No session yet</Text>
         <Text style={styles.guestText}>
-          Sign in from the chat to see the rewards you claimed and the events signed for you.
+          Sign in to see the rewards you claimed and the events signed for you.
         </Text>
-        <Pressable
-          onPress={() => router.navigate('/')}
-          style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
-          accessibilityRole="button"
-        >
-          <Text style={styles.guestButtonText}>Go to chat</Text>
-        </Pressable>
+        <SignInButton />
       </View>
     </SectionCard>
   );
@@ -494,12 +485,4 @@ const styles = StyleSheet.create({
     color: Colors.light.ink2,
     textAlign: 'center',
   },
-  guestButton: {
-    marginTop: Spacing.one,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.accent,
-  },
-  guestButtonText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.card },
 });

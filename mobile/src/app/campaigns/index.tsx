@@ -11,9 +11,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { listCampaigns } from '@/api/backend';
+import type { UserCampaignParticipation } from '@/api/backend';
+import { listCampaigns, listMyCampaigns } from '@/api/backend';
 import { CampaignCard } from '@/components/campaign-card';
-import { EmptyState, ErrorState, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
 import {
   IconBell,
   IconChevronDown,
@@ -39,9 +40,28 @@ import { useSession } from '@/hooks/use-session';
  * ("um card por vez, swipe no mobile, snap").
  *
  * Só `GET /campaigns` é público. Entrar, verificar, resgatar e criar exigem
- * sessão, e o login do mobile (`lib/auth.ts`) ainda não está ligado a nenhuma
- * tela — daí a tela inteira renderizar no estado de convidado.
+ * sessão, e é por isso que a tela busca as duas listas de uma vez: o catálogo
+ * diz o que existe, `/campaigns/me` diz em que passo ESTE usuário está em cada
+ * uma. Sem a segunda, o cartão não sabe se mostra Join, Verify ou Claim.
  */
+
+/**
+ * Catálogo + participações do usuário numa carga só.
+ *
+ * Função de módulo de propósito: `useBackendData` guarda a identidade do
+ * fetcher, e uma seta criada no corpo do componente refaria a busca a cada
+ * render.
+ *
+ * Sem sessão não há participação a buscar — a rota responderia lista vazia de
+ * qualquer forma, e pedir isso no estado de convidado só gastaria round-trip.
+ */
+async function fetchCampaignsAndParticipation() {
+  const [catalog, mine] = await Promise.all([
+    listCampaigns(),
+    listMyCampaigns().catch(() => [] as UserCampaignParticipation[]),
+  ]);
+  return { campaigns: catalog.campaigns ?? [], mine };
+}
 
 /** Margem lateral do conteúdo; o cartão do carrossel é medido a partir dela. */
 const H_PADDING = Spacing.three - 4;
@@ -60,8 +80,13 @@ export default function CampaignsScreen() {
 
   // `listCampaigns` é função de módulo: identidade estável, sem recarga a cada
   // render.
-  const { data, error, loading, refreshing, reload } = useBackendData(listCampaigns);
+  const { data, error, loading, refreshing, reload } = useBackendData(
+    fetchCampaignsAndParticipation,
+  );
   const campaigns = data?.campaigns ?? [];
+  // Mapa por id: o cartão só precisa da SUA participação, e varrer a lista
+  // dentro de cada cartão seria O(n²) por render do carrossel.
+  const participationById = new Map((data?.mine ?? []).map((item) => [item.id, item]));
 
   // Lido do armazenamento, não fixo: hoje é sempre `false` porque nada grava
   // sessão ainda, mas no dia em que o login for ligado a tela inteira
@@ -185,7 +210,12 @@ export default function CampaignsScreen() {
                 >
                   {campaigns.map((campaign) => (
                     <View key={campaign.id} style={{ width: cardWidth }}>
-                      <CampaignCard campaign={campaign} hasSession={hasSession} />
+                      <CampaignCard
+                        campaign={campaign}
+                        hasSession={hasSession}
+                        participation={participationById.get(campaign.id)}
+                        onChanged={reload}
+                      />
                     </View>
                   ))}
                 </ScrollView>
@@ -221,7 +251,7 @@ export default function CampaignsScreen() {
           <EmptyState
             Icon={IconBell}
             title="No rewards yet"
-            text="Complete campaign tasks to receive USDC and $XLEE rewards here."
+            text="Complete campaign tasks to receive USDC rewards here."
           />
         ) : null}
       </ScrollView>
@@ -248,19 +278,25 @@ function SessionBanner({ hasSession }: { hasSession: boolean }) {
         <Text style={styles.bannerText}>
           {hasSession
             ? 'Ready to participate and collect rewards.'
-            : 'Connect your wallet or authenticate via Chat.'}
+            : 'Sign in to participate and collect rewards.'}
         </Text>
       </View>
 
-      {/* No web este botão é um Link para "/", a home do chat — é lá que a
-          autenticação acontece. Mesma rota aqui. */}
-      <Pressable
-        onPress={() => router.navigate('/')}
-        style={({ pressed }) => [styles.bannerButton, pressed && styles.pressed]}
-        accessibilityRole="button"
-      >
-        <Text style={styles.bannerButtonText}>{hasSession ? 'Sync Wallet' : 'Login'}</Text>
-      </Pressable>
+      {/* O web manda este botão para "/", a home do chat, porque lá a
+          autenticação está à vista. Aqui não estava: o login mora no painel de
+          perfil, atrás do avatar, então "Login" levava a uma tela onde nada
+          pedia login. Entrar acontece no próprio banner. */}
+      {hasSession ? (
+        <Pressable
+          onPress={() => router.push('/wallet')}
+          style={({ pressed }) => [styles.bannerButton, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <Text style={styles.bannerButtonText}>Sync Wallet</Text>
+        </Pressable>
+      ) : (
+        <SignInButton label="Login" />
+      )}
     </View>
   );
 }

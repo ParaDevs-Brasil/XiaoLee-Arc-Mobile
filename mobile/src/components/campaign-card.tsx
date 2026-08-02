@@ -1,10 +1,14 @@
-import { Fragment } from 'react';
-import { Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Fragment, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import type { Campaign } from '@/api/backend';
+import type { Campaign, UserCampaignParticipation } from '@/api/backend';
+import { claimCampaignReward, joinCampaign, verifyCampaignTasks } from '@/api/backend';
+import { ApiError } from '@/api/client';
 import { IconList } from '@/components/icons';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useWalletConnect } from '@/lib/walletconnect';
 import { formatDate, formatTokenAmount } from '@/lib/format';
+import { getSessionToken } from '@/lib/session';
 
 /**
  * Cartão de campanha — porta de `frontend/src/components/campaigns/CampaignCard.tsx`.
@@ -30,6 +34,29 @@ import { formatDate, formatTokenAmount } from '@/lib/format';
 const FILLING_PCT = 60;
 const NEARLY_FULL_PCT = 90;
 
+/**
+ * Em que passo da jornada esta campanha está para ESTE usuário.
+ *
+ * Sai do `participation_status` que `/campaigns/me` devolve, e não de estado
+ * local: recarregar o app, trocar de aparelho ou entrar pelo chat tem que
+ * mostrar o mesmo passo, e a verdade disso mora no banco.
+ */
+type Step = 'join' | 'verify' | 'claim' | 'done';
+
+function stepOf(participation?: UserCampaignParticipation): Step {
+  if (!participation) return 'join';
+  if (participation.tasks_claimed) return 'done';
+  if (participation.participation_status === 'tasks_verified') return 'claim';
+  return 'verify';
+}
+
+const STEP_LABEL: Record<Step, string> = {
+  join: 'Join',
+  verify: 'Verify tasks',
+  claim: 'Claim reward',
+  done: 'Reward claimed',
+};
+
 interface CampaignCardProps {
   campaign: Campaign;
   /**
@@ -38,9 +65,22 @@ interface CampaignCardProps {
    * em vez de falharem no toque.
    */
   hasSession: boolean;
+  /** Participação do usuário nesta campanha, se já entrou. */
+  participation?: UserCampaignParticipation;
+  /**
+   * Chamado quando join/verify/claim muda algo no servidor, para a tela
+   * recarregar `/campaigns` e `/campaigns/me`. Sem isto o cartão avançaria só
+   * na memória e discordaria do banco no próximo refresh.
+   */
+  onChanged?: () => void;
 }
 
-export function CampaignCard({ campaign, hasSession }: CampaignCardProps) {
+export function CampaignCard({
+  campaign,
+  hasSession,
+  participation,
+  onChanged,
+}: CampaignCardProps) {
   // `completed_participants` conta **todo mundo inscrito**, não quem concluiu:
   // o backend preenche esse campo com um `count` de `CampaignParticipant` sem
   // filtrar por status (`campaigns_routes.py::list_campaigns`). O rótulo segue
@@ -53,6 +93,52 @@ export function CampaignCard({ campaign, hasSession }: CampaignCardProps) {
       : 0;
 
   const hasTasks = Boolean(campaign.profile_to_follow || campaign.tweet_id_to_engage);
+
+  const step = stepOf(participation);
+  const { address } = useWalletConnect();
+  const [busy, setBusy] = useState(false);
+  // Uma linha só de retorno. `tone` separa "a verificação reprovou" (informação
+  // legítima, o usuário ainda não fez a tarefa) de "a chamada falhou".
+  const [notice, setNotice] = useState<{ text: string; tone: 'info' | 'error' } | null>(null);
+
+  async function runStep() {
+    if (busy || step === 'done') return;
+    setBusy(true);
+    setNotice(null);
+
+    try {
+      if (step === 'join') {
+        setNotice({ text: await joinCampaign(campaign.id), tone: 'info' });
+      } else if (step === 'verify') {
+        const result = await verifyCampaignTasks(campaign.id);
+        setNotice({ text: result.message, tone: result.allTasksCompleted ? 'info' : 'error' });
+      } else {
+        // O backend exige um endereço de payout não vazio mesmo em sessão
+        // custodial, onde ele não confere assinatura. Sem carteira conectada a
+        // chamada voltaria 400 — melhor dizer o que falta.
+        if (!address) {
+          setNotice({ text: 'Connect a wallet to receive the reward.', tone: 'error' });
+          return;
+        }
+        const session = await getSessionToken();
+        if (!session) {
+          setNotice({ text: 'Sign in again to claim.', tone: 'error' });
+          return;
+        }
+        const result = await claimCampaignReward(campaign.id, session, address);
+        setNotice({ text: result.message, tone: 'info' });
+      }
+
+      onChanged?.();
+    } catch (err) {
+      setNotice({
+        text: err instanceof ApiError ? err.message : String(err),
+        tone: 'error',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <View style={styles.card}>
@@ -134,10 +220,20 @@ export function CampaignCard({ campaign, hasSession }: CampaignCardProps) {
         ) : null}
 
         <View style={styles.actions}>
-          <StepRail />
+          <StepRail step={step} />
+          {notice ? (
+            <Text
+              style={[styles.notice, notice.tone === 'error' && styles.noticeError]}
+              accessibilityLiveRegion="polite"
+            >
+              {notice.text}
+            </Text>
+          ) : null}
           <Action
-            label={hasSession ? 'Join' : 'Waiting for Testnet Session'}
-            disabled={!hasSession}
+            label={hasSession ? STEP_LABEL[step] : 'Waiting for Testnet Session'}
+            disabled={!hasSession || step === 'done'}
+            busy={busy}
+            onPress={runStep}
           />
         </View>
       </View>
@@ -198,26 +294,48 @@ function Task({ label, value, url }: { label: string; value: string; url: string
  */
 const STEPS = ['Join', 'Verify', 'Claim'] as const;
 
-function StepRail() {
+/** Índice do passo atual no trilho; `done` deixa os três preenchidos. */
+const STEP_INDEX: Record<Step, number> = { join: 0, verify: 1, claim: 2, done: 3 };
+
+function StepRail({ step }: { step: Step }) {
+  const current = STEP_INDEX[step];
+
   return (
     // `accessible` no contêiner: o leitor de tela anuncia a jornada como uma
     // frase, em vez de soletrar seis nós soltos ("1", "Join", "2"…).
     <View
       style={styles.rail}
       accessible
-      accessibilityLabel="Join, then verify tasks, then claim the reward"
+      accessibilityLabel={`Join, then verify tasks, then claim the reward. Current step: ${STEP_LABEL[step]}`}
     >
-      {STEPS.map((label, i) => (
-        <Fragment key={label}>
-          {i > 0 ? <View style={styles.railLine} /> : null}
-          <View style={styles.railStep}>
-            <View style={styles.railDot}>
-              <Text style={styles.railDotText}>{i + 1}</Text>
+      {STEPS.map((label, i) => {
+        const doneStep = i < current;
+        const activeStep = i === current;
+        return (
+          <Fragment key={label}>
+            {i > 0 ? <View style={[styles.railLine, doneStep && styles.railLineDone]} /> : null}
+            <View style={styles.railStep}>
+              <View
+                style={[
+                  styles.railDot,
+                  doneStep && styles.railDotDone,
+                  activeStep && styles.railDotActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.railDotText,
+                    (doneStep || activeStep) && styles.railDotTextOn,
+                  ]}
+                >
+                  {doneStep ? '✓' : i + 1}
+                </Text>
+              </View>
+              <Text style={[styles.railLabel, activeStep && styles.railLabelActive]}>{label}</Text>
             </View>
-            <Text style={styles.railLabel}>{label}</Text>
-          </View>
-        </Fragment>
-      ))}
+          </Fragment>
+        );
+      })}
     </View>
   );
 }
@@ -230,25 +348,35 @@ function StepRail() {
 function Action({
   label,
   disabled,
+  busy,
   onPress,
 }: {
   label: string;
   disabled?: boolean;
+  busy?: boolean;
   onPress?: () => void;
 }) {
+  // Durante a chamada o botão fica inerte: dois toques em `Join` renderiam um
+  // 409 do backend como erro na tela, sendo que o primeiro deu certo.
+  const blocked = Boolean(disabled) || Boolean(busy);
+
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
+      disabled={blocked}
       style={({ pressed }) => [
         styles.action,
-        disabled && styles.actionDisabled,
-        pressed && !disabled && styles.pressed,
+        blocked && styles.actionDisabled,
+        pressed && !blocked && styles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityState={{ disabled: Boolean(disabled) }}
+      accessibilityState={{ disabled: blocked, busy: Boolean(busy) }}
     >
-      <Text style={styles.actionText}>{label}</Text>
+      {busy ? (
+        <ActivityIndicator size="small" color={Colors.light.card} />
+      ) : (
+        <Text style={styles.actionText}>{label}</Text>
+      )}
     </Pressable>
   );
 }
@@ -393,6 +521,22 @@ const styles = StyleSheet.create({
     borderColor: Colors.light.border,
   },
   railDotText: { fontFamily: Fonts.bold, fontSize: 9, color: Colors.light.ink3 },
+  railDotDone: { backgroundColor: Colors.light.success, borderColor: Colors.light.success },
+  railDotActive: { backgroundColor: Colors.light.accent, borderColor: Colors.light.accent },
+  railDotTextOn: { color: Colors.light.card },
+  railLineDone: { backgroundColor: Colors.light.success },
+  railLabelActive: { color: Colors.light.accent },
+  // Uma linha de retorno entre o trilho e o botão. `info` herda o cinza do
+  // corpo; só o erro puxa cor, para não pintar de vermelho uma verificação que
+  // apenas ainda não passou.
+  notice: {
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.light.ink2,
+    marginBottom: Spacing.two,
+  },
+  noticeError: { color: Colors.light.danger },
   railLabel: {
     fontFamily: Fonts.bold,
     fontSize: 10,

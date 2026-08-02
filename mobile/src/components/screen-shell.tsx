@@ -1,6 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
 import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,9 +11,9 @@ import { IconChat } from '@/components/icons';
 import { NavMenu } from '@/components/nav-menu';
 import { ProfileMenu } from '@/components/profile-menu';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useSession } from '@/hooks/use-session';
 import { useWallet } from '@/hooks/use-wallet';
 import { GoogleSignInCancelled, signInAndStartSession } from '@/lib/auth';
-import { getSession } from '@/lib/session';
 
 /**
  * Moldura comum a todas as telas: a barra do topo e os dois painéis que ela
@@ -31,37 +31,28 @@ type OpenPanel = 'none' | 'menu' | 'profile';
 
 export function ScreenShell({ children }: { children: ReactNode }) {
   const [panel, setPanel] = useState<OpenPanel>('none');
-  const [handle, setHandle] = useState<string>();
   const [signingIn, setSigningIn] = useState(false);
   const [signInError, setSignInError] = useState<string>();
   const [walletSheet, setWalletSheet] = useState(false);
   const router = useRouter();
   const { address: wallet } = useWallet();
+  // A sessão sobrevive ao fechamento do app e é restaurada pelo próprio hook.
+  // Vem de lá, e não de estado local, para que entrar por aqui e entrar pelo
+  // estado de convidado de uma tela cheguem os dois ao mesmo lugar.
+  const { session } = useSession();
 
   const close = () => setPanel('none');
   /** Tocar no mesmo ícone fecha; nos dois painéis, abrir um fecha o outro. */
   const toggle = (next: Exclude<OpenPanel, 'none'>) =>
     setPanel((current) => (current === next ? 'none' : next));
 
-  // A sessão sobrevive ao fechamento do app (SecureStore), então é restaurada
-  // na montagem em vez de começar deslogado. A carteira vem do `useWallet`.
-  useEffect(() => {
-    let cancelled = false;
-    getSession().then((session) => {
-      if (cancelled) return;
-      if (session?.twitterUserId) setHandle(session.twitterUserId);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   async function signIn() {
     setSigningIn(true);
     setSignInError(undefined);
     try {
-      const session = await signInAndStartSession();
-      setHandle(session.twitterUserId);
+      // O `handle` não é aplicado aqui: `signInAndStartSession` grava a sessão,
+      // e é o aviso dela que atualiza este painel junto com a tela atrás dele.
+      await signInAndStartSession();
       close();
     } catch (error) {
       // Desistir do login não é erro — não vale mostrar nada por isso.
@@ -96,7 +87,11 @@ export function ScreenShell({ children }: { children: ReactNode }) {
       <ProfileMenu
         visible={panel === 'profile'}
         onDismiss={close}
-        handle={handle}
+        // O nome vem do `username` de `/auth/session`; o `twitterUserId` é o id
+        // interno (`firebase_<uid>`) e só entra como reserva — logado com um id
+        // feio à mostra ainda é melhor do que logado aparecendo como "@User".
+        handle={session?.handle || session?.twitterUserId || undefined}
+        userId={session?.twitterUserId || undefined}
         walletAddress={wallet}
         signingIn={signingIn}
         signInError={signInError}

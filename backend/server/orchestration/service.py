@@ -119,7 +119,7 @@ _PLATFORM_CONTEXT = (
     "NEVER use markdown headers, '---' dividers, tables, or a bulleted/numbered catalog with a bold or "
     "*italic* title per line — this applies to EVERYTHING, including tool results with multiple items "
     "like list_campaigns: weave them into 1-2 flowing sentences, like telling a friend, e.g. 'Rolando "
-    "agora: a <nome> (<o que fazer>, <n> $XLEE), a <nome> (<n> $XLEE por <ação>) e a <nome> (<n> $XLEE "
+    "agora: a <nome> (<o que fazer>, <n> USDC), a <nome> (<n> USDC por <ação>) e a <nome> (<n> USDC "
     "por <ação>). Qual te chama mais atenção?' — every <placeholder> there is a SHAPE, never data: "
     "names, rewards and participant counts come only from a list_campaigns result in THIS turn. If you "
     "have not called the tool this turn you do NOT know the catalog — call it instead of answering from "
@@ -158,7 +158,7 @@ _PLATFORM_CONTEXT = (
     "Core capabilities: an autonomous agent (Claude) that discovers, evaluates "
     "and pays creators in REAL USDC — directly on Arc, or cross-chain to Solana and Stellar via Circle "
     "CCTP V2 (burn on Arc → mint on the destination chain, Arc is the hub of every route); x402 HTTP-402 "
-    "micropayments in USDC on Arc; creator campaigns that reward $XLEE; PQC (ML-DSA-87) signed receipts "
+    "micropayments in USDC on Arc; creator campaigns that reward USDC; PQC (ML-DSA-87) signed receipts "
     "for every payment. Users connect ANY compatible wallet — EVM (MetaMask, Rabby, Phantom-EVM, Coinbase), "
     "Solana (Phantom/Solflare) or Stellar (Freighter) — the chain is auto-detected from the address and the "
     "agent picks the right payout rail. NEVER say XiaoLee does not support EVM wallets — Arc IS an EVM chain "
@@ -177,7 +177,7 @@ _STELLAR_CONTEXT = (
     "Carteira: Freighter (não-custodial, autenticada via SEP-10). "
     "Operações disponíveis: consultar saldo XLM/USDC, swap via Stellar DEX (path payments), "
     "depositar via âncora SEP-24 (testanchor.stellar.org), micropagamentos AI via x402, "
-    "participar de campanhas com recompensa $XLEE. "
+    "participar de campanhas com recompensa em USDC. "
     "Apresente sempre o quote antes de executar qualquer swap. "
     "Responda em PT-BR."
 )
@@ -507,7 +507,7 @@ class OrchestrationService:
                     amount = self._extract_amount(clean) or 1.0
                     return IntentResponse(action="swap_quote", confidence=0.75, entities={"amount": amount, "from": "USDC", "to": "SOL"})
 
-        if any(w in lowered for w in ("campaign", "campanha", "xlee", "$xlee", "reward", "recompensa", "tarefa")):
+        if any(w in lowered for w in ("campaign", "campanha", "reward", "recompensa", "tarefa")):
             return IntentResponse(action="campaign_info", confidence=0.70, entities={})
 
         if any(w in lowered for w in ("oi", "olá", "hello", "hi", "hey", "ola", "bom dia", "boa tarde", "boa noite")):
@@ -558,7 +558,7 @@ class OrchestrationService:
             "avalia → paga USDC no trilho certo: Arc direto, ou Solana/Stellar via CCTP) e aponte o "
             "dashboard de campanhas. Isso é diferente de LISTAR campanhas existentes — para isso use "
             "list_campaigns.\n\n"
-            "Para saudações, dúvidas sobre campanhas/$XLEE, SEP-24, x402 ou crypto em geral, responda "
+            "Para saudações, dúvidas sobre campanhas, SEP-24, x402 ou crypto em geral, responda "
             "direto com sua personalidade, sem ferramentas. Se uma operação Stellar exigir carteira e ela "
             "não estiver conectada, peça para conectar via 'Connect Wallet' na navbar (qualquer wallet "
             "compatível: MetaMask, Rabby, Phantom, Freighter). Responda SEMPRE no idioma do usuário."
@@ -759,7 +759,7 @@ class OrchestrationService:
                     f"Saldo Stellar do usuário — Wallet: {wallet} | "
                     f"XLM: {balance.xlm:.4f} | Assets: {assets_str}. "
                     "Apresente o saldo de forma clara e animada. "
-                    "Se o saldo de XLM for baixo, sugira participar de campanhas para ganhar $XLEE."
+                    "Se o saldo de XLM for baixo, sugira participar de campanhas para ganhar USDC."
                 )
                 reply = await self.gemini.generate_reply(
                     instruction=instruction, user_text=clean_text, history=history
@@ -1045,9 +1045,10 @@ class OrchestrationService:
         if intent.action == "campaign_info":
             instruction = (
                 f"{_PLATFORM_CONTEXT} {wallet_ctx} "
-                "The user is asking about campaigns or $XLEE tokens. "
+                "The user is asking about campaigns. "
                 "Explain how campaigns work on XiaoLee: projects create campaigns, users join them, "
-                "complete social tasks (follow, reply, retweet), and earn $XLEE tokens as rewards. "
+                "complete social tasks (follow, reply, retweet), and earn USDC as rewards — real money, "
+                "paid straight to their wallet, typically a fraction of a dollar per task. "
                 "Be enthusiastic — this is the core of the platform!"
             )
             reply = await self.gemini.generate_reply(

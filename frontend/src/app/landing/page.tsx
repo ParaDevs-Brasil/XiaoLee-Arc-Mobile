@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import "./landing.css";
 import { Nav, Hero, Metrics } from "@/components/landing/Hero";
-import { Pillars, SayItGrid, HowItWorks, Campaigns, Token, Channels, FinalCTA, Footer } from "@/components/landing/Sections";
+import { Pillars, SayItGrid, HowItWorks, Campaigns, Channels, FinalCTA, Footer } from "@/components/landing/Sections";
 
 export const metadata: Metadata = {
   title: "Xiaolee — Talk to your money on Arc",
@@ -20,7 +20,6 @@ export default function LandingPage() {
         <SayItGrid />
         <HowItWorks />
         <Campaigns />
-        <Token />
         <Channels />
         <FinalCTA />
       </main>

@@ -52,52 +52,58 @@ def _b58decode_pubkey(s: str) -> bytes:
     except OverflowError:
         raise ValueError("Base58 value too large to be a 32-byte Solana public key")
 
+# Recompensa é USDC — o mesmo trilho do resto do produto (ver
+# `docs/workflows/ARC_LEPTON_ARCHITECTURE.md`). Não existe mais token $XLEE.
+# Valores são nanopagamentos de verdade (fração de dólar), não números de
+# tokenomics: o `reward_pool` sai de `reward_per_participant * max_participants`,
+# a mesma conta de `create_campaign` — antes os três pools eram 50000 fixo, o que
+# não fechava com nenhum dos rewards.
 DEFAULT_CAMPAIGNS = [
     {
         "id": 1,
         "name": "XiaoLee Genesis Campaign",
-        "description": "Be among the first to interact with XiaoLee and earn $XLEE tokens! Follow our account, retweet our launch post and send a message to our bot.",
+        "description": "Be among the first to interact with XiaoLee and earn USDC! Follow our account, retweet our launch post and send a message to our bot.",
         "campaign_type": "social",
         "completed_participants": 0,
         "created_at": "2026-04-21T00:00:00Z",
         "creator_twitter_user_id": "XiaoLeeProtocol",
         "max_participants": 1000,
         "profile_to_follow": "XiaoLeeProtocol",
-        "reward_per_participant": 50,
-        "reward_pool": 50000,
-        "reward_token": "$XLEE",
+        "reward_per_participant": 0.3,
+        "reward_pool": 300,
+        "reward_token": "USDC",
         "status": "active",
         "tweet_id_to_engage": None,
     },
     {
         "id": 2,
         "name": "Swap Challenge",
-        "description": "Execute your first swap via XiaoLee AI assistant and earn bonus $XLEE tokens. Just ask XiaoLee to help you swap any token on Solana!",
+        "description": "Execute your first swap via XiaoLee AI assistant and earn bonus USDC. Just ask XiaoLee to help you swap any token!",
         "campaign_type": "trading",
         "completed_participants": 0,
         "created_at": "2026-04-21T00:00:00Z",
         "creator_twitter_user_id": "XiaoLeeProtocol",
         "max_participants": 500,
         "profile_to_follow": None,
-        "reward_per_participant": 100,
-        "reward_pool": 50000,
-        "reward_token": "$XLEE",
+        "reward_per_participant": 0.5,
+        "reward_pool": 250,
+        "reward_token": "USDC",
         "status": "active",
         "tweet_id_to_engage": None,
     },
     {
         "id": 3,
         "name": "Community Builder",
-        "description": "Invite 3 friends to join XiaoLee and earn community rewards. Share your referral link and help grow the XiaoLee ecosystem.",
+        "description": "Invite 3 friends to join XiaoLee and earn community rewards in USDC. Share your referral link and help grow the XiaoLee ecosystem.",
         "campaign_type": "referral",
         "completed_participants": 0,
         "created_at": "2026-04-21T00:00:00Z",
         "creator_twitter_user_id": "XiaoLeeProtocol",
         "max_participants": 200,
         "profile_to_follow": "XiaoLeeProtocol",
-        "reward_per_participant": 250,
-        "reward_pool": 50000,
-        "reward_token": "$XLEE",
+        "reward_per_participant": 1,
+        "reward_pool": 200,
+        "reward_token": "USDC",
         "status": "active",
         "tweet_id_to_engage": None,
     },
@@ -229,11 +235,7 @@ def _verify_claim_proof(payload: CampaignActionRequest, campaign_id: int, sessio
     message = (payload.proof_message or "").strip()
     proof_encoding = (payload.proof_encoding or "").strip().lower()
 
-    # Custodial sessions (Google/Telegram) are already authenticated via Bearer token in
-    # _resolve_user — wallet signature is redundant and not required for them.
-    # Covers both session tokens (google_session_*, tg_session_*) and twitter_user_id
-    # format (google_*, tg_*) since getSessionId() may return either.
-    is_custodial = session_token.startswith(("google_", "tg_"))
+    is_custodial = session_token.startswith(_CUSTODIAL_PREFIXES)
 
     if not public_key or not message:
         raise HTTPException(status_code=400, detail="Wallet public key and proof message are required")
@@ -662,6 +664,26 @@ _TOKEN_VERIFIERS = {
 }
 
 
+# Logins sociais: a identidade já veio provada no `Bearer` (`_resolve_user`
+# resolve a sessão, e `/auth/session` só a emite depois de conferir o ID token
+# contra o JWKS do provedor), então exigir assinatura de carteira em cima disso
+# é redundante — o usuário nem tem chave privada para assinar.
+#
+# Derivado de `_TOKEN_VERIFIERS` e não escrito à mão porque já quebrou uma vez:
+# a lista era fixa em ("google_", "tg_") e `/auth/session` passou a emitir
+# `firebase_session_*` e `web3auth_session_*`. Resultado — o login novo, mais
+# seguro que o antigo `/auth/google/login`, era o único que NÃO conseguia
+# resgatar. Cada prefixo cobre as duas formas que `getSessionId()` devolve: o
+# id de sessão (`<provedor>_session_*`) e o twitter_user_id (`<provedor>_*`).
+#
+# `google_` e `tg_` continuam na lista à mão: são de rotas legadas
+# (`/auth/google/login`, `/auth/telegram/login`) que não passam por
+# `_TOKEN_VERIFIERS` e cujas sessões de 30 dias ainda estão vivas em produção.
+_CUSTODIAL_PREFIXES: tuple[str, ...] = tuple(
+    f"{provider}_" for provider in (*_TOKEN_VERIFIERS, "google", "tg")
+)
+
+
 @router.post("/auth/session")
 async def auth_session(payload: SessionLoginRequest, db: AsyncSession = Depends(get_db_session)):
     """Emite sessão a partir de um ID token verificado do provedor social.
@@ -741,7 +763,9 @@ class WalletLinkRequest(BaseModel):
 async def _user_from_session(token: str | None, db: AsyncSession) -> User:
     """Resolve o `Bearer` em usuário, ou 401. Sessão expirada não vale."""
     if not token or not token.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="autenticação obrigatória")
+        # Em inglês porque o `detail` chega ao usuário: o mobile exibe a mensagem
+        # crua do erro no card de carteira, e o app é todo em inglês.
+        raise HTTPException(status_code=401, detail="Sign in required")
 
     session_id = token.removeprefix("Bearer ").strip()
     session = (
@@ -780,9 +804,9 @@ async def link_wallet(
 
     address = payload.address.strip()
     if not address:
-        raise HTTPException(status_code=400, detail="address é obrigatório")
+        raise HTTPException(status_code=400, detail="address is required")
     if not _EVM_ADDRESS_RE.match(address):
-        raise HTTPException(status_code=400, detail="endereço EVM inválido")
+        raise HTTPException(status_code=400, detail="invalid EVM address")
 
     wallet = (
         await db.execute(select(Wallet).where(Wallet.user_id == user.id))

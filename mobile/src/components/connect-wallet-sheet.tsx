@@ -43,7 +43,7 @@ export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps
               <Text style={styles.title}>Connect Wallet</Text>
               <Text style={styles.subtitle}>ARC · EVM · USDC</Text>
             </View>
-            <Pressable onPress={onClose} hitSlop={Spacing.two} accessibilityLabel="Fechar">
+            <Pressable onPress={onClose} hitSlop={Spacing.two} accessibilityLabel="Close">
               <IconClose size={18} color={Colors.light.ink3} />
             </Pressable>
           </View>
@@ -51,7 +51,7 @@ export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps
           {isConnected && address ? (
             <>
               <Text style={styles.hint}>
-                Carteira conectada. O endereço {short(address)} está vinculado à sua conta.
+                Wallet connected. The address {short(address)} is linked to your account.
               </Text>
               <View style={styles.connectedBox}>
                 <IconWallet size={16} color={Colors.light.success} />
@@ -61,8 +61,8 @@ export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps
           ) : (
             <>
               <Text style={styles.hint}>
-                Conecte sua carteira EVM para receber USDC. A Xiaolee usa WalletConnect — sua
-                chave privada nunca sai do aparelho.
+                Connect your EVM wallet to receive USDC. Xiaolee uses WalletConnect — your
+                private key never leaves the device.
               </Text>
 
               {linkError ? <Text style={styles.error}>{linkError}</Text> : null}
@@ -80,7 +80,7 @@ export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps
                 {isLinking ? (
                   <ActivityIndicator size="small" color={Colors.light.card} />
                 ) : (
-                  <Text style={styles.buttonLabel}>Conectar WalletConnect</Text>
+                  <Text style={styles.buttonLabel}>Connect WalletConnect</Text>
                 )}
               </Pressable>
             </>

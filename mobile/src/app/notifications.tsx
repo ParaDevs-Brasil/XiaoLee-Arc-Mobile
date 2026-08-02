@@ -1,10 +1,9 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ackNotification, listNotifications, type NotificationItem } from '@/api/backend';
-import { EmptyState, ErrorState, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
 import {
   IconAlert,
   IconBell,
@@ -258,13 +257,11 @@ function FilterBar({
 }
 
 /**
- * Estado de convidado. O web manda para `/campaigns` no estado vazio; aqui o
- * destino é o chat, que é onde a autenticação acontece — mesma escolha que o
- * banner da Campaigns faz.
+ * Estado de convidado. O login acontece aqui mesmo: mandar para o chat era
+ * mandar para uma tela onde o botão de entrar também não está à vista — ele
+ * vive no painel de perfil, atrás do avatar do header.
  */
 function GuestState() {
-  const router = useRouter();
-
   return (
     <View style={styles.guest}>
       <View style={styles.guestIcon}>
@@ -272,15 +269,9 @@ function GuestState() {
       </View>
       <Text style={styles.guestTitle}>No session yet</Text>
       <Text style={styles.guestText}>
-        Notifications are tied to your Testnet session. Sign in from the chat to see your receipts.
+        Notifications are tied to your Testnet session. Sign in to see your receipts.
       </Text>
-      <Pressable
-        onPress={() => router.navigate('/')}
-        style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
-        accessibilityRole="button"
-      >
-        <Text style={styles.guestButtonText}>Go to chat</Text>
-      </Pressable>
+      <SignInButton />
     </View>
   );
 }
@@ -478,14 +469,6 @@ const styles = StyleSheet.create({
     color: Colors.light.ink2,
     textAlign: 'center',
   },
-  guestButton: {
-    marginTop: Spacing.one,
-    paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
-    borderRadius: Radius.pill,
-    backgroundColor: Colors.light.accent,
-  },
-  guestButtonText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.card },
 
   // ── Linha de notificação ───────────────────────────────────────────────
   row: {

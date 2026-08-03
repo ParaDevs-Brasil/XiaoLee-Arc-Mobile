@@ -66,6 +66,8 @@
     .xl-btn:active { transform: translateY(1px) scale(.99); }
     .xl-btn__arr { display: inline-block; transition: transform .3s ease-out; }
     .xl-btn:hover .xl-btn__arr { transform: translate(2px, -2px); }
+    .xl-btn__dl { display: inline-block; transition: transform .3s ease-out; background-color: currentColor; -webkit-mask: url('assets/download-icon.png') center/contain no-repeat; mask: url('assets/download-icon.png') center/contain no-repeat; }
+    .xl-btn:hover .xl-btn__dl { transform: translateY(2px); }
 
     .xl-card { transition: transform .35s cubic-bezier(.22,1,.36,1), box-shadow .35s ease-out; }
     .xl-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -20px rgba(26,25,23,.22); }
@@ -121,7 +123,10 @@
         <img src="assets/xiaolee-icon-512.png" alt="Xiaolee" style="width:44px; height:44px; border-radius:999px; object-fit:cover;" />
         <span style="font-family:'Candice',cursive; font-size:28px; color:#1a1917;">Xiao<span style="color:#d81b78;">lee</span></span>
       </div>
-      <a href="https://xiaolee-frontend-production.up.railway.app" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:14px 28px; font-size:16px; font-weight:700; color:#fff; text-decoration:none; background:#d81b78; box-shadow:0 10px 26px -12px rgba(216,27,120,.45), 0 1px 0 rgba(255,255,255,.25) inset;">Launch app <span class="xl-btn__arr">↗</span></a>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <a href="https://xiaolee-frontend-production.up.railway.app" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:14px 28px; font-size:16px; font-weight:700; color:#fff; text-decoration:none; background:#d81b78; box-shadow:0 10px 26px -12px rgba(216,27,120,.45), 0 1px 0 rgba(255,255,255,.25) inset;">Launch app <span class="xl-btn__arr">↗</span></a>
+        <a href="https://expo.dev/artifacts/eas/64lfDx3OLIX2qBa-nbo9U7Rzt7xRAZVOcvQVmyoSnzE.apk" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:12px 26px; font-size:16px; font-weight:700; color:#d81b78; text-decoration:none; background:#fff; border:2px solid #d81b78;">Download app <span class="xl-btn__dl" style="width:14px; height:14px;"></span></a>
+      </div>
     </div>
   </header>
 
@@ -148,6 +153,7 @@
 
         <div data-reveal="1" style="opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.16,1,.3,1) .18s, transform .7s cubic-bezier(.16,1,.3,1) .18s; margin-top:36px; display:flex; flex-wrap:wrap; gap:12px;">
           <a href="https://xiaolee-frontend-production-96d7.up.railway.app" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap; border-radius:999px; padding:19px 38px; font-size:19px; font-weight:700; color:#fff; text-decoration:none; background:#d81b78; box-shadow:0 10px 26px -12px rgba(216,27,120,.45), 0 1px 0 rgba(255,255,255,.25) inset;">Launch app <span class="xl-btn__arr">↗</span></a>
+          <a href="https://expo.dev/artifacts/eas/64lfDx3OLIX2qBa-nbo9U7Rzt7xRAZVOcvQVmyoSnzE.apk" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:8px; white-space:nowrap; border-radius:999px; padding:17px 36px; font-size:19px; font-weight:700; color:#d81b78; text-decoration:none; background:#fff; border:2px solid #d81b78;">Download app <span class="xl-btn__dl" style="width:16px; height:16px;"></span></a>
         </div>
       </div>
 
@@ -220,7 +226,7 @@
     <div data-reveal="1" class="xl-grid" style="opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); border-radius:24px; background:#ffffff; border:1px solid #ece9e4; padding:40px; display:grid; grid-template-columns:1fr .85fr; gap:48px; align-items:center;">
       <div>
         <h2 style="margin:0; font-weight:700; letter-spacing:-0.02em; font-size:clamp(28px,3.8vw,42px); line-height:1.15; color:#1a1917;">Creator campaigns, verified in the open.</h2>
-        <p style="margin:16px 0 0; max-width:440px; font-size:16px; line-height:1.7; color:#6b6862;">Set up a campaign in ten minutes. Your audience completes social tasks, Xiaolee checks them live, and rewards land in $XLEE or USDC — 40× cheaper than legacy creator platforms.</p>
+        <p style="margin:16px 0 0; max-width:440px; font-size:16px; line-height:1.7; color:#6b6862;">Set up a campaign in ten minutes. Your audience completes social tasks, Xiaolee checks them live, and rewards land in USDC — 40× cheaper than legacy creator platforms.</p>
       </div>
       <div class="xl-card" style="border:1px solid #ece9e4; border-radius:18px; padding:20px; background:#f6f4f1;">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -234,11 +240,11 @@
           <span style="border-radius:999px; background:#e7f6ec; padding:4px 10px; font-size:11px; font-weight:700; color:#1f8a5b;">Live</span>
         </div>
         <div style="margin-top:12px; display:grid; grid-template-columns:repeat(3,1fr); gap:8px; text-align:center;">
-          <div><div style="font-weight:700; font-size:19px; color:#d81b78;">10</div><div style="margin-top:2px; font-size:11px; font-weight:600; color:#9a968f;">Reward · $XLEE</div></div>
-          <div><div style="font-weight:700; font-size:19px; color:#d81b78;">5,000</div><div style="margin-top:2px; font-size:11px; font-weight:600; color:#9a968f;">Pool · $XLEE</div></div>
+          <div><div style="font-weight:700; font-size:19px; color:#d81b78;">10</div><div style="margin-top:2px; font-size:11px; font-weight:600; color:#9a968f;">Reward · USDC</div></div>
+          <div><div style="font-weight:700; font-size:19px; color:#d81b78;">5,000</div><div style="margin-top:2px; font-size:11px; font-weight:600; color:#9a968f;">Pool · USDC</div></div>
           <div><div style="font-weight:700; font-size:19px; color:#d81b78;">312</div><div style="margin-top:2px; font-size:11px; font-weight:600; color:#9a968f;">Spots · of 500</div></div>
         </div>
-        <button style="margin-top:16px; width:100%; border-radius:999px; border:none; background:#d81b78; padding:12px 0; font-family:'Quicksand',sans-serif; font-size:14.5px; font-weight:700; color:#fff; cursor:pointer;">Claim 10 $XLEE</button>
+        <button style="margin-top:16px; width:100%; border-radius:999px; border:none; background:#d81b78; padding:12px 0; font-family:'Quicksand',sans-serif; font-size:14.5px; font-weight:700; color:#fff; cursor:pointer;">Claim 10 USDC</button>
       </div>
     </div>
   </section>

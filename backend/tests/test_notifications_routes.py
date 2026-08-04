@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -5,7 +7,7 @@ import importlib
 
 app_module = importlib.import_module("server.app")
 from database.database import get_db_session
-from database.models import NotificationEvent, User
+from database.models import NotificationEvent, User, WebSession
 
 
 client = TestClient(app_module.app)
@@ -63,6 +65,53 @@ async def test_list_notifications_returns_user_notifications(db_session):
         assert first_item["metadata"] == {"raw": "not-json"}
         assert second_item["related_signature"] == "sig-1"
         assert second_item["metadata"] == {"kind": "first"}
+    finally:
+        app_module.app.dependency_overrides.pop(get_db_session, None)
+
+
+@pytest.mark.asyncio
+async def test_list_notifications_resolves_web_session_login(db_session):
+    """Regressão: `/me` tratava o Bearer como se já fosse o twitter_user_id, mas
+    um login via `/auth/session` (Google/Web3Auth) manda o `session_id`
+    (`firebase_session_<uuid>`) — que nunca bate com o twitter_user_id real
+    (`firebase_<sub>`). Resultado era 404 "User not found" para todo mundo
+    logado por esse fluxo, mesmo com sessão válida.
+    """
+    user = User(twitter_handle="Alice", twitter_user_id="firebase_alice-sub", telegram_chat_id="3003")
+    db_session.add(user)
+    await db_session.commit()
+    await db_session.refresh(user)
+
+    db_session.add(
+        NotificationEvent(
+            user_id=user.id,
+            channel="in_app",
+            title="Bem-vinda",
+            body="Sua conta foi criada.",
+            status="pending",
+        )
+    )
+    db_session.add(
+        WebSession(
+            session_id="firebase_session_abc123",
+            twitter_user_id=user.twitter_user_id,
+            expires_at=datetime.utcnow() + timedelta(days=30),
+        )
+    )
+    await db_session.commit()
+
+    async def override_db_session():
+        yield db_session
+
+    app_module.app.dependency_overrides[get_db_session] = override_db_session
+    try:
+        response = client.get(
+            "/v1/notifications/me",
+            headers={"Authorization": "Bearer firebase_session_abc123"},
+        )
+        assert response.status_code == 200
+        assert response.json()["success"] is True
+        assert len(response.json()["notifications"]) == 1
     finally:
         app_module.app.dependency_overrides.pop(get_db_session, None)
 

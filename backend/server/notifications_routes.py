@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.database import get_db_session
 from database.models import NotificationEvent, User
+from server.campaigns_routes import resolve_twitter_identity
 
 router = APIRouter(prefix="/v1/notifications", tags=["notifications"])
 
@@ -80,7 +81,12 @@ async def list_current_notifications(
     authorization: Optional[str] = Header(default=None),
     db: AsyncSession = Depends(get_db_session),
 ):
-    twitter_user_id = _get_bearer_token(authorization)
+    # `_get_bearer_token` sozinho tratava o token cru como twitter_user_id —
+    # certo para AuthToken de bot, errado para WebSession de login social, cujo
+    # `session_id` (`firebase_session_<uuid>`) nunca bate com nenhum
+    # twitter_user_id (`firebase_<sub>`). Resultado: todo login via Google/
+    # Web3Auth caía em 404 "User not found" aqui, mesmo com sessão válida.
+    twitter_user_id, _ = await resolve_twitter_identity(db, authorization)
     return await _list_user_notifications(db, twitter_user_id)
 
 
@@ -102,7 +108,7 @@ async def ack_notification(
     authorization: Optional[str] = Header(default=None),
     db: AsyncSession = Depends(get_db_session),
 ):
-    token = _get_bearer_token(authorization)
+    twitter_user_id, _ = await resolve_twitter_identity(db, authorization)
 
     stmt = select(NotificationEvent).where(NotificationEvent.id == notification_id)
     result = await db.execute(stmt)
@@ -113,7 +119,7 @@ async def ack_notification(
     user_stmt = select(User).where(User.id == notification.user_id)
     user_res = await db.execute(user_stmt)
     user = user_res.scalars().first()
-    if not user or user.twitter_user_id != token:
+    if not user or user.twitter_user_id != twitter_user_id:
         raise HTTPException(status_code=403, detail="Forbidden")
 
     notification.status = "delivered"

@@ -282,7 +282,17 @@ def _verify_claim_proof(payload: CampaignActionRequest, campaign_id: int, sessio
         raise HTTPException(status_code=400, detail="Invalid wallet signature for this claim") from exc
 
 
-async def _resolve_user(db: AsyncSession, authorization: Optional[str]) -> User:
+async def resolve_twitter_identity(db: AsyncSession, authorization: Optional[str]) -> tuple[str, str]:
+    """Resolve o Bearer para ``(twitter_user_id, twitter_handle)``.
+
+    O token pode ser um ``AuthToken`` de bot (Telegram/X), um ``WebSession`` de
+    login social (Google/Web3Auth via `/auth/session`) ou, no caso legado, o
+    próprio twitter_user_id usado direto como token. Compartilhado com
+    `notifications_routes.py`: resolver a sessão sem passar por aqui foi
+    exatamente o bug que deixava `/v1/notifications/me` em 404 pra quem
+    logou via Google — o `session_id` (`firebase_session_<uuid>`) não é o
+    twitter_user_id (`firebase_<sub>`), só o `WebSession` abaixo faz essa ponte.
+    """
     token = _get_user_id_from_token(authorization)
     now = datetime.now(timezone.utc)
     twitter_user_id = token
@@ -315,6 +325,12 @@ async def _resolve_user(db: AsyncSession, authorization: Optional[str]) -> User:
             raise HTTPException(status_code=401, detail="Authorization expired")
         twitter_user_id = web_session.twitter_user_id
         twitter_handle = web_session.twitter_user_id
+
+    return twitter_user_id, twitter_handle
+
+
+async def _resolve_user(db: AsyncSession, authorization: Optional[str]) -> User:
+    twitter_user_id, twitter_handle = await resolve_twitter_identity(db, authorization)
 
     user_stmt = select(User).where(User.twitter_user_id == twitter_user_id)
     user_res = await db.execute(user_stmt)

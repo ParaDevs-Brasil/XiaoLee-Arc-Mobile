@@ -94,12 +94,24 @@
       .xl-nav { display: none !important; }
     }
     @media (max-width: 640px) {
-      /* header CTAs no longer fit next to the logo on phone widths — wrap to their own row */
-      .xl-header__inner { flex-wrap: wrap !important; row-gap: 10px !important; padding: 12px 16px !important; }
-      .xl-header__actions { width: 100% !important; justify-content: center !important; gap: 8px !important; }
-      .xl-header__actions .xl-btn { flex: 1 1 0 !important; justify-content: center !important; padding: 11px 14px !important; font-size: 14px !important; }
+      /* keep logo + both CTAs on one row like desktop — shrink everything to fit instead of wrapping */
+      .xl-header__inner { padding: 10px 14px !important; gap: 6px !important; }
+      .xl-header__brand { gap: 8px !important; }
+      .xl-header__logo { width: 32px !important; height: 32px !important; }
+      .xl-header__word { font-size: 17px !important; }
+      .xl-header__actions { gap: 5px !important; }
+      .xl-header__actions .xl-btn { padding: 8px 12px !important; font-size: 12px !important; gap: 4px !important; }
+      .xl-header__actions .xl-btn--dl .xl-btn__dl { width: 11px !important; height: 11px !important; }
       .xl-hero { padding: 32px 20px 0 !important; }
       .xl-panel { padding: 24px !important; }
+    }
+    @media (max-width: 380px) {
+      /* last resort on very narrow phones: download CTA collapses to icon-only so nothing clips */
+      .xl-header__word { font-size: 14px !important; }
+      .xl-header__logo { width: 26px !important; height: 26px !important; }
+      .xl-header__actions .xl-btn { padding: 7px 9px !important; font-size: 10.5px !important; }
+      .xl-header__actions .xl-btn--dl { padding: 7px !important; }
+      .xl-header__actions .xl-btn--dl .xl-btn__label { display: none !important; }
     }
     @media (max-width: 560px) {
       .xl-grid--steps { grid-template-columns: 1fr !important; }
@@ -126,20 +138,20 @@
 
   <!-- NAV — full-width bar -->
   <header style="position:sticky; top:0; left:0; right:0; z-index:50; width:100%; background:rgba(246,244,241,.82); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-bottom:1px solid #ece9e4; box-shadow:0 8px 24px -16px rgba(26,25,23,.18);">
-    <div style="max-width:1240px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between;">
-      <div style="display:flex; align-items:center; gap:14px;">
-        <img src="assets/xiaolee-icon-512.png" alt="Xiaolee" style="width:44px; height:44px; border-radius:999px; object-fit:cover;" />
-        <span style="font-family:'Candice',cursive; font-size:28px; color:#1a1917;">Xiao<span style="color:#d81b78;">lee</span></span>
+    <div class="xl-header__inner" style="max-width:1240px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; justify-content:space-between;">
+      <div class="xl-header__brand" style="display:flex; align-items:center; gap:14px;">
+        <img class="xl-header__logo" src="assets/xiaolee-icon-512.png" alt="Xiaolee" style="width:44px; height:44px; border-radius:999px; object-fit:cover;" />
+        <span class="xl-header__word" style="font-family:'Candice',cursive; font-size:28px; color:#1a1917;">Xiao<span style="color:#d81b78;">lee</span></span>
       </div>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <a href="https://xiaolee-frontend-production.up.railway.app" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:14px 28px; font-size:16px; font-weight:700; color:#fff; text-decoration:none; background:#d81b78; box-shadow:0 10px 26px -12px rgba(216,27,120,.45), 0 1px 0 rgba(255,255,255,.25) inset;">Launch app <span class="xl-btn__arr">↗</span></a>
-        <a href="https://expo.dev/artifacts/eas/64lfDx3OLIX2qBa-nbo9U7Rzt7xRAZVOcvQVmyoSnzE.apk" target="_blank" rel="noopener noreferrer" class="xl-btn" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:12px 26px; font-size:16px; font-weight:700; color:#d81b78; text-decoration:none; background:#fff; border:2px solid #d81b78;">Download app <span class="xl-btn__dl" style="width:14px; height:14px;"></span></a>
+      <div class="xl-header__actions" style="display:flex; align-items:center; gap:10px;">
+        <a href="https://xiaolee-frontend-production.up.railway.app" target="_blank" rel="noopener noreferrer" class="xl-btn xl-btn--launch" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:14px 28px; font-size:16px; font-weight:700; color:#fff; text-decoration:none; background:#d81b78; box-shadow:0 10px 26px -12px rgba(216,27,120,.45), 0 1px 0 rgba(255,255,255,.25) inset;"><span class="xl-btn__label">Launch app</span> <span class="xl-btn__arr">↗</span></a>
+        <a href="https://expo.dev/artifacts/eas/64lfDx3OLIX2qBa-nbo9U7Rzt7xRAZVOcvQVmyoSnzE.apk" target="_blank" rel="noopener noreferrer" class="xl-btn xl-btn--dl" aria-label="Download app" style="display:inline-flex; align-items:center; gap:6px; white-space:nowrap; border-radius:999px; padding:12px 26px; font-size:16px; font-weight:700; color:#d81b78; text-decoration:none; background:#fff; border:2px solid #d81b78;"><span class="xl-btn__label">Download app</span> <span class="xl-btn__dl" style="width:14px; height:14px;"></span></a>
       </div>
     </div>
   </header>
 
   <!-- HERO -->
-  <section style="max-width:1240px; margin:0 auto; padding:104px 24px 0;">
+  <section class="xl-hero" style="max-width:1240px; margin:0 auto; padding:104px 24px 0;">
     <div class="xl-grid" style="display:grid; grid-template-columns:1.15fr .85fr; gap:56px; align-items:center;">
       <div>
         <h1 data-reveal="1" style="opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); margin:0; font-weight:700; letter-spacing:-0.02em; font-size:clamp(40px,5.8vw,76px); line-height:1.12; color:#1a1917;">
@@ -231,7 +243,7 @@
 
   <!-- CAMPAIGNS -->
   <section style="max-width:1140px; margin:0 auto; padding:0 24px 24px;">
-    <div data-reveal="1" class="xl-grid" style="opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); border-radius:24px; background:#ffffff; border:1px solid #ece9e4; padding:40px; display:grid; grid-template-columns:1fr .85fr; gap:48px; align-items:center;">
+    <div data-reveal="1" class="xl-grid xl-panel" style="opacity:0; transform:translateY(24px); transition:opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); border-radius:24px; background:#ffffff; border:1px solid #ece9e4; padding:40px; display:grid; grid-template-columns:1fr .85fr; gap:48px; align-items:center;">
       <div>
         <h2 style="margin:0; font-weight:700; letter-spacing:-0.02em; font-size:clamp(28px,3.8vw,42px); line-height:1.15; color:#1a1917;">Creator campaigns, verified in the open.</h2>
         <p style="margin:16px 0 0; max-width:440px; font-size:16px; line-height:1.7; color:#6b6862;">Set up a campaign in ten minutes. Your audience completes social tasks, Xiaolee checks them live, and rewards land in USDC — 40× cheaper than legacy creator platforms.</p>

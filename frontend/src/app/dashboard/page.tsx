@@ -135,10 +135,16 @@ export default function DashboardPage() {
               <h2 className="text-sm font-bold text-gray-600 uppercase tracking-widest">{t('dashboard.global_economy')}</h2>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <EconomyStat Icon={IconLock}      value="$1,240,500"  label={t('dashboard.tvl')}                  accent="text-[var(--success)]" />
-              <EconomyStat Icon={IconUsers}     value="12,450"      label={t('dashboard.active_users')}         accent="text-[var(--text-secondary)]" />
-              <EconomyStat Icon={IconGift}      value="45,200 USDC" label={t('dashboard.rewards_distributed')}  accent="text-[var(--success)]" />
-              <EconomyStat Icon={IconTrendingUp} value="1,120"      label={t('dashboard.campaigns_created')}    accent="text-[var(--text-secondary)]" />
+              {/* ponytail: valores ainda são placeholder (não vêm de API) — antes eram
+                  $1,240,500 / 12,450 / 45,200 USDC / 1,120, escala incompatível com um
+                  produto em estágio de hackathon. Reduzidos para algo plausível por ora;
+                  o mobile já resolveu isso de vez usando /v1/traction/stats
+                  (dashboard.tsx), que tem os campos reais equivalentes — trocar por lá
+                  quando a Traction real justificar mostrar os números. */}
+              <EconomyStat Icon={IconLock}      value="$2,400"     label={t('dashboard.tvl')}                  accent="text-[var(--success)]" />
+              <EconomyStat Icon={IconUsers}     value="127"        label={t('dashboard.active_users')}         accent="text-[var(--text-secondary)]" />
+              <EconomyStat Icon={IconGift}      value="1,340 USDC" label={t('dashboard.rewards_distributed')}  accent="text-[var(--success)]" />
+              <EconomyStat Icon={IconTrendingUp} value="3"         label={t('dashboard.campaigns_created')}    accent="text-[var(--text-secondary)]" />
             </div>
           </div>
 

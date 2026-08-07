@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { ApiError } from '@/api/client';
@@ -77,6 +78,27 @@ export function useBackendData<T>(fetcher: () => Promise<T>): BackendData<T> {
       if (mounted.current) setLoading(false);
     });
   }, [run, sessionId]);
+
+  // Expo Router usa uma pilha nativa: voltar para uma tela já visitada (ex.
+  // Wallet, depois de resgatar uma recompensa em Campaigns) reexibe a mesma
+  // instância sem remontar — o efeito acima não roda de novo, e a tela ficava
+  // presa no dado de antes do resgate até um pull-to-refresh manual. Refaz a
+  // busca a cada vez que a tela ganha foco, silenciosamente (sem `loading`/
+  // `refreshing`, que piscariam esqueleto numa tela que já tem conteúdo).
+  //
+  // Pula o primeiro foco: ele coincide com a montagem, que o efeito de cima já
+  // cobre — sem a marca, toda tela buscaria os dados duas vezes ao abrir.
+  const skipNextFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (skipNextFocus.current) {
+        skipNextFocus.current = false;
+        return;
+      }
+      if (sessionId === undefined) return;
+      run();
+    }, [run, sessionId]),
+  );
 
   const reload = useCallback(() => {
     setRefreshing(true);

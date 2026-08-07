@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { UserCampaignParticipation } from '@/api/backend';
 import { listCampaigns, listMyCampaigns } from '@/api/backend';
 import { CampaignCard } from '@/components/campaign-card';
-import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
+import { ConnectWalletButton, EmptyState, ErrorState, Skeleton } from '@/components/feedback';
 import {
   IconBell,
   IconChevronDown,
@@ -30,6 +30,7 @@ import { PageHeading, ScreenShell } from '@/components/screen-shell';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useBackendData } from '@/hooks/use-backend-data';
 import { useSession } from '@/hooks/use-session';
+import { formatTokenAmount } from '@/lib/format';
 
 /**
  * Tela de Campaigns — porta de `frontend/src/pages/CampanhasNew.tsx`.
@@ -84,13 +85,14 @@ export default function CampaignsScreen() {
     fetchCampaignsAndParticipation,
   );
   const campaigns = data?.campaigns ?? [];
+  const mine = data?.mine ?? [];
+  const claimed = mine.filter((item) => item.tasks_claimed);
   // Mapa por id: o cartão só precisa da SUA participação, e varrer a lista
   // dentro de cada cartão seria O(n²) por render do carrossel.
-  const participationById = new Map((data?.mine ?? []).map((item) => [item.id, item]));
+  const participationById = new Map(mine.map((item) => [item.id, item]));
 
-  // Lido do armazenamento, não fixo: hoje é sempre `false` porque nada grava
-  // sessão ainda, mas no dia em que o login for ligado a tela inteira
-  // acompanha sozinha — banner, aba e botões já dependem daqui.
+  // A tela inteira acompanha a carteira conectada sozinha — banner, abas e
+  // botões já dependem daqui.
   const { hasSession } = useSession();
 
   const cardWidth = width - H_PADDING * 2;
@@ -139,6 +141,8 @@ export default function CampaignsScreen() {
           tab={tab}
           onChange={setTab}
           exploreCount={campaigns.length}
+          mineCount={mine.length}
+          rewardsCount={claimed.length}
           hasSession={hasSession}
         />
 
@@ -240,19 +244,35 @@ export default function CampaignsScreen() {
         ) : null}
 
         {tab === 'mine' ? (
-          <EmptyState
-            Icon={IconTarget}
-            title="You haven't joined any campaign yet"
-            text="Explore active campaigns and join to start earning."
-          />
+          mine.length === 0 ? (
+            <EmptyState
+              Icon={IconTarget}
+              title="You haven't joined any campaign yet"
+              text="Explore active campaigns and join to start earning."
+            />
+          ) : (
+            <View style={styles.list}>
+              {mine.map((item) => (
+                <ParticipationRow key={item.id} item={item} />
+              ))}
+            </View>
+          )
         ) : null}
 
         {tab === 'rewards' ? (
-          <EmptyState
-            Icon={IconBell}
-            title="No rewards yet"
-            text="Complete campaign tasks to receive USDC rewards here."
-          />
+          claimed.length === 0 ? (
+            <EmptyState
+              Icon={IconBell}
+              title="No rewards yet"
+              text="Complete campaign tasks to receive USDC rewards here."
+            />
+          ) : (
+            <View style={styles.list}>
+              {claimed.map((item) => (
+                <RewardRow key={item.id} item={item} />
+              ))}
+            </View>
+          )
         ) : null}
       </ScrollView>
     </ScreenShell>
@@ -274,18 +294,18 @@ function SessionBanner({ hasSession }: { hasSession: boolean }) {
       </View>
 
       <View style={styles.flex}>
-        <Text style={styles.bannerTitle}>{hasSession ? 'Testnet Session Active' : 'Guest Mode'}</Text>
+        <Text style={styles.bannerTitle}>{hasSession ? 'Wallet Connected' : 'No Wallet Connected'}</Text>
         <Text style={styles.bannerText}>
           {hasSession
             ? 'Ready to participate and collect rewards.'
-            : 'Sign in to participate and collect rewards.'}
+            : 'Connect your wallet to participate and collect rewards.'}
         </Text>
       </View>
 
       {/* O web manda este botão para "/", a home do chat, porque lá a
-          autenticação está à vista. Aqui não estava: o login mora no painel de
-          perfil, atrás do avatar, então "Login" levava a uma tela onde nada
-          pedia login. Entrar acontece no próprio banner. */}
+          autenticação está à vista. Aqui não estava: conectar mora no painel
+          de perfil, atrás do avatar, então "Login" levava a uma tela onde nada
+          pedia conexão. Conectar acontece no próprio banner. */}
       {hasSession ? (
         <Pressable
           onPress={() => router.push('/wallet')}
@@ -295,7 +315,7 @@ function SessionBanner({ hasSession }: { hasSession: boolean }) {
           <Text style={styles.bannerButtonText}>Sync Wallet</Text>
         </Pressable>
       ) : (
-        <SignInButton label="Login" />
+        <ConnectWalletButton label="Connect Wallet" />
       )}
     </View>
   );
@@ -305,21 +325,23 @@ function TabBar({
   tab,
   onChange,
   exploreCount,
+  mineCount,
+  rewardsCount,
   hasSession,
 }: {
   tab: Tab;
   onChange: (next: Tab) => void;
   exploreCount: number;
+  mineCount: number;
+  rewardsCount: number;
   hasSession: boolean;
 }) {
   const router = useRouter();
 
-  // "My Campaigns" e "Rewards" contam a partir da sessão, que não existe
-  // ainda — por isso zero fixo em vez de um número inventado.
   const tabs: { id: Tab; label: string; count: number }[] = [
     { id: 'explore', label: 'Explore', count: exploreCount },
-    { id: 'mine', label: 'My Campaigns', count: 0 },
-    { id: 'rewards', label: 'Rewards', count: 0 },
+    { id: 'mine', label: 'My Campaigns', count: mineCount },
+    { id: 'rewards', label: 'Rewards', count: rewardsCount },
   ];
 
   return (
@@ -359,7 +381,7 @@ function TabBar({
         onPress={() => router.push(hasSession ? '/campaigns/new' : '/')}
         style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={hasSession ? 'Create campaign' : 'Sign in to create a campaign'}
+        accessibilityLabel={hasSession ? 'Create campaign' : 'Connect a wallet to create a campaign'}
       >
         <IconPlus size={16} sw={2.2} color={Colors.light.card} />
       </Pressable>
@@ -370,7 +392,7 @@ function TabBar({
 const HOW_STEPS = [
   'Join a campaign and complete the required steps.',
   'Verify your tasks to unlock the reward claim.',
-  'Claim the reward using your Testnet session identity.',
+  'Claim the reward using your connected wallet.',
   'Refresh to sync the latest campaign status.',
 ];
 
@@ -419,6 +441,55 @@ function HowItWorks({ open, onToggle }: { open: boolean; onToggle: () => void })
  * As alturas são medidas contra o layout real: um esqueleto de altura errada
  * promete uma silhueta e entrega outra, e aí a tela pula do mesmo jeito.
  */
+/** Rótulo do passo atual — mesmos três estados que `CampaignCard` desenha no trilho. */
+function stageLabel(item: UserCampaignParticipation): string {
+  if (item.tasks_claimed) return 'Claimed';
+  if (item.participation_status === 'tasks_verified') return 'Ready to claim';
+  return 'In progress';
+}
+
+/** Uma linha por participação, na aba "My Campaigns". */
+function ParticipationRow({ item }: { item: UserCampaignParticipation }) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowTop}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <View style={[styles.rowBadge, item.tasks_claimed && styles.rowBadgeDone]}>
+          <Text style={[styles.rowBadgeText, item.tasks_claimed && styles.rowBadgeTextDone]}>
+            {stageLabel(item)}
+          </Text>
+        </View>
+      </View>
+      <Text style={styles.rowSubtitle}>
+        {formatTokenAmount(item.reward_per_participant)} {item.reward_token}
+      </Text>
+    </View>
+  );
+}
+
+/** Uma linha por recompensa já resgatada, na aba "Rewards". */
+function RewardRow({ item }: { item: UserCampaignParticipation }) {
+  return (
+    <View style={styles.row}>
+      <View style={styles.rowTop}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {item.name}
+        </Text>
+        <Text style={styles.rewardAmount}>
+          {formatTokenAmount(item.reward_per_participant)} {item.reward_token}
+        </Text>
+      </View>
+      {/* Nem toda participação antiga tem recibo — a coluna existe desde antes
+          do resgate real ficar pronto. */}
+      {item.claim_receipt_id ? (
+        <Text style={styles.rowSubtitle}>Receipt {item.claim_receipt_id}</Text>
+      ) : null}
+    </View>
+  );
+}
+
 function CampaignsSkeleton() {
   return (
     <View style={styles.skeleton} accessible accessibilityLabel="Loading campaigns">
@@ -625,4 +696,34 @@ const styles = StyleSheet.create({
   dots: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.two - 2 },
   dot: { width: 8, height: 8, borderRadius: Radius.pill, backgroundColor: Colors.light.border },
   dotActive: { width: 22, backgroundColor: Colors.light.accent },
+
+  // ── My Campaigns / Rewards ─────────────────────────────────────────────
+  list: { gap: Spacing.two },
+  row: {
+    gap: Spacing.one,
+    padding: Spacing.three - 2,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.card,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: Colors.light.border,
+  },
+  rowTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.two },
+  rowTitle: { flex: 1, fontFamily: Fonts.bold, fontSize: 14, color: Colors.light.ink },
+  rowSubtitle: { fontFamily: Fonts.sans, fontSize: 12, color: Colors.light.ink2 },
+  rowBadge: {
+    paddingHorizontal: Spacing.two - 2,
+    paddingVertical: 2,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.warnSoft,
+  },
+  rowBadgeDone: { backgroundColor: Colors.light.successSoft },
+  rowBadgeText: {
+    fontFamily: Fonts.bold,
+    fontSize: 9,
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    color: Colors.light.warn,
+  },
+  rowBadgeTextDone: { color: Colors.light.success },
+  rewardAmount: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.light.accent },
 });

@@ -23,6 +23,17 @@
     },
     "production": {
       "autoIncrement": true
+    },
+    "production-apk": {
+      "distribution": "internal",
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://xiaolee-mobile-api-production.up.railway.app",
+        "EXPO_PUBLIC_WC_PROJECT_ID": "9b4b01ee7b671e892738dec91a6bae82"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     }
   },
   "submit": {

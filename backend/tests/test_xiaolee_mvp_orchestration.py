@@ -64,6 +64,55 @@ async def test_help_fallback_uses_gemini_reply():
     assert result["reply_text"] == "Resposta generica de ajuda"
 
 
+class FakeClaudeEngine:
+    """Records the kwargs of the last `run()` call — enough to assert `execute()`
+    actually forwards conversation history into the agentic path."""
+
+    def __init__(self):
+        self.last_call: dict | None = None
+
+    async def run(self, *, system_prompt, message, tools, tool_executor, history=None, max_tokens=4096):
+        self.last_call = {"system_prompt": system_prompt, "message": message, "history": history}
+        return {"text": "lembro sim!", "executed_tools": [], "stop_reason": "end_turn", "usage": None}
+
+
+@pytest.mark.asyncio
+async def test_agentic_path_forwards_history_to_claude():
+    # Regressão: `_execute_agentic` recebia `history` mas nunca repassava pro
+    # `claude_engine.run()` — cada turno virava uma conversa nova pro modelo, sem
+    # lembrar de nada dito antes (endereço de carteira, contexto, etc).
+    engine = FakeClaudeEngine()
+    service = OrchestrationService(gemini=FakeGemini(), solana=FakeSolana(), claude_engine=engine)
+
+    db_history = [
+        {"role": "user", "content": "minha carteira e 0xABC123"},
+        {"role": "bot", "content": "Anotado! Endereco 0xABC123 salvo."},
+    ]
+
+    result = await service.execute("voce lembra da minha carteira?", "user-4", history=db_history)
+
+    assert result["reply_text"] == "lembro sim!"
+    assert engine.last_call["history"] == [
+        {"role": "user", "content": "minha carteira e 0xABC123"},
+        {"role": "assistant", "content": "Anotado! Endereco 0xABC123 salvo."},
+    ]
+
+
+def test_history_to_anthropic_strips_wallet_note_and_maps_bot_role():
+    history = [
+        {"role": "user", "content": "[System Note: User connected wallet is 0xABC] oi"},
+        {"role": "bot", "content": "Oi! Como posso ajudar?"},
+        {"role": "user", "content": "  "},  # sem conteudo real apos strip — deve sumir
+    ]
+
+    converted = OrchestrationService._history_to_anthropic(history)
+
+    assert converted == [
+        {"role": "user", "content": "oi"},
+        {"role": "assistant", "content": "Oi! Como posso ajudar?"},
+    ]
+
+
 def test_telegram_adapter_normalization():
     adapter = TelegramAdapter()
     normalized = adapter.normalize_update(

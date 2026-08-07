@@ -674,6 +674,29 @@ class OrchestrationService:
                                   entities={"wallet": stellar_wallet})
         return IntentResponse(action="help", confidence=0.7, entities={})
 
+    @staticmethod
+    def _history_to_anthropic(history: list | None) -> list[dict]:
+        """DB history (`role: user/bot`, from `DatabaseRepository.get_user_history`) to
+        Anthropic's `messages` shape (`role: user/assistant`).
+
+        Same system-note strip as `GeminiClient._build_contents` — a wallet note from a
+        past turn would otherwise sit in context as if the user just said it again.
+        Content can never end up empty from this alone: `chat_compat` rejects an empty
+        `message` before any note gets prepended, so the strip only removes the note,
+        never the whole turn — which matters here, because `get_user_history` always
+        hands back an even, user-first, alternating slice (each turn logs exactly one
+        user row then one bot row), and dropping a turn would break that alternation,
+        which the Anthropic Messages API requires.
+        """
+        messages: list[dict] = []
+        for turn in history or []:
+            content = re.sub(r"\[System Note:[^\]]+\]\s*", "", turn.get("content", "")).strip()
+            if not content:
+                continue
+            role = "assistant" if turn.get("role") == "bot" else "user"
+            messages.append({"role": role, "content": content})
+        return messages
+
     async def _execute_agentic(self, text: str, user_id: str, history: list = None,
                                platform: str = "web") -> Dict[str, Any]:
         stellar_wallet = self._extract_stellar_wallet_from_note(text)
@@ -689,6 +712,7 @@ class OrchestrationService:
             message=clean_text,
             tools=STELLAR_AGENT_TOOLS,
             tool_executor=executor,
+            history=self._history_to_anthropic(history),
         )
 
         reply = result.get("text") or "Como posso te ajudar com sua carteira Stellar hoje? 🌸"

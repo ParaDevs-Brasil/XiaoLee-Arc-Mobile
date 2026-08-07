@@ -60,9 +60,8 @@ const STEP_LABEL: Record<Step, string> = {
 interface CampaignCardProps {
   campaign: Campaign;
   /**
-   * Entrar, verificar e resgatar dependem de sessão. Sem ela os três botões
-   * ficam travados com o mesmo texto do web ("Waiting for Testnet Session"),
-   * em vez de falharem no toque.
+   * Entrar, verificar e resgatar dependem de carteira conectada. Sem ela os
+   * três botões ficam travados com o mesmo aviso, em vez de falharem no toque.
    */
   hasSession: boolean;
   /** Participação do usuário nesta campanha, se já entrou. */
@@ -95,7 +94,7 @@ export function CampaignCard({
   const hasTasks = Boolean(campaign.profile_to_follow || campaign.tweet_id_to_engage);
 
   const step = stepOf(participation);
-  const { address } = useWalletConnect();
+  const { address, signMessage } = useWalletConnect();
   const [busy, setBusy] = useState(false);
   // Uma linha só de retorno. `tone` separa "a verificação reprovou" (informação
   // legítima, o usuário ainda não fez a tarefa) de "a chamada falhou".
@@ -113,20 +112,41 @@ export function CampaignCard({
         const result = await verifyCampaignTasks(campaign.id);
         setNotice({ text: result.message, tone: result.allTasksCompleted ? 'info' : 'error' });
       } else {
-        // O backend exige um endereço de payout não vazio mesmo em sessão
-        // custodial, onde ele não confere assinatura. Sem carteira conectada a
-        // chamada voltaria 400 — melhor dizer o que falta.
+        // A conta é a carteira agora — sem uma conectada não há quem provar
+        // posse nem para onde pagar.
         if (!address) {
           setNotice({ text: 'Connect a wallet to receive the reward.', tone: 'error' });
           return;
         }
+        // `session` é o mesmo valor que `apiFetch` já manda como Bearer
+        // (`getSessionToken`, gravado em minúsculas por `lib/walletconnect.tsx`
+        // ao conectar) — a prova precisa citar exatamente esse texto, não o
+        // endereço com o casing original, ou o backend recusa com 400 por não
+        // bater com o prefixo esperado.
         const session = await getSessionToken();
         if (!session) {
-          setNotice({ text: 'Sign in again to claim.', tone: 'error' });
+          setNotice({ text: 'Connect a wallet to claim.', tone: 'error' });
           return;
         }
-        const result = await claimCampaignReward(campaign.id, session, address);
-        setNotice({ text: result.message, tone: 'info' });
+        const proofMessage = `XiaoLee Devnet claim|campaign:${campaign.id}|session:${session}|wallet:${address}|ts:${Date.now()}`;
+        let signature: string;
+        try {
+          signature = await signMessage(proofMessage);
+        } catch {
+          setNotice({ text: 'Wallet signature was cancelled or failed.', tone: 'error' });
+          return;
+        }
+        const result = await claimCampaignReward(campaign.id, address, proofMessage, signature);
+        // `paidOnchain` distingue USDC de verdade saindo da tesouraria (Circle
+        // W3S no Arc) de um resgate só registrado — hoje só EVM+USDC paga de
+        // verdade (`campaigns_routes.py::claim_reward`); o resto (ex. wallet
+        // Solana legada) grava o resgate sem mover token nenhum.
+        setNotice({
+          text: result.paidOnchain
+            ? `${result.message} USDC sent to your wallet.`
+            : `${result.message} Recorded — no on-chain transfer for this wallet/token yet.`,
+          tone: 'info',
+        });
       }
 
       onChanged?.();
@@ -230,7 +250,7 @@ export function CampaignCard({
             </Text>
           ) : null}
           <Action
-            label={hasSession ? STEP_LABEL[step] : 'Waiting for Testnet Session'}
+            label={hasSession ? STEP_LABEL[step] : 'Connect a wallet to continue'}
             disabled={!hasSession || step === 'done'}
             busy={busy}
             onPress={runStep}

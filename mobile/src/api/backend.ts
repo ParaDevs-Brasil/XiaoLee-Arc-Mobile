@@ -505,34 +505,44 @@ export interface ClaimResult {
   receiptId: string | null;
   rewardAmount: number | null;
   rewardToken: string | null;
+  /**
+   * `true` só quando o backend de fato mandou USDC on-chain via Circle W3S
+   * (`campaigns_routes.py::claim_reward`) — hoje isso exige carteira EVM e
+   * recompensa em USDC. Fora desses dois casos (ex.: wallet Solana legada) o
+   * resgate ainda é só registrado, sem transferência real.
+   */
+  paidOnchain: boolean;
 }
 
 /**
- * O `proof_message` precisa bater com o prefixo exato que
- * `_verify_claim_proof` monta, senão a rota recusa com 400. Sessão custodial
- * (Google/Telegram/Firebase) dispensa a assinatura de carteira — o dono já veio
- * provado no `Bearer` —, então aqui mandamos só a mensagem e o endereço de
- * payout. Carteira externa exigiria assinar `proof_message` e enviar em
- * `wallet_signature`; quando o app suportar isso, é este ponto que muda.
+ * A conta é sempre a carteira agora (não há mais sessão custodial do Google) —
+ * então todo resgate é não-custodial e precisa da assinatura EIP-191 que
+ * `_verify_claim_proof` confere (`campaigns_routes.py`): recupera o endereço
+ * de `wallet_signature` sobre `proofMessage` e compara com `walletAddress`.
+ * `proofMessage` é montada por quem chama (`campaign-card.tsx`, que tem a
+ * `signMessage` do WalletConnect) — aqui só empacota o que já foi assinado.
  */
 export async function claimCampaignReward(
   campaignId: number,
-  sessionToken: string,
   walletAddress: string,
+  proofMessage: string,
+  signature: string,
 ): Promise<ClaimResult> {
   const result = await apiFetch<
     CampaignActionResult & {
       claim_receipt_id?: string;
       reward_amount?: number;
       reward_token?: string;
+      paid_onchain?: boolean;
     }
   >('/campaigns/claim', {
     method: 'POST',
     json: {
       campaign_identifier: String(campaignId),
       wallet_public_key: walletAddress,
-      proof_message: `XiaoLee Devnet claim|campaign:${campaignId}|session:${sessionToken}|wallet:${walletAddress}`,
-      proof_encoding: 'none',
+      proof_message: proofMessage,
+      proof_encoding: 'eip191',
+      wallet_signature: signature,
     },
   });
 
@@ -545,5 +555,6 @@ export async function claimCampaignReward(
     receiptId: result.claim_receipt_id ?? null,
     rewardAmount: result.reward_amount ?? null,
     rewardToken: result.reward_token ?? null,
+    paidOnchain: result.paid_onchain ?? false,
   };
 }

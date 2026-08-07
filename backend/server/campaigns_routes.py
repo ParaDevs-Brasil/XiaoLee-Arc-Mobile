@@ -29,6 +29,8 @@ from database.database import get_db_session
 from server import token_auth
 import logging
 from database.models import AuthToken, Campaign as CampaignModel, CampaignParticipant, NotificationEvent, User, Wallet, WebSession
+from server.integrations.arc_client import ArcClient
+from server.settings import settings
 
 logger = logging.getLogger(__name__)
 from fastapi import Depends
@@ -380,6 +382,20 @@ async def _get_campaign_or_404(db: AsyncSession, campaign_id: int) -> CampaignMo
     if not campaign:
         raise HTTPException(status_code=404, detail=f"Campaign {campaign_id} not found")
     return campaign
+
+
+def _campaign_arc_client() -> ArcClient:
+    """Mesma construção de `arc_routes.py::_arc_client` — sem import cruzado
+    entre módulos de rota por uma factory de 6 linhas. `sandbox=True`
+    (padrão de `ARC_SANDBOX`) devolve um `sandbox_tx_...` determinístico sem
+    tocar rede, então isto é seguro para rodar sem credencial Circle."""
+    return ArcClient(
+        api_key=settings.circle_api_key,
+        wallet_id=settings.circle_wallet_id,
+        blockchain=settings.circle_blockchain,
+        usdc_token_id=settings.circle_usdc_token_id,
+        sandbox=settings.arc_sandbox,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1086,6 +1102,55 @@ async def claim_reward(
     _verify_claim_proof(payload, campaign_id, _get_user_id_from_token(authorization))
 
     receipt_id = str(uuid.uuid4())[:16]
+    wallet_address = (payload.wallet_public_key or "").strip()
+    reward_amount = float(campaign.reward_per_participant)
+    # Sobrescrito por `arc.send_usdc` quando o payout roda de verdade — até lá
+    # é só o identificador do registro, igual ao comportamento anterior.
+    tx_id = str(uuid.uuid4())[:16]
+    paid_onchain = False
+
+    # Só existe rail de pagamento real para EVM + USDC (Circle W3S no Arc). Uma
+    # campanha em outro token, ou resgatada por uma wallet Solana/Stellar
+    # (`_verify_claim_proof` ainda aceita as duas), continua só registrando o
+    # resgate — pagar "USDC" para um endereço que não existe nessa rede seria
+    # pior que não pagar.
+    if wallet_address.startswith("0x") and campaign.reward_token.upper() == "USDC":
+        # Determinístico por (campanha, usuário) — não por chamada: um retry de
+        # rede antes do `commit` abaixo não deve virar um segundo pagamento.
+        idempotency_key = str(
+            uuid.uuid5(uuid.NAMESPACE_OID, f"xiaolee-campaign-claim:{campaign_id}:{user.id}")
+        )
+        arc = _campaign_arc_client()
+        try:
+            # `wait_confirmed=False`: a confirmação on-chain pode levar até
+            # `_POLL_TIMEOUT_S` (120s) — tempo demais para o app esperar um
+            # botão de claim. A iniciação aceita pela Circle é o suficiente
+            # para marcar como pago; falha depois disso é rara e vira caso de
+            # suporte, não uma segunda tentativa do usuário.
+            tx_id = await arc.send_usdc(
+                to_address=wallet_address,
+                amount_usdc=reward_amount,
+                idempotency_key=idempotency_key,
+                wait_confirmed=False,
+            )
+            paid_onchain = True
+        except Exception as exc:
+            logger.error(
+                "[campaigns/claim] Arc payout failed campaign=%d user=%d: %s",
+                campaign_id, user.id, exc, exc_info=True,
+            )
+            # Nada é gravado — nem `status`, nem recibo — para que o usuário
+            # possa tocar em Claim de novo depois que a tesouraria for corrigida.
+            return {
+                "success": False,
+                "error": "Payout failed — nothing was charged. Try claiming again in a moment.",
+            }
+    else:
+        logger.warning(
+            "[campaigns/claim] no on-chain payout rail for wallet=%r token=%s (campaign %d) — recording claim without transfer",
+            wallet_address, campaign.reward_token, campaign_id,
+        )
+
     participant.status = "paid"
     participant.claim_receipt_id = receipt_id
     db.add(
@@ -1093,30 +1158,32 @@ async def claim_reward(
             user_id=user.id,
             channel="in_app",
             title=f"Campaign reward claimed: {campaign.name}",
-            body=f"You claimed {float(campaign.reward_per_participant)} {campaign.reward_token} and received receipt {receipt_id}.",
+            body=f"You claimed {reward_amount} {campaign.reward_token} and received receipt {receipt_id}.",
             status="pending",
             related_signature=receipt_id,
             metadata_json=json.dumps(
                 {
                     "campaign_id": campaign_id,
-                    "reward_amount": float(campaign.reward_per_participant),
+                    "reward_amount": reward_amount,
                     "reward_token": campaign.reward_token,
-                    "wallet_public_key": payload.wallet_public_key or "",
+                    "wallet_public_key": wallet_address,
                     "claim_receipt_id": receipt_id,
+                    "tx_id": tx_id,
+                    "paid_onchain": paid_onchain,
                 }
             ),
         )
     )
     await db.commit()
-    tx_id = str(uuid.uuid4())[:16]
     record_campaign_event("claim")
     return {
         "success": True,
-        "message": f"{float(campaign.reward_per_participant)} {campaign.reward_token} claimed successfully!",
+        "message": f"{reward_amount} {campaign.reward_token} claimed successfully!",
         "transaction_id": tx_id,
         "claim_receipt_id": receipt_id,
-        "reward_amount": float(campaign.reward_per_participant),
+        "reward_amount": reward_amount,
         "reward_token": campaign.reward_token,
         "wallet_public_key": payload.wallet_public_key,
         "proof_submitted": bool(payload.wallet_signature or payload.proof_message),
+        "paid_onchain": paid_onchain,
     }

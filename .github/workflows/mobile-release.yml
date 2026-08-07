@@ -57,7 +57,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ github.ref_name }}" mobile/xiaolee.apk \
+          gh release create "${{ github.ref_name }}" xiaolee.apk \
             --repo "${{ github.repository }}" \
             --title "XiaoLee Mobile ${{ github.ref_name }}" \
             --notes "Build de produção gerado automaticamente pelo GitHub Actions a partir da tag ${{ github.ref_name }}."

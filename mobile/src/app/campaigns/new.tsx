@@ -158,7 +158,7 @@ export default function NewCampaignScreen() {
           <View style={styles.notice}>
             <IconAlert size={14} color={Colors.light.ink2} />
             <Text style={styles.noticeText}>
-              Sign in first — the campaign is created under your session.
+              Connect a wallet first — the campaign is created under your account.
             </Text>
           </View>
         ) : null}

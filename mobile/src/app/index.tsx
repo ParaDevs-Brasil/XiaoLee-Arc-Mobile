@@ -239,9 +239,8 @@ export default function ChatScreen() {
       // não sabe qual carteira consultar e responde "conecte sua carteira".
       //
       // A sessão viva do WalletConnect vem primeiro, e o SecureStore é só o
-      // fallback de quando o app reabre sem relay. Depender só do gravado
-      // amarraria o chat ao login, porque quem grava é o `linkWallet` — e ele
-      // exige sessão (`POST /auth/wallet` responde 401 sem ela).
+      // fallback de quando o app reabre sem relay (a sessão do WC ainda não
+      // foi restabelecida, mas o endereço já foi gravado da última vez).
       const stored = await getWallet();
       const wallet = wc.address
         ? { address: wc.address, chain: wc.chain ?? 'evm' }

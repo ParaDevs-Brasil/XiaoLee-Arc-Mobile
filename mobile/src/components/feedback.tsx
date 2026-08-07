@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { ApiError } from '@/api/client';
 import type { IconProps } from '@/components/icons';
+import { IconWallet } from '@/components/icons';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { GoogleSignInCancelled, signInAndStartSession } from '@/lib/auth';
+import { useWalletConnect } from '@/lib/walletconnect';
 
 /**
  * Os três estados que toda tela de dado tem antes (ou em vez) do conteúdo:
@@ -139,52 +139,30 @@ export function ErrorState({
 }
 
 /**
- * Entrar com Google de dentro do estado de convidado.
+ * Conectar carteira de dentro do estado de convidado.
  *
- * Os estados vazios mandavam o usuário "para o chat", onde o login não está à
- * vista: ele mora no painel de perfil, atrás do avatar do header. Instrução que
- * aponta para lugar nenhum visível não é instrução — este botão faz o login no
- * lugar onde o usuário já está, e `saveSession` avisa todas as telas montadas.
+ * Os estados vazios mandavam o usuário "para o chat", onde conectar não está à
+ * vista: o botão mora no painel de perfil, atrás do avatar do header.
+ * Instrução que aponta para lugar nenhum visível não é instrução — este botão
+ * abre o modal no lugar onde o usuário já está.
  *
- * Mantém o próprio `busy`/`error` em vez de receber do `ScreenShell`: são duas
- * portas para o mesmo login, e acoplá-las obrigaria a passar estado por toda a
- * árvore para não ganhar nada — o resultado chega pela sessão de qualquer jeito.
+ * Sem `busy`/`error` próprios: `openModal()` só abre a UI nativa do
+ * WalletConnect, que tem seus próprios estados — não há chamada de rede daqui
+ * para esperar ou que possa falhar.
  */
-export function SignInButton({ label = 'Sign in with Google' }: { label?: string }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string>();
-
-  async function press() {
-    setBusy(true);
-    setError(undefined);
-    try {
-      await signInAndStartSession();
-      // Nada a aplicar aqui: quem estava mostrando o estado de convidado está
-      // assinando a sessão e troca de estado sozinho.
-    } catch (err) {
-      // Desistir do login não é erro — não vale ocupar a tela com isso.
-      if (err instanceof GoogleSignInCancelled) return;
-      setError(err instanceof ApiError ? err.message : String(err));
-    } finally {
-      setBusy(false);
-    }
-  }
+export function ConnectWalletButton({ label = 'Connect Wallet' }: { label?: string }) {
+  const { openModal } = useWalletConnect();
 
   return (
-    <>
-      <Pressable
-        onPress={press}
-        disabled={busy}
-        style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
-        accessibilityRole="button"
-        accessibilityLabel={label}
-        accessibilityState={{ busy, disabled: busy }}
-      >
-        {busy ? <ActivityIndicator size="small" color={Colors.light.card} /> : null}
-        <Text style={styles.signInText}>{busy ? 'Signing in…' : label}</Text>
-      </Pressable>
-      {error ? <Text style={styles.signInError}>{error}</Text> : null}
-    </>
+    <Pressable
+      onPress={openModal}
+      style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <IconWallet size={16} color={Colors.light.card} />
+      <Text style={styles.signInText}>{label}</Text>
+    </Pressable>
   );
 }
 
@@ -243,11 +221,4 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.accent,
   },
   signInText: { fontFamily: Fonts.bold, fontSize: 13, color: Colors.light.card },
-  signInError: {
-    fontFamily: Fonts.sans,
-    fontSize: 11,
-    color: Colors.light.danger,
-    textAlign: 'center',
-    marginTop: Spacing.one,
-  },
 });

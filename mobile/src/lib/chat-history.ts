@@ -15,10 +15,10 @@ import { getSession } from '@/lib/session';
  * backend, que a tela de Histórico do web lê. Este módulo é o mesmo acordo,
  * com `AsyncStorage` no lugar do `localStorage`.
  *
- * Escopado por conta (`session.twitterUserId`), não por `sessionId`: o token
- * de sessão é trocado a cada login, mas a conta é a mesma — e é a mesma conta
- * que deve reencontrar a própria conversa, inclusive depois de logout/login
- * de novo. Sem sessão, cai em `guest`: convidado tem uma única conversa
+ * Escopado por conta (`session.twitterUserId`, que hoje é o endereço da
+ * carteira conectada) — é a mesma conta que deve reencontrar a própria
+ * conversa, inclusive depois de desconectar e reconectar a mesma carteira.
+ * Sem carteira conectada, cai em `guest`: convidado tem uma única conversa
  * compartilhada, como sempre foi.
  */
 

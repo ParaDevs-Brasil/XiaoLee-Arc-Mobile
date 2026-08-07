@@ -3,7 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ackNotification, listNotifications, type NotificationItem } from '@/api/backend';
-import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
 import {
   IconAlert,
   IconBell,
@@ -141,7 +141,7 @@ export default function NotificationsScreen() {
       >
         <PageHeading
           title="Notifications"
-          subtitle="Receipts and campaign updates from your Testnet session."
+          subtitle="Receipts and campaign updates from your connected wallet."
         />
 
         {/* Aparece mesmo com lista na tela: uma recarga que falhou em silêncio
@@ -257,8 +257,8 @@ function FilterBar({
 }
 
 /**
- * Estado de convidado. O login acontece aqui mesmo: mandar para o chat era
- * mandar para uma tela onde o botão de entrar também não está à vista — ele
+ * Estado de convidado. Conectar acontece aqui mesmo: mandar para o chat era
+ * mandar para uma tela onde o botão de conectar também não está à vista — ele
  * vive no painel de perfil, atrás do avatar do header.
  */
 function GuestState() {
@@ -267,11 +267,11 @@ function GuestState() {
       <View style={styles.guestIcon}>
         <IconUser size={22} color={Colors.light.ink3} />
       </View>
-      <Text style={styles.guestTitle}>No session yet</Text>
+      <Text style={styles.guestTitle}>No wallet connected</Text>
       <Text style={styles.guestText}>
-        Notifications are tied to your Testnet session. Sign in to see your receipts.
+        Notifications are tied to your connected wallet. Connect one to see your receipts.
       </Text>
-      <SignInButton />
+      <ConnectWalletButton />
     </View>
   );
 }

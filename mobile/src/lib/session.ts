@@ -2,9 +2,9 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 /**
- * Token de sessão emitido por `POST /auth/telegram/login` ou
- * `POST /auth/google/login` — vai como `Bearer` em todas as chamadas
- * autenticadas do backend.
+ * Token de sessão — vai como `Bearer` em todas as chamadas autenticadas do
+ * backend. É o endereço da carteira conectada (`lib/walletconnect.tsx`
+ * grava aqui ao conectar): não há login separado, a carteira é a conta.
  *
  * No web (`expo start --web`) o SecureStore não existe; caímos para
  * localStorage, que é o que o frontend Next.js já usa.
@@ -55,14 +55,7 @@ async function removeItem(key: string): Promise<void> {
 export interface Session {
   sessionId: string;
   twitterUserId: string;
-  /**
-   * Nome de exibição — o `username` que `/auth/session` devolve.
-   *
-   * Guardado separado do `twitterUserId` porque os dois não são a mesma coisa:
-   * o id é interno (`firebase_<uid>`) e é o que vai nas requisições; o handle é
-   * o nome da conta Google, e é o que o painel de perfil deve mostrar. Sem ele
-   * o usuário logado aparecia como `@firebase_9x8s7…`.
-   */
+  /** Endereço abreviado (`shortHash`), para exibição no painel de perfil. */
   handle?: string;
 }
 

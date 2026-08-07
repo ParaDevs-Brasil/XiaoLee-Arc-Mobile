@@ -18,18 +18,19 @@ import {
   getArcChainConfig,
   getArcGasFees,
   getUsdcAuthorizationDomain,
-  linkWallet,
   relayUsdcAuthorization,
 } from '@/api/backend';
-import { ApiError } from '@/api/client';
-import { useSession } from '@/hooks/use-session';
-import { clearWallet, getWallet, saveWallet, type ConnectedWallet } from '@/lib/session';
+import { shortHash } from '@/lib/format';
+import { clearSession, clearWallet, getWallet, saveSession, saveWallet, type ConnectedWallet } from '@/lib/session';
 
 /**
  * Provider de WalletConnect para o app mobile.
  *
- * Abre o modal nativo de seleção de carteira (Metamask, Rainbow, Trust, etc.)
- * e vincula o endereço conectado ao backend via POST /auth/wallet.
+ * Abre o modal nativo de seleção de carteira (Metamask, Rainbow, Trust, etc.).
+ * A carteira conectada **é** a sessão do app: não há login separado (ver
+ * `lib/auth.ts`, removido) — `saveSession` grava o endereço como identidade
+ * assim que a carteira conecta, e é essa identidade que vai como `Bearer` em
+ * toda chamada autenticada (`api/client.ts::apiFetch`).
  */
 
 const PROJECT_ID = process.env.EXPO_PUBLIC_WC_PROJECT_ID?.trim() || 'CHANGE_ME';
@@ -78,13 +79,7 @@ const RECOMMENDED_WALLETS = [
 interface WalletConnectContextValue {
   isConnected: boolean;
   address: string | undefined;
-  /**
-   * Chain da sessão viva, independente do vínculo no backend.
-   *
-   * Existe porque `POST /auth/wallet` exige sessão de login, e o chat precisa
-   * saber a carteira mesmo sem ela — conectar carteira e entrar na conta são
-   * coisas distintas.
-   */
+  /** Chain da sessão viva do WalletConnect. */
   chain: string | undefined;
   /**
    * Se a carteira conhece a rede Arc — lido do escopo da sessão.
@@ -97,8 +92,6 @@ interface WalletConnectContextValue {
    * meio de uma transferência.
    */
   hasArcNetwork: boolean;
-  isLinking: boolean;
-  linkError: string | null;
   openModal: () => void;
   disconnect: () => void;
   /** Assina e envia a tx preparada pelo backend. Devolve o hash. */
@@ -108,6 +101,13 @@ interface WalletConnectContextValue {
    * carteira esteja na rede Arc. Devolve o hash da tx submetida pelo backend.
    */
   signAndRelay: (to: string, amountUsdc: number) => Promise<string>;
+  /**
+   * Assinatura EIP-191 (`personal_sign`) sobre uma mensagem UTF-8 qualquer —
+   * devolve a assinatura hex de 65 bytes. É a prova de posse da carteira que o
+   * backend confere em `_verify_claim_proof` (`campaigns_routes.py`) para
+   * resgates de campanha sem sessão custodial.
+   */
+  signMessage: (message: string) => Promise<string>;
 }
 
 /**
@@ -413,6 +413,23 @@ async function signAndRelayAuthorization(
 }
 
 /**
+ * Assina uma mensagem UTF-8 via EIP-191 `personal_sign` — porta de
+ * `frontend/src/lib/evmWallet.ts::signEvmMessage`, mesma codificação hex e
+ * mesma ordem de parâmetros (`[mensagem, endereço]`, ao contrário do typed
+ * data acima). O backend recupera o endereço com
+ * `eth_account.Account.recover_message(encode_defunct(text=message), ...)` —
+ * qualquer diferença de codificação aqui faz a assinatura não bater.
+ *
+ * Não passa por `ensureArcNetwork`: assinar uma mensagem não depende de rede,
+ * ao contrário de `eth_sendTransaction`/`eth_signTypedData_v4`.
+ */
+async function personalSign(requester: Requester, address: string, message: string): Promise<string> {
+  const hex =
+    '0x' + Array.from(new TextEncoder().encode(message), (b) => b.toString(16).padStart(2, '0')).join('');
+  return (await requester.request({ method: 'personal_sign', params: [hex, address] })) as string;
+}
+
+/**
  * Nonce de 32 bytes da autorização.
  *
  * É o que impede a mesma assinatura de ser submetida duas vezes — o contrato
@@ -604,108 +621,64 @@ const WCContext = createContext<WalletConnectContextValue | null>(null);
 
 export function WalletConnectProvider({ children }: { children: ReactNode }) {
   const { isConnected, address, open, provider } = useWalletConnectModal();
-  const { hasSession } = useSession();
-  const [isLinking, setIsLinking] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
   const [storedWallet, setStoredWallet] = useState<ConnectedWallet | null>(null);
   const [liveChain, setLiveChain] = useState<string>();
-  /** Endereço cujo vínculo já foi tentado nesta execução — evita repetir o POST. */
-  const attempted = useRef<string>(undefined);
+  /** Endereço já gravado como sessão nesta execução — evita regravar a cada render. */
+  const established = useRef<string>(undefined);
 
   // Restaura wallet do SecureStore na montagem
   useEffect(() => {
     getWallet().then(setStoredWallet);
   }, []);
 
-  // A marca de "já tentei" morre quando a sessão aparece.
-  //
-  // Conectar a carteira antes de entrar na conta é o caminho comum, e ali o
-  // vínculo falha com 401 `Sign in required` — a rota tira o dono do Bearer.
-  // Sem zerar a marca, o login não re-tentava nada: a carteira ficava conectada
-  // na tela, o erro pendurado embaixo dela, e vincular exigia desconectar e
-  // reconectar. Roda antes do efeito de vínculo, que tem `hasSession` nas deps.
-  //
-  // Só mexe no ref: limpar o erro aqui seria `setState` no corpo do efeito, que
-  // o lint barra com razão. Quem limpa é o `link()`, ao recomeçar.
-  useEffect(() => {
-    if (!hasSession) return;
-    attempted.current = undefined;
-  }, [hasSession]);
-
-  // Quando conecta via WalletConnect, vincula ao backend.
+  // Quando conecta via WalletConnect, a carteira vira a sessão do app — não há
+  // mais um POST /auth/wallet a esperar nem um 401 a tratar: `saveSession` é
+  // síncrono ao SecureStore, então conectar já é "estar logado".
   //
   // O corpo do efeito não chama `setState` direto (o lint do React barra, e com
   // razão: dispararia render em cascata) — quem chama é a cadeia da promise,
   // que já roda fora do render.
   useEffect(() => {
     if (!isConnected || !address) return;
-    if (storedWallet && storedWallet.address.toLowerCase() === address.toLowerCase()) return;
-
-    // Uma tentativa por endereço. Sem isto o vínculo vira laço: `provider` está
-    // nas dependências, o `storedWallet` só é gravado quando o POST dá certo, e
-    // um 401 (login ausente) deixava a guarda acima sempre aberta — quatro
-    // chamadas em sequência foi o que apareceu no log do backend.
-    //
-    // A marca é zerada quando a sessão aparece (efeito acima), que é o caso em
-    // que a tentativa anterior morreu de 401 e merece uma segunda chance.
-    if (attempted.current === address.toLowerCase()) return;
-    attempted.current = address.toLowerCase();
+    if (established.current === address.toLowerCase()) return;
+    established.current = address.toLowerCase();
 
     const accounts = provider?.session?.namespaces?.eip155?.accounts;
     const requester = provider as Requester | undefined;
 
     let cancelled = false;
-    async function link(wallet: string) {
-      setIsLinking(true);
-      setLinkError(null);
-      try {
-        // Sem tentar trocar a rede aqui, de propósito.
-        //
-        // O fluxo de transferência é gasless (EIP-3009): o usuário assina um
-        // typed data, que vale em qualquer rede, e o backend submete no Arc. A
-        // carteira nunca precisa estar no Arc.
-        //
-        // Tentar a troca mesmo assim custava duas requisições condenadas por
-        // conexão — `wallet_switchEthereumChain` e `wallet_addEthereumChain` não
-        // estão no namespace aprovado da sessão, então o cliente as recusa com
-        // "Invalid params" e o usuário vê um LogBox vermelho ao conectar.
-        const chain = await currentChain(requester, accounts);
+    async function establish(wallet: string) {
+      const id = wallet.toLowerCase();
+      const chain = await currentChain(requester, accounts);
+      if (cancelled) return;
 
-        // Publicada antes de vincular, e de propósito: o vínculo é persistência
-        // no backend e exige sessão, mas a carteira já está conectada e o
-        // endereço já é conhecido aqui. Guardar isto atrás do login deixaria o
-        // chat dizendo "conecte sua carteira" com a carteira conectada ao lado.
-        if (!cancelled) setLiveChain(chain);
-
-        const linked = await linkWallet(wallet, chain);
-        const connected = { address: linked.address, chain: linked.chain };
-        await saveWallet(connected);
-        if (!cancelled) setStoredWallet(connected);
-      } catch (err) {
-        if (!cancelled) setLinkError(err instanceof ApiError ? err.message : String(err));
-      } finally {
-        if (!cancelled) setIsLinking(false);
-      }
+      setLiveChain(chain);
+      await Promise.all([
+        saveSession({ sessionId: id, twitterUserId: id, handle: shortHash(wallet) }),
+        saveWallet({ address: wallet, chain }),
+      ]);
+      if (!cancelled) setStoredWallet({ address: wallet, chain });
     }
-    link(address);
+    establish(address);
 
     return () => {
       cancelled = true;
     };
-    // `provider` entra nas deps porque a chain sai da sessão dele. Reexecutar
-    // é barato: a checagem de `storedWallet` acima corta antes de vincular de
-    // novo o mesmo endereço. `hasSession` entra para que o login re-dispare a
-    // tentativa que falhou deslogada.
-  }, [isConnected, address, storedWallet, provider, hasSession]);
+    // `provider` entra nas deps porque a chain sai da sessão dele. Reexecutar é
+    // barato: a checagem de `established` acima corta antes de regravar a mesma
+    // sessão duas vezes.
+  }, [isConnected, address, provider]);
 
   const openModal = () => open();
 
   /**
-   * Encerra a sessão e apaga o rastro local dela.
+   * Encerra a sessão e apaga o rastro local dela — desconectar a carteira é
+   * agora o único "logout" que existe no app.
    *
    * Limpar o estado importa tanto quanto derrubar a sessão: sem zerar
-   * `attempted`, reconectar o mesmo endereço não tentaria vincular de novo; sem
-   * `clearWallet`, o SecureStore continuaria servindo o endereço antigo ao chat.
+   * `established`, reconectar o mesmo endereço não regravaria a sessão; sem
+   * `clearWallet`/`clearSession`, o SecureStore continuaria servindo o
+   * endereço antigo ao chat e ao Bearer de toda chamada autenticada.
    *
    * Também é o único jeito de renegociar a sessão quando os `SESSION_PARAMS`
    * mudam — a carteira guarda os métodos aprovados no handshake, e a Rabby
@@ -720,11 +693,10 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
       }
     }
     await purgeWalletConnectStorage();
-    attempted.current = undefined;
+    established.current = undefined;
     setLiveChain(undefined);
-    setLinkError(null);
     setStoredWallet(null);
-    await clearWallet();
+    await Promise.all([clearWallet(), clearSession()]);
   };
 
   /** Assina e envia pela carteira conectada (caminho direto, exige rede Arc). */
@@ -756,6 +728,13 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
     return signAndRelayAuthorization(requester, address, to, amountUsdc, ns?.chains ?? []);
   }
 
+  async function signMessage(message: string): Promise<string> {
+    const requester = provider as Requester | undefined;
+    if (!requester || !address) throw new Error('Nenhuma carteira conectada.');
+
+    return personalSign(requester, address, message);
+  }
+
   const value = useMemo(
     () => ({
       isConnected,
@@ -764,15 +743,14 @@ export function WalletConnectProvider({ children }: { children: ReactNode }) {
       hasArcNetwork: (provider?.session?.namespaces?.eip155?.chains ?? []).includes(
         `eip155:${ARC_CHAIN_ID}`,
       ),
-      isLinking,
-      linkError,
       openModal,
       disconnect,
       signAndSend,
       signAndRelay,
+      signMessage,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isConnected, address, liveChain, storedWallet, isLinking, linkError, provider],
+    [isConnected, address, liveChain, storedWallet, provider],
   );
 
   return (

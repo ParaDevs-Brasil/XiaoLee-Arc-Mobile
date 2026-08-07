@@ -3,14 +3,14 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { getCachedSession, getSession, subscribeSession, type Session } from '@/lib/session';
 
 /**
- * Sessão guardada do backend, lida do armazenamento seguro.
+ * Sessão guardada, lida do armazenamento seguro.
  *
  * Assina a fonte reativa de `lib/session` em vez de ler o storage por conta
- * própria. Quem grava é `signInAndStartSession` (`lib/auth.ts`), chamado pelo
- * botão de login — e é o aviso de `saveSession` que faz esta tela, e todas as
- * outras já montadas, sair do estado de convidado na hora. Lendo só na
- * montagem, como antes, a tela atrás do painel de perfil seguia mostrando
- * "No session yet" até o app reabrir.
+ * própria. Quem grava é `lib/walletconnect.tsx`, ao conectar a carteira — e é
+ * o aviso de `saveSession` que faz esta tela, e todas as outras já montadas,
+ * sair do estado de convidado na hora. Lendo só na montagem, como antes, a
+ * tela atrás do painel de perfil seguia mostrando "No wallet connected" até o
+ * app reabrir.
  */
 export function useSession(): { session: Session | null; hasSession: boolean; loading: boolean } {
   // O terceiro argumento é o snapshot de servidor: o app exporta

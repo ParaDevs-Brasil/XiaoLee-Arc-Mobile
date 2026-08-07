@@ -45,7 +45,6 @@
       ],
       "expo-secure-store",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth",
       [
         "expo-build-properties",
         {
@@ -55,12 +54,6 @@
         }
       ],
       "@react-native-firebase/messaging",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.347296354021-3kk05tg49il0a92st441vmk76s0vccog"
-        }
-      ],
       "expo-video"
     ],
     "experiments": {

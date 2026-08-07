@@ -8,7 +8,7 @@ import {
   type UserCampaignParticipation,
 } from '@/api/backend';
 import { ArcNetworkSheet } from '@/components/arc-network-sheet';
-import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
 import {
   IconAlert,
   IconCheck,
@@ -257,7 +257,7 @@ function TokenRow({ tally }: { tally: TokenTally }) {
  */
 function WalletConnection() {
   const { address } = useWallet();
-  const { openModal, disconnect, isLinking, linkError, hasArcNetwork } = useWalletConnect();
+  const { openModal, disconnect, hasArcNetwork } = useWalletConnect();
   const [arcSheet, setArcSheet] = useState(false);
 
   return (
@@ -307,23 +307,17 @@ function WalletConnection() {
       ) : (
         <>
           <Text style={styles.noteText}>
-            Rewards are tied to your Testnet session. Connect a wallet on Arc to receive the USDC
-            they pay out.
+            Connect a wallet on Arc to receive the USDC your campaign rewards pay out.
           </Text>
           <Pressable
             onPress={openModal}
-            disabled={isLinking}
             style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Text style={styles.guestButtonText}>
-              {isLinking ? 'Connecting…' : 'Connect Wallet'}
-            </Text>
+            <Text style={styles.guestButtonText}>Connect Wallet</Text>
           </Pressable>
         </>
       )}
-
-      {linkError ? <Text style={styles.linkError}>{linkError}</Text> : null}
 
       <Text style={styles.footer}>Secured by XiaoLee · USDC · x402</Text>
 
@@ -364,23 +358,23 @@ function shortAddress(address: string): string {
 }
 
 /**
- * Estado de convidado. O login acontece aqui mesmo — mandar "para o chat" era
- * mandar para uma tela onde o botão de entrar também não está à vista: ele mora
- * no painel de perfil, atrás do avatar do header. Mesma escolha das
+ * Estado de convidado. Conectar acontece aqui mesmo — mandar "para o chat" era
+ * mandar para uma tela onde o botão de conectar também não está à vista: ele
+ * mora no painel de perfil, atrás do avatar do header. Mesma escolha das
  * Notifications e das Transactions.
  */
 function GuestState() {
   return (
-    <SectionCard title="Your rewards" subtitle="Tied to your Testnet session">
+    <SectionCard title="Your rewards" subtitle="Tied to your connected wallet">
       <View style={styles.guest}>
         <View style={styles.guestIcon}>
           <IconUser size={22} color={Colors.light.ink3} />
         </View>
-        <Text style={styles.guestTitle}>No session yet</Text>
+        <Text style={styles.guestTitle}>No wallet connected</Text>
         <Text style={styles.guestText}>
-          Sign in to see the rewards you have earned from campaigns.
+          Connect your wallet to see the rewards you have earned from campaigns.
         </Text>
-        <SignInButton />
+        <ConnectWalletButton />
       </View>
     </SectionCard>
   );
@@ -515,12 +509,6 @@ const styles = StyleSheet.create({
     color: Colors.light.ink2,
   },
   arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
-  linkError: {
-    fontFamily: Fonts.sans,
-    fontSize: 11,
-    color: Colors.light.danger,
-    marginTop: Spacing.one,
-  },
   footer: {
     fontFamily: Fonts.bold,
     fontSize: 9,

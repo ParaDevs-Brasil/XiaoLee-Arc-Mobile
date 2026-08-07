@@ -8,7 +8,7 @@ import {
   type NotificationItem,
   type UserCampaignParticipation,
 } from '@/api/backend';
-import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
 import { IconClipboard, IconGift, IconSwap, IconUser, type IconProps } from '@/components/icons';
 import { PageHeading, ScreenShell } from '@/components/screen-shell';
 import { SectionCard } from '@/components/section-card';
@@ -336,21 +336,21 @@ function emptyText(tab: Tab): string {
 }
 
 /**
- * Estado de convidado. O login acontece aqui mesmo — mandar para o chat era
- * mandar para uma tela onde o botão de entrar também não está à vista.
+ * Estado de convidado. Conectar acontece aqui mesmo — mandar para o chat era
+ * mandar para uma tela onde o botão de conectar também não está à vista.
  */
 function GuestState() {
   return (
-    <SectionCard title="Your activity" subtitle="Tied to your Testnet session">
+    <SectionCard title="Your activity" subtitle="Tied to your connected wallet">
       <View style={styles.guest}>
         <View style={styles.guestIcon}>
           <IconUser size={22} color={Colors.light.ink3} />
         </View>
-        <Text style={styles.guestTitle}>No session yet</Text>
+        <Text style={styles.guestTitle}>No wallet connected</Text>
         <Text style={styles.guestText}>
-          Sign in to see the rewards you claimed and the events signed for you.
+          Connect your wallet to see the rewards you claimed and the events signed for you.
         </Text>
-        <SignInButton />
+        <ConnectWalletButton />
       </View>
     </SectionCard>
   );

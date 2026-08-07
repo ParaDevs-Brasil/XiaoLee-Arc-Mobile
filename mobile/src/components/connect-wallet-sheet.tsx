@@ -1,4 +1,4 @@
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useEffect } from 'react';
 
 import { IconClose, IconWallet } from '@/components/icons';
@@ -8,8 +8,9 @@ import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 /**
  * Modal nativo de conexão de carteira via WalletConnect.
  *
- * Abre o picker de wallets EVM do celular (Metamask, Rainbow, Trust Wallet, etc.)
- * e vincula o endereço ao backend automaticamente via POST /auth/wallet.
+ * Abre o picker de wallets EVM do celular (Metamask, Rainbow, Trust Wallet,
+ * etc.). Conectar já é a identidade do app (`lib/walletconnect.tsx` grava a
+ * sessão local ao conectar) — não há mais um POST de vínculo para esperar.
  */
 
 interface ConnectWalletSheetProps {
@@ -23,7 +24,7 @@ function short(address: string): string {
 }
 
 export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps) {
-  const { isConnected, address, isLinking, linkError, openModal } = useWalletConnect();
+  const { isConnected, address, openModal } = useWalletConnect();
 
   // Conectou: o sheet cumpriu o papel e sai da frente. Quem lê o endereço é o
   // `useWallet`, direto do provider — não há estado para devolver para cima.
@@ -65,23 +66,12 @@ export function ConnectWalletSheet({ visible, onClose }: ConnectWalletSheetProps
                 private key never leaves the device.
               </Text>
 
-              {linkError ? <Text style={styles.error}>{linkError}</Text> : null}
-
               <Pressable
                 onPress={openModal}
-                disabled={isLinking}
-                style={({ pressed }) => [
-                  styles.button,
-                  isLinking && styles.buttonIdle,
-                  pressed && styles.pressed,
-                ]}
+                style={({ pressed }) => [styles.button, pressed && styles.pressed]}
                 accessibilityRole="button"
               >
-                {isLinking ? (
-                  <ActivityIndicator size="small" color={Colors.light.card} />
-                ) : (
-                  <Text style={styles.buttonLabel}>Connect WalletConnect</Text>
-                )}
+                <Text style={styles.buttonLabel}>Connect WalletConnect</Text>
               </Pressable>
             </>
           )}
@@ -123,7 +113,6 @@ const styles = StyleSheet.create({
   title: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.light.ink },
   subtitle: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.light.ink2, marginTop: 1 },
   hint: { fontFamily: Fonts.sans, fontSize: 13, lineHeight: 19, color: Colors.light.ink2 },
-  error: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.danger },
   connectedBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -146,7 +135,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: Colors.light.accent,
   },
-  buttonIdle: { opacity: 0.45 },
   buttonLabel: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.light.card },
   pressed: { opacity: 0.7 },
 });

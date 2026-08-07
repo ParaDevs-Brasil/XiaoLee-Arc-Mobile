@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DropdownPanel, PanelRow, type PanelItem } from '@/components/dropdown-panel';
 import {
@@ -15,26 +15,17 @@ import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 /**
  * Painel de perfil — frame "Xiaolee - Profile" (grupo `menu-profile`, 191x522).
  *
- * Cabeçalho com identidade, seis ações e o CTA de login no rodapé. O login
- * dispara o fluxo Google → Firebase → sessão do backend (`src/lib/auth.ts`),
- * que só roda no dev client: o Expo Go não carrega os módulos nativos do
- * Firebase.
+ * Cabeçalho com identidade, seis ações e o CTA de conectar carteira no rodapé.
+ * A carteira é a única identidade do app (`lib/walletconnect.tsx`) — não há
+ * login separado dela para exibir aqui.
  */
 
 interface ProfileMenuProps {
   visible: boolean;
   onDismiss: () => void;
-  /** Nome de exibição, quando há sessão. */
-  handle?: string;
-  /** Id interno da sessão (`firebase_<uid>`). Só a linha de baixo mostra. */
-  userId?: string;
-  /** Endereço de payout vinculado, quando há. */
+  /** Endereço da carteira conectada, quando há. */
   walletAddress?: string;
-  onSignIn?: () => void;
-  onConnectWallet?: () => void;
-  signingIn?: boolean;
-  /** Falha do login, quando houve. */
-  signInError?: string;
+  onConnectWallet: () => void;
 }
 
 /** Abrevia o endereço como no web: início e fim, meio elidido. */
@@ -72,17 +63,7 @@ const ACTIONS: (PanelItem & { href?: '/wallet' | '/transactions' | '/history' })
   { key: 'deposit', Icon: IconUpload, title: 'Deposit', subtitle: 'Add funds to account' },
 ];
 
-export function ProfileMenu({
-  visible,
-  onDismiss,
-  handle,
-  userId,
-  walletAddress,
-  onSignIn,
-  onConnectWallet,
-  signingIn,
-  signInError,
-}: ProfileMenuProps) {
+export function ProfileMenu({ visible, onDismiss, walletAddress, onConnectWallet }: ProfileMenuProps) {
   const router = useRouter();
 
   return (
@@ -93,12 +74,10 @@ export function ProfileMenu({
         </View>
         <View style={styles.identityText}>
           <Text style={styles.handle} numberOfLines={1}>
-            {handle ? `@${handle}` : '@User'}
+            {walletAddress ? short(walletAddress) : 'Not connected'}
           </Text>
-          {/* Repetia o handle nas duas linhas. O id é outra coisa — é ele que
-              identifica a sessão no backend, e é o que vale mostrar aqui. */}
           <Text style={styles.userId} numberOfLines={1}>
-            {handle ? `ID: ${userId ?? handle}` : 'ID: @user…'}
+            {walletAddress ? 'Wallet' : 'Connect a wallet to get started'}
           </Text>
         </View>
       </View>
@@ -123,36 +102,23 @@ export function ProfileMenu({
               : item.key === 'connect'
                 ? () => {
                     onDismiss();
-                    onConnectWallet?.();
+                    onConnectWallet();
                   }
                 : undefined,
           }}
         />
       ))}
 
-      {handle ? null : (
+      {walletAddress ? null : (
         <Pressable
-          onPress={onSignIn}
-          disabled={signingIn}
-          style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
+          onPress={onConnectWallet}
+          style={({ pressed }) => [styles.connect, pressed && styles.pressed]}
           accessibilityRole="button"
         >
-          {signingIn ? (
-            <ActivityIndicator size="small" color={Colors.light.accent} />
-          ) : (
-            <>
-              {/* O "G" colorido do Google é marca registrada; o SVG oficial
-                  entra junto com o botão do próprio SDK, não desenhado à mão. */}
-              <Text style={styles.googleMark}>G</Text>
-              <Text style={styles.signInLabel}>Sign in with Google</Text>
-            </>
-          )}
+          <IconWallet size={16} color={Colors.light.accent} />
+          <Text style={styles.connectLabel}>Connect Wallet</Text>
         </Pressable>
       )}
-
-      {/* O erro fica no painel, e não numa bolha do chat: o login é ação
-          daqui, e as outras telas usam o mesmo shell. */}
-      {signInError ? <Text style={styles.signInError}>{signInError}</Text> : null}
     </DropdownPanel>
   );
 }
@@ -171,7 +137,7 @@ const styles = StyleSheet.create({
   handle: { fontFamily: Fonts.bold, fontSize: 16, color: Colors.light.ink },
   userId: { fontFamily: Fonts.sans, fontSize: 11, color: Colors.light.ink2, marginTop: 1 },
 
-  signIn: {
+  connect: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -181,13 +147,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.light.accentSoft,
     marginTop: Spacing.one,
   },
-  signInError: {
-    fontFamily: Fonts.sans,
-    fontSize: 11,
-    color: Colors.light.danger,
-    marginTop: Spacing.one,
-  },
-  googleMark: { fontFamily: Fonts.bold, fontSize: 15, color: '#4285F4' },
-  signInLabel: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.light.ink },
+  connectLabel: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.light.ink },
   pressed: { opacity: 0.6 },
 });

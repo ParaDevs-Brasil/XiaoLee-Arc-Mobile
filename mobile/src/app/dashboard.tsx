@@ -12,7 +12,7 @@ import {
   type TreasuryChain,
   type UserCampaignParticipation,
 } from '@/api/backend';
-import { EmptyState, ErrorState, SignInButton, Skeleton } from '@/components/feedback';
+import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
 import {
   IconActivity,
   IconCheck,
@@ -314,12 +314,12 @@ function MyCampaignsSection({
 
   if (!hasSession) {
     return (
-      <SectionCard title="Your campaigns" subtitle="Participation tied to your Testnet session">
+      <SectionCard title="Your campaigns" subtitle="Participation tied to your connected wallet">
         <EmptyState
           Icon={IconUser}
-          title="No session yet"
-          text="Sign in to see the campaigns you joined."
-          action={<SignInButton />}
+          title="No wallet connected"
+          text="Connect your wallet to see the campaigns you joined."
+          action={<ConnectWalletButton />}
         />
       </SectionCard>
     );
@@ -327,7 +327,7 @@ function MyCampaignsSection({
 
   if (campaigns === null) {
     return (
-      <SectionCard title="Your campaigns" subtitle="Participation tied to your Testnet session">
+      <SectionCard title="Your campaigns" subtitle="Participation tied to your connected wallet">
         <EmptyState
           Icon={IconTarget}
           title="Couldn't read your participation"

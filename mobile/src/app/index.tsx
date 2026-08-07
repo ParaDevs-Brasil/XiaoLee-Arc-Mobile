@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -19,7 +19,7 @@ import {
   avatarAnimation,
   type AnimationKey,
 } from '@/lib/avatar-animation';
-import { appendChatMessage } from '@/lib/chat-history';
+import { appendChatMessage, loadChatHistory, type StoredMessage } from '@/lib/chat-history';
 import { shortHash } from '@/lib/format';
 import { getWallet } from '@/lib/session';
 import { useWalletConnect } from '@/lib/walletconnect';
@@ -38,6 +38,7 @@ import {
 import { ScreenShell } from '@/components/screen-shell';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useKeyboard } from '@/hooks/use-keyboard';
+import { useSession } from '@/hooks/use-session';
 
 /**
  * Tela de chat — a home do app.
@@ -143,6 +144,23 @@ function now(): string {
 }
 
 /**
+ * Uma mensagem gravada (`lib/chat-history.ts`) de volta para o formato da
+ * tela. Sem `transfer`/`txHash`: um botão de assinar de uma sessão anterior
+ * não deve reaparecer — se não foi assinado a tempo, o pedido já esfriou.
+ *
+ * `id` usa o índice porque o histórico local não tem um próprio — a mesma
+ * folga que `history.tsx` já assume (posição estável, lista só cresce no fim).
+ */
+function messageFromStored(stored: StoredMessage, index: number): Message {
+  return {
+    id: `h${index}`,
+    author: stored.role === 'user' ? 'user' : 'xiaolee',
+    text: stored.content,
+    time: new Date(stored.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
+/**
  * Reações do rodapé da bolha — no web elas não registram nada, apenas fazem a
  * personagem reagir. É personalidade, não telemetria.
  */
@@ -161,6 +179,29 @@ export default function ChatScreen() {
   const keyboard = useKeyboard();
   const scroller = useRef<ScrollView>(null);
   const wc = useWalletConnect();
+  const { session, loading: sessionLoading } = useSession();
+  // `undefined` enquanto a sessão ainda não foi lida do storage — esperar evita
+  // carregar a conversa de convidado por um instante antes de trocar para a da
+  // conta, o que piscaria a tela.
+  const sessionId = sessionLoading ? undefined : (session?.sessionId ?? null);
+
+  /**
+   * Repõe a conversa salva (`lib/chat-history.ts`) sempre que a conta muda —
+   * inclusive na primeira montagem, que também é uma troca (de "nada lido"
+   * para o que quer que a conta tenha). Sem isto a tela sempre abre vazia:
+   * `appendChatMessage` grava, mas nada nunca lia de volta para `messages`, e
+   * era só isso que sobrava para reabrir o app e a Xiaolee "esquecer" tudo.
+   */
+  useEffect(() => {
+    if (sessionId === undefined) return;
+    let active = true;
+    loadChatHistory().then((stored) => {
+      if (active) setMessages(stored.map(messageFromStored));
+    });
+    return () => {
+      active = false;
+    };
+  }, [sessionId]);
 
   /**
    * Troca o botão pelo hash na mensagem que foi assinada.

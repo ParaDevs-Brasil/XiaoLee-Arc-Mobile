@@ -2,7 +2,6 @@ import auth, { type FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 import { loginWithFirebase } from '@/api/backend';
-import { clearChatHistory } from '@/lib/chat-history';
 import { clearSession, saveSession, type Session } from '@/lib/session';
 
 /**
@@ -122,12 +121,15 @@ export async function signInAndStartSession(): Promise<Session> {
 }
 
 /**
- * Encerra tudo: Google, Firebase, a sessão guardada do backend e o histórico
- * de chat local — mesmo escopo do `clearData()` do web, que some com
- * `xiaolee_chat_history` junto dos outros dados no logout (`UserData.tsx:395`).
+ * Encerra Google, Firebase e a sessão guardada do backend.
+ *
+ * Não mexe no histórico de chat: ele é gravado por conta (`lib/chat-history.ts`
+ * escopa a chave em `session.twitterUserId`), então sair não deve apagá-lo — a
+ * mesma conta precisa reencontrar a própria conversa no próximo login. Apagar
+ * aqui, depois de `clearSession()` já ter zerado a sessão em cache, também
+ * limparia a gaveta errada: a de convidado, não a da conta que acabou de sair.
  */
 export async function signOutEverywhere(): Promise<void> {
   await signOut();
   await clearSession();
-  await clearChatHistory();
 }

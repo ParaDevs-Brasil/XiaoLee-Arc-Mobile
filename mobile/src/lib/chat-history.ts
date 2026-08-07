@@ -1,24 +1,33 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { getSession } from '@/lib/session';
+
 /**
  * Histórico de chat, persistido no aparelho.
  *
  * O backend nunca preenche `chat_history` no dossiê do usuário — devolve lista
- * vazia fixa (`campaigns_routes.py:557`), e não é bug: nada no backend grava
- * conversa em lugar nenhum. O web sabe disso e resolve do lado do cliente,
- * gravando cada troca no `localStorage` assim que ela acontece
- * (`UserData.addLocalChatMessage`, chamada em `ChatPanel.tsx` tanto na
- * resposta quanto no erro) — é dali, e não do backend, que a tela de
- * Histórico do web lê. Este módulo é o mesmo acordo, com `AsyncStorage` no
- * lugar do `localStorage`.
+ * vazia fixa (`campaigns_routes.py:557`), e não é bug: nada nessa rota grava
+ * conversa em lugar nenhum (o `/chat` em si já persiste e devolve memória por
+ * conta via `history=` no orchestrator — outra rota, outro contrato). O web
+ * resolve o dossiê do lado do cliente, gravando cada troca no `localStorage`
+ * assim que ela acontece (`UserData.addLocalChatMessage`, chamada em
+ * `ChatPanel.tsx` tanto na resposta quanto no erro) — é dali, e não do
+ * backend, que a tela de Histórico do web lê. Este módulo é o mesmo acordo,
+ * com `AsyncStorage` no lugar do `localStorage`.
  *
- * Sem escopo por usuário, de propósito: a sessão ainda não está ligada a
- * nenhuma tela (`use-session.ts`), então hoje só existe conversa anônima — e
- * é o que o web também faz, guardando numa chave só, independente de quem
- * está autenticado.
+ * Escopado por conta (`session.twitterUserId`), não por `sessionId`: o token
+ * de sessão é trocado a cada login, mas a conta é a mesma — e é a mesma conta
+ * que deve reencontrar a própria conversa, inclusive depois de logout/login
+ * de novo. Sem sessão, cai em `guest`: convidado tem uma única conversa
+ * compartilhada, como sempre foi.
  */
 
-const KEY = 'xiaolee_chat_history';
+const BASE_KEY = 'xiaolee_chat_history';
+
+async function storageKey(): Promise<string> {
+  const session = await getSession();
+  return `${BASE_KEY}:${session?.twitterUserId || 'guest'}`;
+}
 
 /**
  * ~200 trocas, o mesmo teto do web (`UserData.tsx:342`) — só que contado em
@@ -44,7 +53,7 @@ export interface StoredMessage {
  */
 export async function loadChatHistory(): Promise<StoredMessage[]> {
   try {
-    const raw = await AsyncStorage.getItem(KEY);
+    const raw = await AsyncStorage.getItem(await storageKey());
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -71,22 +80,8 @@ export async function appendChatMessage(role: StoredMessage['role'], content: st
   );
 
   try {
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
+    await AsyncStorage.setItem(await storageKey(), JSON.stringify(next));
   } catch {
     // sem espaço ou storage indisponível — nada a fazer daqui
-  }
-}
-
-/**
- * Apaga o histórico. Chamada por `signOutEverywhere` (`lib/auth.ts`) — hoje
- * inerte, porque nenhuma tela ainda dispara login, mas no dia em que uma
- * disparar o comportamento já está certo: sair também esquece a conversa,
- * como no web.
- */
-export async function clearChatHistory(): Promise<void> {
-  try {
-    await AsyncStorage.removeItem(KEY);
-  } catch {
-    // nada a limpar
   }
 }

@@ -20,10 +20,13 @@ import { timeAgo } from '@/lib/format';
  * (`campaigns_routes.py:557`), e o web já sabe disso — a tela dele também não
  * lê do backend, lê do `localStorage` que `ChatPanel.tsx` grava a cada troca.
  *
- * Diferente de Wallet e Transactions, **esta tela não pede sessão**. O chat
+ * Diferente de Wallet e Transactions, **esta tela não exige sessão** — o chat
  * funciona sem login (o backend trata como `web_anonymous`, ver
- * `api/backend.ts::sendChatMessage`), e o histórico é do aparelho, não da
- * conta — então não há estado de convidado aqui, só "ainda não há mensagem".
+ * `api/backend.ts::sendChatMessage`). Mas quando há sessão, o histórico é da
+ * conta: `loadChatHistory` escopa a chave por `twitterUserId`
+ * (`lib/chat-history.ts`), e `useBackendData` já reroda a leitura quando o
+ * `sessionId` muda — entrar ou sair troca qual gaveta esta tela lê, sem
+ * precisar de nada especial aqui.
  *
  * A ordem de leitura é a de uma conversa, não a de um extrato: mais antiga
  * primeiro, como o web (`Historico.tsx` ordena por `timestamp` crescente) e ao

@@ -75,7 +75,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cd main-checkout
+          cd ../main-checkout
           NEW_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/xiaolee.apk"
           sed -i -E "s#https://github\.com/[^\"[:space:]]+/releases/download/[^/\"]+/xiaolee\.apk#${NEW_URL}#g" landing/index.html
 

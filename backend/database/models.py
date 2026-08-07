@@ -260,5 +260,5 @@ class NotificationEvent(Base):
     status: Mapped[str] = mapped_column(String(50), default='pending')
     related_signature: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     metadata_json: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    delivered_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

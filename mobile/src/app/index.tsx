@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import {
   ActivityIndicator,
@@ -22,6 +23,7 @@ import {
 } from '@/lib/avatar-animation';
 import { appendChatMessage, loadChatHistory, type StoredMessage } from '@/lib/chat-history';
 import { refreshChatSessions, setActiveChatSessionId } from '@/lib/chat-session';
+import { isOnChainTx, txExplorerUrl } from '@/lib/explorer';
 import { shortHash } from '@/lib/format';
 import { getWallet } from '@/lib/session';
 import { useWalletConnect } from '@/lib/walletconnect';
@@ -485,11 +487,29 @@ function SignTxButton({
   const [arcSheet, setArcSheet] = useState(false);
 
   if (message.txHash) {
-    return (
+    // O relay devolve o hash real da transação EVM — sempre linkável, ao
+    // contrário do `related_signature` do Helius (Solana) que aparece em
+    // Transactions. `isOnChainTx` é só uma segunda trava, não um caso
+    // esperado de falha.
+    const linkable = isOnChainTx(message.txHash);
+    const badge = (
       <View style={styles.txDone}>
         <IconCheck size={14} color={Colors.light.success} />
         <Text style={styles.txDoneText}>Sent · {shortHash(message.txHash)}</Text>
       </View>
+    );
+
+    if (!linkable) return badge;
+
+    return (
+      <Pressable
+        onPress={() => WebBrowser.openBrowserAsync(txExplorerUrl(message.txHash!)).catch(() => {})}
+        style={({ pressed }) => pressed && styles.pressed}
+        accessibilityRole="link"
+        accessibilityLabel={`Sent ${shortHash(message.txHash)} — open the transaction in the Arc explorer`}
+      >
+        {badge}
+      </Pressable>
     );
   }
 

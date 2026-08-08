@@ -1,22 +1,33 @@
 import { useState } from 'react';
+import * as WebBrowser from 'expo-web-browser';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
+  listArcTransfers,
   listMyCampaigns,
   listNotifications,
+  type ArcTransfer,
   type NotificationItem,
   type UserCampaignParticipation,
 } from '@/api/backend';
 import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
-import { IconClipboard, IconGift, IconSwap, IconUser, type IconProps } from '@/components/icons';
+import {
+  IconChevronRight,
+  IconClipboard,
+  IconGift,
+  IconSwap,
+  IconUser,
+  type IconProps,
+} from '@/components/icons';
 import { PageHeading, ScreenShell } from '@/components/screen-shell';
 import { SectionCard } from '@/components/section-card';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
 import { useBackendData } from '@/hooks/use-backend-data';
 import { useSession } from '@/hooks/use-session';
-import { formatTokenAmount } from '@/lib/format';
-import { getSession } from '@/lib/session';
+import { isOnChainTx, txExplorerUrl } from '@/lib/explorer';
+import { formatTokenAmount, shortHash } from '@/lib/format';
+import { getSession, getWallet } from '@/lib/session';
 
 /**
  * Tela de Transactions — segundo destino do `ProfileMenu`.
@@ -66,15 +77,21 @@ interface Movement {
   kind: 'reward' | 'transfer';
   title: string;
   detail: string;
-  /** Só o resgate traz valor estruturado; o Helius descreve em texto livre. */
-  amount?: { value: number; token: string };
-  /** Recibo do resgate ou assinatura da transação. */
+  /**
+   * Só o resgate e as transferências do Arc trazem valor estruturado; o Helius
+   * descreve em texto livre. `sign` distingue entrada de saída — resgate e
+   * recebimento são sempre `+`, mas uma transferência mandada pelo próprio
+   * usuário é dinheiro saindo, não entrando.
+   */
+  amount?: { value: number; token: string; sign: '+' | '-' };
+  /** Recibo do resgate, assinatura de notificação, ou hash da transação. */
   reference?: string;
 }
 
 interface TransactionsData {
   claims: UserCampaignParticipation[];
   notifications: NotificationItem[];
+  arcTransfers: ArcTransfer[];
 }
 
 /**
@@ -91,8 +108,19 @@ async function fetchTransactions(): Promise<TransactionsData | null> {
   const session = await getSession();
   if (!session) return null;
 
-  const [claims, notifications] = await Promise.all([listMyCampaigns(), listNotifications()]);
-  return { claims, notifications };
+  // A sessão prova quem é o usuário; a wallet é uma leitura à parte — a
+  // conexão viva do WalletConnect primeiro, o SecureStore como fallback de
+  // reabertura, o mesmo acordo que `app/index.tsx` usa para mandar contexto
+  // ao chat. Sem endereço não há o que perguntar ao `arc_transfers`, mas isso
+  // não é erro: as outras duas fontes seguem valendo.
+  const wallet = await getWallet();
+
+  const [claims, notifications, arcTransfers] = await Promise.all([
+    listMyCampaigns(),
+    listNotifications(),
+    wallet ? listArcTransfers(wallet.address).catch(() => []) : Promise.resolve([]),
+  ]);
+  return { claims, notifications, arcTransfers };
 }
 
 /**
@@ -102,7 +130,7 @@ async function fetchTransactions(): Promise<TransactionsData | null> {
  * token. O conjunto de recibos que eles produzem é o que filtra as notificações
  * espelho.
  */
-function toMovements({ claims, notifications }: TransactionsData): Movement[] {
+function toMovements({ claims, notifications, arcTransfers }: TransactionsData): Movement[] {
   const claimed = claims.filter((item) => item.tasks_claimed);
   const receipts = new Set(
     claimed.map((item) => item.claim_receipt_id).filter((id): id is string => Boolean(id)),
@@ -113,7 +141,7 @@ function toMovements({ claims, notifications }: TransactionsData): Movement[] {
     kind: 'reward',
     title: item.name,
     detail: 'Campaign reward claimed',
-    amount: { value: item.reward_per_participant, token: item.reward_token },
+    amount: { value: item.reward_per_participant, token: item.reward_token, sign: '+' },
     reference: item.claim_receipt_id ?? undefined,
   }));
 
@@ -137,6 +165,25 @@ function toMovements({ claims, notifications }: TransactionsData): Movement[] {
       title: item.title,
       detail: item.body,
       reference: signature,
+    });
+  }
+
+  // As transferências que o próprio usuário mandou pelo chat ("send N usdc
+  // to...") — `related_signature` nunca cobre estas: o relay é EVM/Arc, o
+  // Helius fala Solana. `seen` aqui é só para o caso de a mesma tx aparecer
+  // duas vezes na paginação, não para cruzar com as outras fontes.
+  for (const transfer of arcTransfers) {
+    if (seen.has(transfer.tx_hash)) continue;
+    seen.add(transfer.tx_hash);
+
+    const counterpart = shortHash(transfer.direction === 'out' ? transfer.to_address : transfer.from_address);
+    transfers.push({
+      key: `arc-${transfer.tx_hash}`,
+      kind: 'transfer',
+      title: transfer.direction === 'out' ? 'USDC sent' : 'USDC received',
+      detail: transfer.direction === 'out' ? `To ${counterpart}` : `From ${counterpart}`,
+      amount: { value: transfer.amount_usdc, token: 'USDC', sign: transfer.direction === 'out' ? '-' : '+' },
+      reference: transfer.tx_hash,
     });
   }
 
@@ -263,8 +310,28 @@ function TabBar({
   );
 }
 
+/** Abre a transação no explorer da Arc — mesmo padrão de `app/traction.tsx`. */
+function openTx(tx: string) {
+  WebBrowser.openBrowserAsync(txExplorerUrl(tx)).catch(() => {});
+}
+
 function MovementRow({ movement }: { movement: Movement }) {
   const reward = movement.kind === 'reward';
+  // Recibo de resgate e assinatura Solana do Helius não são hash de transação
+  // EVM — só um `tx_hash` do relay do Arc bate no formato e vira link.
+  const linkable = Boolean(movement.reference && isOnChainTx(movement.reference));
+
+  const reference = movement.reference ? (
+    <View style={styles.reference}>
+      <View style={styles.referenceText}>
+        <Text style={styles.referenceLabel}>{reward ? 'Receipt' : linkable ? 'Transaction' : 'Signature'}</Text>
+        <Text style={styles.referenceValue} numberOfLines={1}>
+          {movement.reference}
+        </Text>
+      </View>
+      {linkable ? <IconChevronRight size={12} color={Colors.light.ink3} /> : null}
+    </View>
+  ) : null;
 
   return (
     <View style={styles.row}>
@@ -284,22 +351,26 @@ function MovementRow({ movement }: { movement: Movement }) {
           {movement.detail}
         </Text>
 
-        {movement.reference ? (
-          <View style={styles.reference}>
-            {/* Recibo de resgate é identificador interno (uuid de 16), não hash
-                de transação — por isso ele não vira link para o explorer, ao
-                contrário do feed da Traction. */}
-            <Text style={styles.referenceLabel}>{reward ? 'Receipt' : 'Signature'}</Text>
-            <Text style={styles.referenceValue} numberOfLines={1}>
-              {movement.reference}
-            </Text>
-          </View>
-        ) : null}
+        {linkable ? (
+          <Pressable
+            onPress={() => openTx(movement.reference!)}
+            style={({ pressed }) => pressed && styles.pressed}
+            accessibilityRole="link"
+            accessibilityLabel={`${movement.title} — open the transaction in the Arc explorer`}
+          >
+            {reference}
+          </Pressable>
+        ) : (
+          reference
+        )}
       </View>
 
       {movement.amount ? (
         <View style={styles.amountBox}>
-          <Text style={styles.amount}>+{formatTokenAmount(movement.amount.value)}</Text>
+          <Text style={[styles.amount, movement.amount.sign === '-' && styles.amountOut]}>
+            {movement.amount.sign}
+            {formatTokenAmount(movement.amount.value)}
+          </Text>
           <Text style={styles.amountToken}>{movement.amount.token}</Text>
         </View>
       ) : null}
@@ -441,12 +512,15 @@ const styles = StyleSheet.create({
   rowDetail: { fontFamily: Fonts.sans, fontSize: 12, lineHeight: 18, color: Colors.light.ink2, marginTop: 1 },
 
   reference: {
-    gap: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.one,
     marginTop: Spacing.two - 2,
     padding: Spacing.two - 2,
     borderRadius: Radius.sm,
     backgroundColor: Colors.light.card,
   },
+  referenceText: { flex: 1, gap: 1 },
   referenceLabel: {
     fontFamily: Fonts.bold,
     fontSize: 8,
@@ -458,6 +532,7 @@ const styles = StyleSheet.create({
 
   amountBox: { alignItems: 'flex-end' },
   amount: { fontFamily: Fonts.bold, fontSize: 14, color: Colors.light.success },
+  amountOut: { color: Colors.light.ink },
   amountToken: {
     fontFamily: Fonts.bold,
     fontSize: 9,

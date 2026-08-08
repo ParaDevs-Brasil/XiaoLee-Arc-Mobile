@@ -319,6 +319,27 @@ export async function getAddressBalance(address: string): Promise<number | null>
   return payload.usdc_balance ?? null;
 }
 
+/**
+ * `GET /v1/arc/usdc/transfers/{address}` — transferências USDC relayadas
+ * (`relay-authorization`, o "send N usdc to..." do chat) que envolvem esse
+ * endereço, enviadas ou recebidas (`server/routes/arc_routes.py`).
+ *
+ * Mesma natureza pública de `getAddressBalance`: quem prova o envio é a
+ * assinatura EIP-3009 no momento do relay, não uma sessão aqui.
+ */
+export interface ArcTransfer {
+  tx_hash: string;
+  from_address: string;
+  to_address: string;
+  amount_usdc: number;
+  direction: 'in' | 'out';
+  created_at: string;
+}
+
+export async function listArcTransfers(address: string): Promise<ArcTransfer[]> {
+  return apiFetch<ArcTransfer[]>(`/v1/arc/usdc/transfers/${address}`);
+}
+
 const TREASURY_CHAINS: TreasuryChain[] = ['arc', 'solana', 'stellar'];
 
 async function fetchChainBalance(chain: TreasuryChain): Promise<TreasuryBalance> {

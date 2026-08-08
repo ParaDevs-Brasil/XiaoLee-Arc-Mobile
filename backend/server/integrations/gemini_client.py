@@ -25,6 +25,21 @@ _INTENT_MODEL = "gemini-flash-latest"
 # Reply fallback: same fast model — always available, Gemini 3 Flash quality.
 _REPLY_FALLBACK = "gemini-flash-latest"
 
+# Heuristic language guess for the final reminder in generate_reply(). Naming the
+# language explicitly ("reply in ENGLISH") steers the model far more reliably than a
+# generic "mirror the user's language" rule, which loses to a Portuguese-heavy
+# instruction block sitting right above it in the same system prompt.
+_PT_HINTS = re.compile(
+    r"[áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ]"
+    r"|\b(voc[eê]|n[aã]o|est[aá]|para|com|meu|minha|quero|enviar|manda|mandar|saldo|"
+    r"carteira|obrigad[oa]|beleza|oi|ol[aá])\b",
+    re.IGNORECASE,
+)
+
+
+def _guess_language(text: str) -> str:
+    return "Portuguese" if _PT_HINTS.search(text) else "English"
+
 
 class GeminiClient:
     def __init__(self, api_key: str, model: str):
@@ -160,15 +175,18 @@ class GeminiClient:
 
         # The language rule already lives in _PERSONA and usually in `instruction`
         # (_PLATFORM_CONTEXT) too, but both sit at the *start* of a long system
-        # block — easy for the model to deprioritize by the time it's generating.
-        # Restating it here, last and short, right next to `user_text` below,
-        # catches cases the earlier copies miss (seen live: "transfer 1 usdc to
-        # 0x..." answered in Portuguese despite English input).
+        # block — easy for the model to deprioritize by the time it's generating,
+        # especially when `instruction` itself is written in Portuguese (most
+        # call sites are). A generic "mirror the user's language" reminder lost
+        # to that (seen live: "send 1 usdc to 0x..." answered in Portuguese
+        # despite English input) — naming the detected language explicitly is a
+        # much stronger signal than asking the model to infer and mirror it.
+        lang = _guess_language(user_text)
         system_text = (
             _PERSONA + "\n\n" + instruction + "\n\n"
-            "FINAL REMINDER, overrides any earlier phrasing: reply in the exact same "
-            "language as the user's message below — English in, English out; "
-            "Portuguese in, Portuguese out. Never switch."
+            f"FINAL REMINDER, overrides any earlier phrasing: the user's message below "
+            f"is in {lang}. Reply ONLY in {lang}, no matter what language the rest of "
+            "this prompt is written in."
         )
         contents = self._build_contents(user_text, history)
 

@@ -17,9 +17,13 @@ import logging
 import os
 import time
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from database.database import get_db_session
+from database.models import ArcTransfer
 from server.integrations.arc_client import ArcClient
 from server.rate_limiter import get_rate_limiter
 from server.settings import settings
@@ -273,7 +277,10 @@ async def usdc_authorization_domain():
 
 
 @router.post("/usdc/relay-authorization")
-async def relay_usdc_authorization(payload: AuthorizationRelayRequest):
+async def relay_usdc_authorization(
+    payload: AuthorizationRelayRequest,
+    db: AsyncSession = Depends(get_db_session),
+):
     """
     Submete no Arc uma transferência USDC que o usuário autorizou por assinatura
     (EIP-3009 `transferWithAuthorization`), com o gas pago pela treasury.
@@ -325,6 +332,20 @@ async def relay_usdc_authorization(payload: AuthorizationRelayRequest):
         LOG.warning("arc.relay authorization failed: %s", exc)
         raise HTTPException(status_code=502, detail=f"relay failed: {exc}")
 
+    # Best-effort: o USDC já se moveu on-chain nesse ponto — uma falha ao gravar
+    # aqui não pode virar erro pro usuário, só um buraco na aba Transactions.
+    try:
+        db.add(ArcTransfer(
+            from_address=payload.from_address.lower(),
+            to_address=payload.to_address.lower(),
+            amount_usdc=payload.value / 1_000_000,
+            tx_hash=result.tx_hash,
+        ))
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        LOG.warning("arc_transfers insert failed for tx=%s: %s", result.tx_hash, exc)
+
     return {
         "tx_hash": result.tx_hash,
         "confirmed": result.confirmed,
@@ -354,6 +375,44 @@ async def get_address_balance(address: str):
         raise HTTPException(status_code=503, detail=f"arc rpc read failed: {exc}")
 
     return {"address": address, "chain": "arc", "usdc_balance": balance}
+
+
+@router.get("/usdc/transfers/{address}")
+async def list_arc_transfers(
+    address: str,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db_session),
+):
+    """Transferências USDC relayadas (`relay-authorization`) que envolvem `address`,
+    enviadas ou recebidas, mais recentes primeiro. Alimenta a aba on-chain de
+    Transactions no app — sem sessão, igual à rota que as gera: quem prova o
+    envio é a assinatura EIP-3009 no momento do relay, não um Bearer aqui.
+    """
+    import re as _re
+
+    if not _re.fullmatch(r"0x[0-9a-fA-F]{40}", address):
+        raise HTTPException(status_code=422, detail="address must be a 0x EVM address")
+
+    addr = address.lower()
+    stmt = (
+        select(ArcTransfer)
+        .where(or_(ArcTransfer.from_address == addr, ArcTransfer.to_address == addr))
+        .order_by(ArcTransfer.created_at.desc())
+        .limit(min(limit, 100))
+    )
+    rows = (await db.execute(stmt)).scalars().all()
+
+    return [
+        {
+            "tx_hash": row.tx_hash,
+            "from_address": row.from_address,
+            "to_address": row.to_address,
+            "amount_usdc": float(row.amount_usdc),
+            "direction": "out" if row.from_address == addr else "in",
+            "created_at": row.created_at.isoformat(),
+        }
+        for row in rows
+    ]
 
 
 async def read_arc_usdc_balance(address: str) -> float:

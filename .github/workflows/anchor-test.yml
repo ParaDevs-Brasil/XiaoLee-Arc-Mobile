@@ -25,8 +25,11 @@ jobs:
           sh -c "$(curl -sSfL https://release.solana.com/v1.18.15/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
+      # Fixado em 0.31.1 para bater com o anchor-lang pinado no Cargo.toml do
+      # programa — "avm install latest" instala uma versão mais nova do CLI e
+      # quebra com "anchor-cli X is not installed" no anchor build/test.
       - name: Install Anchor CLI
-        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install latest && avm use latest
+        run: cargo install --git https://github.com/coral-xyz/anchor avm --locked --force && avm install 0.31.1 && avm use 0.31.1
 
       - name: Run Anchor Test
         working-directory: solana-program/xiaolee_core

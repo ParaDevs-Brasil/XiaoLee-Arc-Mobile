@@ -57,7 +57,11 @@ def test_health_endpoint_returns_ok_with_mocked_rpc_health():
     assert payload["rpc_health"]["result"] == "ok"
 
 
-def test_chat_endpoint_returns_compat_shape():
+def test_chat_endpoint_returns_compat_shape(isolated_app_db):
+    # isolated_app_db: chat_compat() agora cria/atualiza ChatSession direto no
+    # DB antes de chamar _process_inbound (que este teste mocka) — sem isso a
+    # request bate no DB dev real (sem tabelas em CI) e quebra com
+    # "no such table: users".
     original_process_inbound = app_module._process_inbound
     app_module._process_inbound = AsyncMock(
         return_value=OrchestrationResponse(

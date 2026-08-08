@@ -24,6 +24,11 @@ depends_on = None
 
 
 def upgrade() -> None:
+    # SQLite (dev local) não distingue TIMESTAMP WITH/WITHOUT TIME ZONE — o
+    # valor é guardado como TEXT de qualquer forma, então não há coluna pra
+    # migrar. Isso corrigia asyncpg/Postgres em produção; no-op em SQLite.
+    if op.get_bind().dialect.name != "postgresql":
+        return
     # Valores existentes já são instantes UTC (só nunca guardaram o offset) —
     # `AT TIME ZONE 'UTC'` reinterpreta o mesmo relógio como aware, sem
     # deslocar o horário.
@@ -35,6 +40,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().dialect.name != "postgresql":
+        return
     op.execute(
         "ALTER TABLE notification_events "
         "ALTER COLUMN delivered_at TYPE TIMESTAMP WITHOUT TIME ZONE "

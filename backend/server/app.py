@@ -5,6 +5,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import re
 from time import perf_counter
 from typing import Deque, Dict
 
@@ -386,6 +387,9 @@ async def metrics():
     return Response(render_prometheus_metrics(), media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
+_SYSTEM_NOTE_RE = re.compile(r"\[System Note:[^\]]+\]\s*")
+
+
 async def _process_inbound(
     platform: str,
     user_id: str,
@@ -399,7 +403,13 @@ async def _process_inbound(
     if platform == "telegram" and metadata and metadata.get("chat_id"):
         await repo.set_telegram_chat_id(user.id, metadata["chat_id"])
     history = await repo.get_user_history(user.id, limit=10)
-    await repo.log_dm(user.id, platform, text, message_type="user", session_id=session_id)
+    # `text` pode trazer um `[System Note: ...]` de contexto (wallet conectada,
+    # etc.) prefixado por /chat — o orchestrator precisa dele, mas a mensagem
+    # gravada é o que a pessoa releria depois (histórico salvo, troca de tela),
+    # e ninguém digitou aquele prefixo.
+    await repo.log_dm(
+        user.id, platform, _SYSTEM_NOTE_RE.sub("", text).strip(), message_type="user", session_id=session_id
+    )
 
     result = await orchestrator.execute(text, user_id, history=history, platform=platform)
 

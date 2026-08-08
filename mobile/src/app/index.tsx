@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -8,11 +8,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { sendChatMessage } from '@/api/backend';
+import { getChatSessionMessages, sendChatMessage, type ChatSessionMessage } from '@/api/backend';
 import { ApiError } from '@/api/client';
 import {
   animationFromBackend,
@@ -20,15 +21,19 @@ import {
   type AnimationKey,
 } from '@/lib/avatar-animation';
 import { appendChatMessage, loadChatHistory, type StoredMessage } from '@/lib/chat-history';
+import { refreshChatSessions, setActiveChatSessionId } from '@/lib/chat-session';
 import { shortHash } from '@/lib/format';
 import { getWallet } from '@/lib/session';
 import { useWalletConnect } from '@/lib/walletconnect';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
+import { ArcNetworkSheet } from '@/components/arc-network-sheet';
 import {
   IconActivity,
+  IconAlert,
   IconChat,
   IconCheck,
+  IconEdit,
   IconGift,
   IconSend,
   IconSwap,
@@ -36,7 +41,9 @@ import {
   type IconProps,
 } from '@/components/icons';
 import { ScreenShell } from '@/components/screen-shell';
+import { SessionsPanel } from '@/components/sessions-panel';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
+import { useChatSession } from '@/hooks/use-chat-session';
 import { useKeyboard } from '@/hooks/use-keyboard';
 import { useSession } from '@/hooks/use-session';
 
@@ -161,6 +168,20 @@ function messageFromStored(stored: StoredMessage, index: number): Message {
 }
 
 /**
+ * Uma mensagem de sessão (backend) para o formato da tela. Ao contrário do
+ * web (`ChatPanel.tsx`, que agrupa um par user+bot numa única bolha), aqui
+ * `Message` já é por bolha — então não há pareamento a fazer, só mapear.
+ */
+function messageFromChatSession(entry: ChatSessionMessage, index: number): Message {
+  return {
+    id: `s${index}`,
+    author: entry.role === 'user' ? 'user' : 'xiaolee',
+    text: entry.content,
+    time: new Date(entry.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  };
+}
+
+/**
  * Reações do rodapé da bolha — no web elas não registram nada, apenas fazem a
  * personagem reagir. É personalidade, não telemetria.
  */
@@ -184,15 +205,52 @@ export default function ChatScreen() {
   // carregar a conversa de convidado por um instante antes de trocar para a da
   // conta, o que piscaria a tela.
   const sessionId = sessionLoading ? undefined : (session?.sessionId ?? null);
+  const { activeChatSessionId } = useChatSession();
+  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [sessionsAnchor, setSessionsAnchor] = useState<{ top: number; right: number }>();
+  const windowWidth = useWindowDimensions().width;
+  const newChatRef = useRef<View>(null);
 
   /**
-   * Repõe a conversa salva (`lib/chat-history.ts`) sempre que a conta muda —
-   * inclusive na primeira montagem, que também é uma troca (de "nada lido"
-   * para o que quer que a conta tenha). Sem isto a tela sempre abre vazia:
-   * `appendChatMessage` grava, mas nada nunca lia de volta para `messages`, e
-   * era só isso que sobrava para reabrir o app e a Xiaolee "esquecer" tudo.
+   * Mede o botão na janela para o painel abrir colado nele, não no canto do
+   * header global — ele vive dentro do card, não da moldura do `ScreenShell`.
+   * Um toque só abre o painel de escolha (New chat vs. conversas antigas);
+   * nada é criado sem a pessoa escolher explicitamente lá dentro — botão
+   * pequeno demais criando sessão sem querer foi exatamente o problema do
+   * desenho anterior (botão dividido, ação instantânea).
+   */
+  function handleOpenChatMenu() {
+    if (sessionsOpen) {
+      setSessionsOpen(false);
+      return;
+    }
+    newChatRef.current?.measureInWindow((x, y, width, height) => {
+      setSessionsAnchor({ top: y + height + 6, right: windowWidth - (x + width) });
+      setSessionsOpen(true);
+    });
+  }
+
+  /**
+   * Repõe a conversa: se há uma sessão de chat ativa (`lib/chat-session.ts`),
+   * o histórico daquela thread vem do backend — trocar de sessão é trocar de
+   * conversa, então substitui em vez de mesclar. Sem sessão ativa, mantém o
+   * comportamento de sempre: repõe o log local (`lib/chat-history.ts`) sempre
+   * que a conta muda, inclusive na primeira montagem. Sem isto a tela sempre
+   * abre vazia: `appendChatMessage` grava, mas nada nunca lia de volta para
+   * `messages`, e era só isso que sobrava para reabrir o app e a Xiaolee
+   * "esquecer" tudo.
    */
   useEffect(() => {
+    if (activeChatSessionId !== null) {
+      let active = true;
+      getChatSessionMessages(activeChatSessionId).then((history) => {
+        if (active) setMessages(history.map(messageFromChatSession));
+      });
+      return () => {
+        active = false;
+      };
+    }
+
     if (sessionId === undefined) return;
     let active = true;
     loadChatHistory().then((stored) => {
@@ -201,7 +259,7 @@ export default function ChatScreen() {
     return () => {
       active = false;
     };
-  }, [sessionId]);
+  }, [sessionId, activeChatSessionId]);
 
   /**
    * Troca o botão pelo hash na mensagem que foi assinada.
@@ -248,9 +306,17 @@ export default function ChatScreen() {
       const result = await sendChatMessage({
         message,
         ...(wallet && { wallet_address: wallet.address, wallet_chain: wallet.chain }),
+        ...(activeChatSessionId !== null && { session_id: activeChatSessionId }),
       });
       const reply =
         result.response?.[0]?.content?.trim() || 'Não consegui formular uma resposta agora.';
+
+      // Primeira mensagem de uma conversa nova: o backend acabou de criar a
+      // sessão — adota o id devolvido para o painel passar a listá-la.
+      if (activeChatSessionId === null && result.session_id) {
+        setActiveChatSessionId(result.session_id);
+      }
+      void refreshChatSessions();
 
       setMessages((current) => [
         ...current,
@@ -327,7 +393,11 @@ export default function ChatScreen() {
           {/* Na conversa o hero some, então a personagem passa a viver aqui —
               sempre há exatamente uma avatar animada, e as reações têm onde
               acontecer. */}
-          <AssistantHeader animated={!empty} />
+          <AssistantHeader
+            animated={!empty}
+            onPressChatMenu={handleOpenChatMenu}
+            chatMenuRef={newChatRef}
+          />
 
           <ScrollView
             ref={scroller}
@@ -377,6 +447,14 @@ export default function ChatScreen() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Fora do card (que corta overflow) para o painel poder flutuar por
+          cima da lista de mensagens, como o dropdown do web. */}
+      <SessionsPanel
+        visible={sessionsOpen}
+        onDismiss={() => setSessionsOpen(false)}
+        anchor={sessionsAnchor}
+      />
     </ScreenShell>
   );
 }
@@ -401,9 +479,10 @@ function SignTxButton({
   message: Message;
   onSigned: (id: string, hash: string) => void;
 }) {
-  const { isConnected, signAndRelay } = useWalletConnect();
+  const { isConnected, hasArcNetwork, signAndRelay } = useWalletConnect();
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState<string>();
+  const [arcSheet, setArcSheet] = useState(false);
 
   if (message.txHash) {
     return (
@@ -416,6 +495,31 @@ function SignTxButton({
 
   if (!isConnected) {
     return <Text style={styles.txHint}>Connect a wallet to sign this transfer.</Text>;
+  }
+
+  /**
+   * Nem MetaMask nem Rabby aceitam cadastrar o Arc Testnet sozinhas por
+   * WalletConnect (ver `ArcNetworkSheet` — é resultado de teste, não algo que
+   * dá para contornar daqui). Sem isto, o único aviso ficava na tela Wallet,
+   * que ninguém visita antes de tentar assinar direto do chat — a pessoa só
+   * descobria o problema quando a carteira já tinha recusado a assinatura.
+   */
+  if (!hasArcNetwork) {
+    return (
+      <>
+        <Pressable
+          onPress={() => setArcSheet(true)}
+          style={({ pressed }) => [styles.arcWarn, pressed && styles.pressed]}
+          accessibilityRole="button"
+        >
+          <IconAlert size={14} color={Colors.light.warn} />
+          <Text style={styles.arcWarnText}>
+            Arc Testnet not detected. <Text style={styles.arcWarnLink}>Tap to add it.</Text>
+          </Text>
+        </Pressable>
+        <ArcNetworkSheet visible={arcSheet} onClose={() => setArcSheet(false)} />
+      </>
+    );
   }
 
   async function sign() {
@@ -540,7 +644,15 @@ function Typing() {
 }
 
 /** Faixa de identidade do assistente, fixa no topo do card. */
-function AssistantHeader({ animated }: { animated: boolean }) {
+function AssistantHeader({
+  animated,
+  onPressChatMenu,
+  chatMenuRef,
+}: {
+  animated: boolean;
+  onPressChatMenu: () => void;
+  chatMenuRef: RefObject<View | null>;
+}) {
   return (
     <View style={styles.assistant}>
       <View>
@@ -565,9 +677,21 @@ function AssistantHeader({ animated }: { animated: boolean }) {
         <Text style={styles.assistantRole}>Your intelligent DeFi assistant</Text>
       </View>
 
-      <View style={styles.verifiedBadge}>
-        <IconCheck size={10} sw={2.4} color={Colors.light.success} />
-      </View>
+      {/* Um botão só, com rótulo por extenso — a versão dividida (ação
+          instantânea + chevron minúsculo) criava sessão à toa quando o toque
+          errava o alvo pequeno. Este abre um painel onde a escolha entre
+          "New chat" e uma conversa antiga é sempre explícita. */}
+      <Pressable
+        ref={chatMenuRef}
+        onPress={onPressChatMenu}
+        hitSlop={Spacing.two}
+        style={({ pressed }) => [styles.newChat, pressed && styles.newChatPressed]}
+        accessibilityRole="button"
+        accessibilityLabel="New chat"
+      >
+        <IconEdit size={13} sw={2.2} color={Colors.light.ink} />
+        <Text style={styles.newChatText}>New chat</Text>
+      </Pressable>
     </View>
   );
 }
@@ -735,16 +859,28 @@ const styles = StyleSheet.create({
     color: Colors.light.success,
   },
   assistantRole: { fontFamily: Fonts.sans, fontSize: 12, color: Colors.light.ink2, marginTop: 1 },
-  verifiedBadge: {
-    width: 28,
-    height: 20,
-    borderRadius: Radius.sm,
+  // Alvo visual menor que o primeiro rascunho, mas o `hitSlop` no Pressable
+  // (ver abaixo) mantém a área de toque real confortável — o desenho anterior
+  // (chevron de 20dp isolado, sem hitSlop) era pequeno demais e criava sessão
+  // sem querer quando o toque errava o alvo.
+  //
+  // Fundo branco + borda, não accent sólido: a regra do design system é
+  // "acento só em botão primário/destaque, resto neutro" (`theme.ts`) — rosa
+  // chapado numa faixa de identidade (que já não é um CTA) chamava atenção
+  // demais.
+  newChat: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.light.successSoft,
+    gap: 5,
+    height: 32,
+    paddingHorizontal: 11,
+    borderRadius: Radius.pill,
+    backgroundColor: Colors.light.card,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Colors.light.successBorder,
+    borderColor: Colors.light.border,
   },
+  newChatPressed: { opacity: 0.6 },
+  newChatText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.light.ink },
 
   // ── Corpo ──────────────────────────────────────────────────────────────
   body: {
@@ -849,6 +985,23 @@ const styles = StyleSheet.create({
     color: Colors.light.danger,
     marginTop: Spacing.one,
   },
+  arcWarn: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.two - 2,
+    padding: Spacing.two,
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.warnSoft,
+    marginTop: Spacing.two - 2,
+  },
+  arcWarnText: {
+    flex: 1,
+    fontFamily: Fonts.sans,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.light.ink2,
+  },
+  arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
   bubbleTextUser: {
     fontFamily: Fonts.medium,
     fontSize: 14,

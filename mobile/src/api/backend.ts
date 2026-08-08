@@ -96,6 +96,8 @@ export interface ChatResponse {
   code: string | null;
   /** Nome da animação a tocar — ver `animationFromBackend`. Pode vir null. */
   animations: string | null;
+  /** Sessão em que a mensagem foi gravada — sempre presente na resposta. */
+  session_id?: number;
 }
 
 export interface ChatRequest {
@@ -103,6 +105,8 @@ export interface ChatRequest {
   /** Endereço de payout, quando há carteira conectada. */
   wallet_address?: string;
   wallet_chain?: string;
+  /** Sessão de chat ativa — omitido, o backend cria uma nova na primeira mensagem. */
+  session_id?: number;
 }
 
 /**
@@ -125,6 +129,32 @@ export function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
     // Timeout maior: a resposta depende de uma chamada a LLM.
     timeoutMs: 60_000,
   });
+}
+
+/** `GET/POST /v1/chat/sessions`, `GET /v1/chat/sessions/{id}/messages` — `backend/server/routes/chat_sessions_routes.py` */
+export interface ChatSessionSummary {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSessionMessage {
+  role: string;
+  content: string;
+  time: string;
+}
+
+export function listChatSessions(): Promise<ChatSessionSummary[]> {
+  return apiFetch<ChatSessionSummary[]>('/v1/chat/sessions');
+}
+
+export function createChatSession(): Promise<ChatSessionSummary> {
+  return apiFetch<ChatSessionSummary>('/v1/chat/sessions', { method: 'POST' });
+}
+
+export function getChatSessionMessages(id: number): Promise<ChatSessionMessage[]> {
+  return apiFetch<ChatSessionMessage[]>(`/v1/chat/sessions/${id}/messages`);
 }
 
 /** `POST /auth/wallet` — `backend/server/campaigns_routes.py::link_wallet` */

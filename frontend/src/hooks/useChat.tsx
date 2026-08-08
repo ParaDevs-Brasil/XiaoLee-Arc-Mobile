@@ -2,12 +2,11 @@ import api from "@/api/api";
 import UserData from "@/components/UserData";
 
 export default async function sendChatMessage(
-    msg: string
-    
-   
+    msg: string,
+    sessionId?: number
 ) {
-    
-    try {        
+
+    try {
 
         // Wallet universal do Connect Wallet (navbar) — xiaolee_wallet: {address, chain, walletName}
         let connectedWallet: string | null = null;
@@ -33,6 +32,7 @@ export default async function sendChatMessage(
             console.log("🔍 Enviando como usuário anônimo (sem dados no UserData)");
             const response = await api.post("/chat", {
                 message: msg,
+                ...(sessionId && { session_id: sessionId }),
                 ...(walletAddress && { wallet_address: walletAddress }),
                 ...(walletChain && { wallet_chain: walletChain }),
                 ...(stellarAccount && { stellar_wallet: stellarAccount }),
@@ -44,6 +44,7 @@ export default async function sendChatMessage(
 
             const response = await api.post("/chat", {
                 message: msg,
+                ...(sessionId && { session_id: sessionId }),
                 ...(walletAddress && { wallet_address: walletAddress }),
                 ...(walletChain && { wallet_chain: walletChain }),
                 ...(stellarAccount && { stellar_wallet: stellarAccount }),

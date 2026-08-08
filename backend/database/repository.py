@@ -5,7 +5,18 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from .models import CampaignParticipant, CctpTransfer, PaymentIntent, SettledPayment, User, DMLog
+from .models import CampaignParticipant, CctpTransfer, ChatSession, PaymentIntent, SettledPayment, User, DMLog
+
+
+def to_utc_iso(dt: datetime) -> str:
+    """`Base.created_at`/`updated_at` são `DateTime` naive, mas sempre gravados
+    com `func.now()`/`datetime.now(timezone.utc)` — ou seja, o relógio já é
+    UTC, só falta o cliente saber disso. Sem o `Z`, `new Date(iso)` no
+    browser/RN interpreta a string como hora LOCAL: no Brasil (UTC-3) isso
+    coloca todo timestamp ~3h no "futuro", e "há quantos minutos" sempre dá
+    negativo — daí todo chat aparecer como "now" para sempre.
+    """
+    return dt.replace(tzinfo=timezone.utc).isoformat()
 
 
 class DatabaseRepository:
@@ -43,6 +54,7 @@ class DatabaseRepository:
         content: str,
         message_type: str = "user",
         error_message: str = None,
+        session_id: str | None = None,
     ):
         dm_log = DMLog(
             user_id=user_id,
@@ -51,6 +63,7 @@ class DatabaseRepository:
             message_type=message_type,
             error_occurred=bool(error_message),
             error_message=error_message,
+            session_id=session_id,
         )
         self.session.add(dm_log)
         await self.session.flush()
@@ -66,6 +79,68 @@ class DatabaseRepository:
         result = await self.session.execute(stmt)
         logs = result.scalars().all()
         return [{"role": log.message_type, "content": log.content} for log in reversed(logs)]
+
+    # ------------------------------------------------------------------
+    # Chat sessions — web chat threads (messages live in DMLog)
+    # ------------------------------------------------------------------
+
+    async def create_chat_session(self, user_id: int, title: str = "New chat") -> ChatSession:
+        chat_session = ChatSession(user_id=user_id, title=title)
+        self.session.add(chat_session)
+        await self.session.flush()
+        return chat_session
+
+    async def list_chat_sessions(self, user_id: int, limit: int = 50) -> list[ChatSession]:
+        stmt = (
+            select(ChatSession)
+            .where(ChatSession.user_id == user_id)
+            .order_by(ChatSession.updated_at.desc())
+            .limit(limit)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_chat_session(self, session_id: int, user_id: int) -> Optional[ChatSession]:
+        stmt = select(ChatSession).where(ChatSession.id == session_id, ChatSession.user_id == user_id)
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+    async def touch_chat_session(self, session_id: int) -> None:
+        stmt = select(ChatSession).where(ChatSession.id == session_id)
+        result = await self.session.execute(stmt)
+        chat_session = result.scalars().first()
+        if not chat_session:
+            return
+        # Naive UTC, não `datetime.now(timezone.utc)`: `Base.updated_at` é
+        # `DateTime` sem timezone (compartilhado por toda tabela do sistema),
+        # e asyncpg recusa gravar um datetime aware numa coluna
+        # `TIMESTAMP WITHOUT TIME ZONE` — foi o que derrubou o /chat em
+        # produção. O valor ainda é um instante UTC, só sem o offset explícito,
+        # igual todo outro timestamp que já passa por essa coluna.
+        chat_session.updated_at = datetime.utcnow()
+        await self.session.flush()
+
+    async def rename_chat_session(self, session_id: int, title: str) -> None:
+        stmt = select(ChatSession).where(ChatSession.id == session_id)
+        result = await self.session.execute(stmt)
+        chat_session = result.scalars().first()
+        if not chat_session:
+            return
+        chat_session.title = title
+        await self.session.flush()
+
+    async def get_session_messages(self, session_id: int) -> list[dict]:
+        stmt = (
+            select(DMLog)
+            .where(DMLog.session_id == str(session_id))
+            .order_by(DMLog.id.asc())
+        )
+        result = await self.session.execute(stmt)
+        logs = result.scalars().all()
+        return [
+            {"role": log.message_type, "content": log.content, "time": to_utc_iso(log.created_at)}
+            for log in logs
+        ]
 
     # ------------------------------------------------------------------
     # Campaign participants — used by the agent tools

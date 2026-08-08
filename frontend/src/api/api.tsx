@@ -87,4 +87,32 @@ export async function registerCreator(
   return res.data;
 }
 
+export interface ChatSessionSummary {
+  id: number;
+  title: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ChatSessionMessage {
+  role: string;
+  content: string;
+  time: string;
+}
+
+export async function listChatSessions(): Promise<ChatSessionSummary[]> {
+  const res = await api.get<ChatSessionSummary[]>("/v1/chat/sessions");
+  return res.data;
+}
+
+export async function createChatSession(): Promise<ChatSessionSummary> {
+  const res = await api.post<ChatSessionSummary>("/v1/chat/sessions");
+  return res.data;
+}
+
+export async function getChatSessionMessages(id: number): Promise<ChatSessionMessage[]> {
+  const res = await api.get<ChatSessionMessage[]>(`/v1/chat/sessions/${id}/messages`);
+  return res.data;
+}
+
 export default api;

@@ -47,9 +47,16 @@ interface DropdownPanelProps {
   visible: boolean;
   onDismiss: () => void;
   children: ReactNode;
+  /**
+   * Ancoragem customizada, em coordenadas de janela (`measureInWindow`).
+   * Sem isto, cai no canto do header global (hambúrguer/avatar) — o caso de
+   * `NavMenu`/`ProfileMenu`. Painéis abertos de um botão fora do header (ex.:
+   * o "New chat" dentro do card do chat) passam a posição medida do botão.
+   */
+  anchor?: { top: number; right: number };
 }
 
-export function DropdownPanel({ visible, onDismiss, children }: DropdownPanelProps) {
+export function DropdownPanel({ visible, onDismiss, children, anchor }: DropdownPanelProps) {
   const insets = useSafeAreaInsets();
   // Mesmo idioma do avatar: a `Animated.Value` nasce uma vez e sobrevive aos
   // renders. Começa no estado atual para o primeiro frame não piscar aberto.
@@ -108,7 +115,9 @@ export function DropdownPanel({ visible, onDismiss, children }: DropdownPanelPro
       <Animated.View
         style={[
           styles.panel,
-          { top: 53 + insets.top + Spacing.three - 4 },
+          anchor
+            ? { top: anchor.top, right: anchor.right }
+            : { top: 53 + insets.top + Spacing.three - 4 },
           {
             opacity: progress.interpolate({
               inputRange: [0, 0.5],

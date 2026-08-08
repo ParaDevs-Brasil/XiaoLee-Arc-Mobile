@@ -46,6 +46,7 @@ from server.routes.arc_routes import router as arc_router
 from server.routes.arc_x402_routes import router as arc_x402_router
 from server.routes.trust_routes import router as trust_router
 from server.routes.cctp_routes import router as cctp_router
+from server.routes.chat_sessions_routes import router as chat_sessions_router
 from server.traction_routes import router as traction_router
 
 
@@ -190,6 +191,7 @@ app.include_router(arc_router)
 app.include_router(arc_x402_router)
 app.include_router(trust_router)
 app.include_router(cctp_router)
+app.include_router(chat_sessions_router)
 app.include_router(traction_router)
 
 request_hits: Dict[str, Deque[datetime]] = defaultdict(deque)
@@ -390,17 +392,20 @@ async def _process_inbound(
     text: str,
     db: AsyncSession,
     metadata: dict | None = None,
+    session_id: str | None = None,
 ) -> OrchestrationResponse:
     repo = DatabaseRepository(db)
     user = await repo.get_or_create_user(platform, user_id)
     if platform == "telegram" and metadata and metadata.get("chat_id"):
         await repo.set_telegram_chat_id(user.id, metadata["chat_id"])
     history = await repo.get_user_history(user.id, limit=10)
-    await repo.log_dm(user.id, platform, text, message_type="user")
+    await repo.log_dm(user.id, platform, text, message_type="user", session_id=session_id)
 
     result = await orchestrator.execute(text, user_id, history=history, platform=platform)
 
-    await repo.log_dm(user.id, platform, result["reply_text"], message_type="bot")
+    await repo.log_dm(user.id, platform, result["reply_text"], message_type="bot", session_id=session_id)
+    if session_id:
+        await repo.touch_chat_session(int(session_id))
     await db.commit()
 
     return OrchestrationResponse(
@@ -435,6 +440,10 @@ async def chat_compat(
     text = str(payload.get("message", "")).strip()
     if not text:
         raise HTTPException(status_code=400, detail="message is required")
+    # Título da sessão vem do que a pessoa digitou — antes de qualquer prefixo
+    # de contexto (wallet/stellar) entrar em `text` abaixo, senão o título vira
+    # "[System Note: User connected wallet is 0x..." em vez da mensagem.
+    title = text[:40] + ("…" if len(text) > 40 else "")
 
     wallet_address = payload.get("wallet_address")
     if wallet_address:
@@ -454,7 +463,28 @@ async def chat_compat(
     platform = str(payload.get("platform", "web"))
 
     _enforce_rate_limit(f"chat:{platform}:{user_id}")
-    result = await _process_inbound(platform=platform, user_id=user_id, text=text, db=db)
+
+    repo = DatabaseRepository(db)
+    chat_session_id = payload.get("session_id")
+    if not chat_session_id:
+        user = await repo.get_or_create_user(platform, user_id)
+        chat_session = await repo.create_chat_session(user.id, title=title)
+        await db.commit()
+        chat_session_id = chat_session.id
+    else:
+        # Sessão pode ter sido criada vazia pelo botão "New chat" (sem texto
+        # ainda para titular) — se esta é a primeira mensagem dela, titula
+        # agora. Sem isto toda sessão aberta pelo botão fica "New chat" para
+        # sempre, porque o ramo acima (que titula) só roda quando o cliente
+        # NÃO manda session_id — e o botão sempre manda.
+        existing_messages = await repo.get_session_messages(int(chat_session_id))
+        if not existing_messages:
+            await repo.rename_chat_session(int(chat_session_id), title)
+            await db.commit()
+
+    result = await _process_inbound(
+        platform=platform, user_id=user_id, text=text, db=db, session_id=str(chat_session_id)
+    )
 
     # Keep legacy response shape consumed by frontend ChatPanel.
     return {
@@ -463,6 +493,7 @@ async def chat_compat(
         "execution": result.execution,
         "code": None,
         "animations": result.execution.get("animation"),
+        "session_id": chat_session_id,
     }
 
 

@@ -10,6 +10,8 @@ import { IconSend, IconCheck, IconSpark } from "@/components/icons";
 import { XiaoleeBubble } from "@/components/landing/primitives";
 import ChatHeader from "@/components/chat/ChatHeader";
 import EmptyState from "@/components/chat/EmptyState";
+import { useChatSession } from "@/contexts/ChatSessionContext";
+import { getChatSessionMessages } from "@/api/api";
 
 type SwapExecution = {
   chain?: string;
@@ -56,6 +58,7 @@ const actions = {
 
 
 export default function ChatPanel() {
+  const { activeSessionId, setActiveSessionId, refreshSessions } = useChatSession();
   const [message, setMessage] = useState("");
   const [msgs, setMsgs] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,6 +97,10 @@ export default function ChatPanel() {
     };
 
     const loadExistingChatHistory = () => {
+      // Sessão ativa: o histórico daquela thread vem do backend (efeito abaixo,
+      // keyed em activeSessionId) — o log plano legado em localStorage não deve
+      // sobrescrever por cima, senão "New chat"/troca de sessão nunca limpa a tela.
+      if (activeSessionId !== null) return;
       const chatHistory = UserData.getChatHistory();
       if (chatHistory.length === 0) return;
       setMsgs(prev => {
@@ -123,7 +130,33 @@ export default function ChatPanel() {
       window.addEventListener('userDataLoaded', handleUserDataLoaded);
       return () => window.removeEventListener('userDataLoaded', handleUserDataLoaded);
     }
-  }, []);
+  }, [activeSessionId]);
+
+  // Trocar de sessão troca de thread — carrega o histórico daquela conversa
+  // do backend (não mescla com o que estava em memória, ao contrário do
+  // localStorage acima, que é o de sempre/legado).
+  useEffect(() => {
+    if (activeSessionId === null) {
+      setMsgs([]);
+      return;
+    }
+    let cancelled = false;
+    getChatSessionMessages(activeSessionId).then((history) => {
+      if (cancelled) return;
+      const paired: MessageType[] = [];
+      let pending: { sent: string; time: string } | null = null;
+      for (const m of history) {
+        if (m.role === "user") {
+          pending = { sent: m.content, time: formatTime(m.time) };
+        } else if (pending) {
+          paired.push({ sent: pending.sent, response: m.content, hasCode: false, code: "", time: pending.time });
+          pending = null;
+        }
+      }
+      setMsgs(paired);
+    }).catch((err) => console.error("Error loading chat session messages:", err));
+    return () => { cancelled = true; };
+  }, [activeSessionId]);
 
   async function fetchData() {
     if (UserData.getUserData() !== null) {
@@ -216,7 +249,12 @@ export default function ChatPanel() {
     setMsgs(prev => [...prev, { sent: message, response: TYPING_SENTINEL, hasCode: false, code: "", time: sentAt }]);
 
     try {
-      const response = await sendChatMessage(message);
+      const response = await sendChatMessage(message, activeSessionId ?? undefined);
+
+      if (activeSessionId === null && response.session_id) {
+        setActiveSessionId(response.session_id);
+      }
+      refreshSessions();
 
       let messageHasCode = false;
       let messageCode = "";
@@ -263,7 +301,7 @@ export default function ChatPanel() {
     <div className="w-full lg:col-span-7 h-full min-h-0 rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-e2 flex flex-col overflow-hidden">
 
       {/* Header */}
-      <ChatHeader authenticated={authStatus?.status === "active"} />
+      <ChatHeader />
 
       {/* Messages */}
       <div

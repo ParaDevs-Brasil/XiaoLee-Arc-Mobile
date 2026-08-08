@@ -86,18 +86,27 @@ class TransactionHistory(Base):
 
 class DMLog(Base):
     __tablename__ = 'dmlogs'
-    
+
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     message_type: Mapped[str] = mapped_column(default="user")
     content: Mapped[str] = mapped_column(Text)
     platform: Mapped[str] = mapped_column(String(50), default="twitter")
     twitter_message_id: Mapped[Optional[str]] = mapped_column(nullable=True)
     conversation_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    session_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     request_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, index=True)
     processing_time_ms: Mapped[Optional[int]] = mapped_column(nullable=True)
     error_occurred: Mapped[bool] = mapped_column(Boolean, default=False)
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
+class ChatSession(Base):
+    """Web chat thread. Messages live in DMLog rows tagged with str(id) as session_id."""
+    __tablename__ = 'chat_sessions'
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    title: Mapped[str] = mapped_column(String(120), default="New chat")
+    # last activity — reuses Base.updated_at, bumped explicitly in touch_chat_session()
 
 
 class AuthToken(Base):

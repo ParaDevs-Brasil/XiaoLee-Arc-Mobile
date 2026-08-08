@@ -228,6 +228,14 @@ export const IconPlus = (p: IconProps) => (
   </Svg>
 );
 
+/** Caneta escrevendo — gatilho de "New chat", ao lado do rótulo por extenso. */
+export const IconEdit = (p: IconProps) => (
+  <Svg {...base(p)}>
+    <Path d="M12 20h9" />
+    <Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+  </Svg>
+);
+
 export const IconMegaphone = (p: IconProps) => (
   <Svg {...base(p)}>
     <Path d="M3 11l19-9-9 19-2-8-8-2z" />

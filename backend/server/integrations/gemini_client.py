@@ -158,7 +158,18 @@ class GeminiClient:
         if not self.enabled:
             return "Posso ajudar com saldo, cotação de swap e operações na Solana Devnet."
 
-        system_text = _PERSONA + "\n\n" + instruction
+        # The language rule already lives in _PERSONA and usually in `instruction`
+        # (_PLATFORM_CONTEXT) too, but both sit at the *start* of a long system
+        # block — easy for the model to deprioritize by the time it's generating.
+        # Restating it here, last and short, right next to `user_text` below,
+        # catches cases the earlier copies miss (seen live: "transfer 1 usdc to
+        # 0x..." answered in Portuguese despite English input).
+        system_text = (
+            _PERSONA + "\n\n" + instruction + "\n\n"
+            "FINAL REMINDER, overrides any earlier phrasing: reply in the exact same "
+            "language as the user's message below — English in, English out; "
+            "Portuguese in, Portuguese out. Never switch."
+        )
         contents = self._build_contents(user_text, history)
 
         payload = {

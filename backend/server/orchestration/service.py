@@ -400,7 +400,10 @@ class OrchestrationService:
 
         # Transferência USDC iniciada pelo usuário (assina na própria wallet EVM):
         # verbo de envio + USDC + endereço de destino explícito na mensagem.
-        _send_verb = bool(re.search(r"\b(manda|mandar|enviar|envia|send|transferir|transfere)\b", lowered))
+        _send_verb = bool(re.search(
+            r"\b(manda|mandar|enviar|envia|send|sending|transferir|transfere|transfer|transferring)\b",
+            lowered,
+        ))
         if _send_verb and "usdc" in lowered:
             evm_dest = re.search(r"\b(0x[0-9a-fA-F]{40})\b", clean)
             sol_dest = re.search(r"\b([1-9A-HJ-NP-Za-km-z]{32,44})\b", clean)

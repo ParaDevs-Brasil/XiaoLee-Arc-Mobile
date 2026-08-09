@@ -375,11 +375,18 @@ async function signAndRelayAuthorization(
   // chainId do domínio, pelo método não declarado na sessão, ou pelo usuário.
   console.log(`[3009] assinando: ${amountUsdc} USDC → ${to} | chainId ${domain.chainId}`);
 
-  // Manda no escopo do Arc quando a carteira aprovou essa chain; senão deixa o
-  // provider usar a default, que é o melhor possível sem ela.
+  // Sempre manda no escopo do Arc, aprovado ou não — mesmo quando a Arc não
+  // está em `approvedChains`. Antes caía para o default da sessão (`undefined`),
+  // deixando o pedido implicitamente na chain default (quase sempre Ethereum
+  // mainnet) enquanto o `domain.chainId` do typed data dizia Arc — descompasso
+  // que MetaMask 8.5 parece não tolerar mais: nem abre a tela de assinar,
+  // silenciosamente (8.4 tolerava). approvedChains ainda é logado abaixo para
+  // depuração; só não decide mais o escopo.
   const arcScope = `eip155:${ARC_CHAIN_ID}`;
-  const scope = approvedChains.includes(arcScope) ? arcScope : undefined;
-  console.log(`[3009] escopo do pedido: ${scope ?? '(default da sessão)'}`);
+  const scope = arcScope;
+  console.log(
+    `[3009] escopo do pedido: ${scope} (aprovada na sessão: ${approvedChains.includes(arcScope)})`,
+  );
 
   let signature: string;
   try {

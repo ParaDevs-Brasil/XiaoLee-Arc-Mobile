@@ -264,12 +264,14 @@ export default function ChatScreen() {
   /**
    * Troca o botão pelo hash na mensagem que foi assinada.
    *
-   * Limpar o `transfer` é o que impede assinar o mesmo pedido duas vezes — o web
-   * faz igual (`ChatPanel.tsx:181`).
+   * `transfer` fica — quem impede assinar o mesmo pedido duas vezes é o
+   * `txHash` (o `SignTxButton` já sai cedo quando ele existe). Mantém o
+   * `transfer.to` vivo depois de assinado, pra continuar mostrando o
+   * endereço de destino clicável no lugar do botão.
    */
   function markSigned(id: string, hash: string) {
     setMessages((current) =>
-      current.map((m) => (m.id === id ? { ...m, transfer: undefined, txHash: hash } : m)),
+      current.map((m) => (m.id === id ? { ...m, txHash: hash } : m)),
     );
   }
 
@@ -511,7 +513,7 @@ function SignTxButton({
   }
 
   if (!isConnected) {
-    return <Text style={styles.txHint}>Sign in to sign this transfer.</Text>;
+    return <Text style={styles.txHint}>Connect a wallet to sign this transfer.</Text>;
   }
 
   async function sign() {
@@ -521,6 +523,9 @@ function SignTxButton({
     try {
       const { to, amountUsdc } = message.transfer;
       onSigned(message.id, await signAndRelay(to, amountUsdc));
+      // A recompensa visual do "deu certo" — mesma personagem que já reage a
+      // tudo no chat, não uma animação nova só pra isto.
+      avatarAnimation.play('xiaolee_cheer');
     } catch (err) {
       // Erro de carteira vem como `{code, message}` puro, não Error — por isso
       // não dá para usar `instanceof` aqui.

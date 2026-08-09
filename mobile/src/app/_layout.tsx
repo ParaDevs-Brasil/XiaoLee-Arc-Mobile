@@ -20,9 +20,10 @@ import { PrivyProvider } from '@privy-io/expo';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { IntroVideo } from '@/components/intro-video';
 import { Colors } from '@/constants/theme';
 import { arcTestnetChain, PRIVY_CONFIG, WalletProvider } from '@/lib/wallet';
 
@@ -38,6 +39,13 @@ const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID?.trim() || 'CHAN
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  // A intro toca em toda abertura fria do app — este estado nasce `false` a
+  // cada montagem de `RootLayout`, então não precisa de storage pra saber
+  // "deve mostrar agora": a existência do vídeo por cima do Stack é a
+  // resposta. O storage (`lib/intro.ts`) só decide se o botão de pular
+  // aparece dentro do `IntroVideo`.
+  const [introFinished, setIntroFinished] = useState(false);
+
   // Quicksand é a fonte do produto (ver constants/theme.ts). Sem esperar por
   // ela, o app pisca na fonte de sistema antes de trocar.
   const [fontsLoaded, fontError] = useFonts({
@@ -89,36 +97,51 @@ export default function RootLayout() {
       >
         <WalletProvider>
           <ThemeProvider value={DefaultTheme}>
-            <Stack
-              screenOptions={{
-                headerStyle: { backgroundColor: Colors.light.card },
-                headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
-                contentStyle: { backgroundColor: Colors.light.bg },
-              }}
-            >
-              {/* Estas telas trazem o próprio HeaderBar (o wordmark do Figma) via
-                  `ScreenShell`, então a barra nativa sairia duplicada. A volta
-                  fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
-              <Stack.Screen name="index" options={{ headerShown: false }} />
-              <Stack.Screen name="traction" options={{ headerShown: false }} />
-              <Stack.Screen name="notifications" options={{ headerShown: false }} />
-              <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-              <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
-              <Stack.Screen name="wallet" options={{ headerShown: false }} />
-              <Stack.Screen name="transactions" options={{ headerShown: false }} />
-              <Stack.Screen name="history" options={{ headerShown: false }} />
-              {/* O formulário é a exceção: entra como modal e mantém a barra
-                  nativa. Num formulário longo o usuário precisa de uma saída
-                  sempre visível, e o wordmark do ScreenShell não é uma. */}
-              <Stack.Screen
-                name="campaigns/new"
-                options={{ presentation: 'modal', title: 'New Campaign' }}
-              />
-              <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
-            </Stack>
+            {/*
+              Só monta o Stack depois que a intro termina — não por
+              performance, é correção. `AnimatedAvatar` (cabeçalho do chat) é
+              outro `VideoView`, e dois `VideoView` simultâneos no Android
+              competem no compositor nativo (SurfaceView) por fora da ordem
+              normal de camadas: um vazava por cima do outro, aparecendo como
+              o "rostinho" da Xiaolee dentro do balão "Hi" do vídeo de intro.
+              `PrivyProvider`/`WalletProvider` continuam montados o tempo
+              todo — só eles não usam vídeo, então hidratam a sessão em
+              paralelo à intro, sem esse conflito.
+            */}
+            {introFinished ? (
+              <Stack
+                screenOptions={{
+                  headerStyle: { backgroundColor: Colors.light.card },
+                  headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
+                  contentStyle: { backgroundColor: Colors.light.bg },
+                }}
+              >
+                {/* Estas telas trazem o próprio HeaderBar (o wordmark do Figma) via
+                    `ScreenShell`, então a barra nativa sairia duplicada. A volta
+                    fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
+                <Stack.Screen name="index" options={{ headerShown: false }} />
+                <Stack.Screen name="traction" options={{ headerShown: false }} />
+                <Stack.Screen name="notifications" options={{ headerShown: false }} />
+                <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+                <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
+                <Stack.Screen name="wallet" options={{ headerShown: false }} />
+                <Stack.Screen name="transactions" options={{ headerShown: false }} />
+                <Stack.Screen name="history" options={{ headerShown: false }} />
+                {/* O formulário é a exceção: entra como modal e mantém a barra
+                    nativa. Num formulário longo o usuário precisa de uma saída
+                    sempre visível, e o wordmark do ScreenShell não é uma. */}
+                <Stack.Screen
+                  name="campaigns/new"
+                  options={{ presentation: 'modal', title: 'New Campaign' }}
+                />
+                <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
+              </Stack>
+            ) : null}
           </ThemeProvider>
         </WalletProvider>
       </PrivyProvider>
+
+      {introFinished ? null : <IntroVideo onFinish={() => setIntroFinished(true)} />}
     </SafeAreaProvider>
   );
 }

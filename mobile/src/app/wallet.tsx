@@ -293,14 +293,14 @@ function WalletConnection() {
       ) : (
         <>
           <Text style={styles.noteText}>
-            Sign in to get a wallet on Arc and receive the USDC your campaign rewards pay out.
+            Connect a wallet on Arc to receive the USDC your campaign rewards pay out.
           </Text>
           <Pressable
             onPress={() => setLoginSheet(true)}
             style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Text style={styles.guestButtonText}>Sign in</Text>
+            <Text style={styles.guestButtonText}>Connect Wallet</Text>
           </Pressable>
         </>
       )}

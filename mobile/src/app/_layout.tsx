@@ -24,6 +24,7 @@ import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { IntroVideo } from '@/components/intro-video';
+import { LoadingScreen } from '@/components/loading-screen';
 import { Colors } from '@/constants/theme';
 import { arcTestnetChain, PRIVY_CONFIG, WalletProvider } from '@/lib/wallet';
 
@@ -39,12 +40,14 @@ const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID?.trim() || 'CHAN
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  // A intro toca em toda abertura fria do app — este estado nasce `false` a
+  // A intro toca em toda abertura fria do app — este estado nasce `'video'` a
   // cada montagem de `RootLayout`, então não precisa de storage pra saber
-  // "deve mostrar agora": a existência do vídeo por cima do Stack é a
+  // "deve mostrar agora": a existência do vídeo/loading por cima do Stack é a
   // resposta. O storage (`lib/intro.ts`) só decide se o botão de pular
-  // aparece dentro do `IntroVideo`.
-  const [introFinished, setIntroFinished] = useState(false);
+  // aparece dentro do `IntroVideo`. Ordem: vídeo (com voz) → loading (mesma
+  // cara do splash nativo) → chat — pedido explícito, o loading sozinho não
+  // é mais a primeira coisa que o usuário vê.
+  const [stage, setStage] = useState<'video' | 'loading' | 'ready'>('video');
 
   // Quicksand é a fonte do produto (ver constants/theme.ts). Sem esperar por
   // ela, o app pisca na fonte de sistema antes de trocar.
@@ -57,15 +60,18 @@ export default function RootLayout() {
     Candice: require('../../assets/fonts/candice-web.ttf'),
   });
 
+  // Esconde o splash nativo assim que o primeiro frame JS existe — não espera
+  // fonte nenhuma. O vídeo de intro (a próxima coisa a aparecer) não usa texto
+  // nenhum além do botão "Skip", que só pode aparecer depois de uma checagem
+  // assíncrona (`hasSeenIntro`) — folga de sobra pra Quicksand carregar sem
+  // piscar. O `<Stack>` (chat, cheio de texto) é que segue esperando fonte,
+  // mais abaixo — e essa espera já é coberta pelos vários segundos de vídeo +
+  // loading antes dele montar.
   useEffect(() => {
-    // Falha de fonte não deve prender o usuário no splash — segue na de sistema.
-    if (!fontsLoaded && !fontError) return;
     SplashScreen.hideAsync().catch(() => {
       // splash já escondido — não há o que tratar
     });
-  }, [fontsLoaded, fontError]);
-
-  if (!fontsLoaded && !fontError) return null;
+  }, []);
 
   return (
     // Tema claro fixo: o design system suspendeu o modo escuro até a paleta
@@ -108,7 +114,7 @@ export default function RootLayout() {
               todo — só eles não usam vídeo, então hidratam a sessão em
               paralelo à intro, sem esse conflito.
             */}
-            {introFinished ? (
+            {stage === 'ready' && (fontsLoaded || fontError) ? (
               <Stack
                 screenOptions={{
                   headerStyle: { backgroundColor: Colors.light.card },
@@ -141,7 +147,8 @@ export default function RootLayout() {
         </WalletProvider>
       </PrivyProvider>
 
-      {introFinished ? null : <IntroVideo onFinish={() => setIntroFinished(true)} />}
+      {stage === 'video' ? <IntroVideo onFinish={() => setStage('loading')} /> : null}
+      {stage === 'loading' ? <LoadingScreen onFinish={() => setStage('ready')} /> : null}
     </SafeAreaProvider>
   );
 }

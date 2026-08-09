@@ -32,8 +32,12 @@ const VIDEO_H = 1920;
 
 /**
  * Cor de fundo do próprio vídeo (amostrada num canto, longe do desenho —
- * `ffmpeg -vf fps=2` + pick de pixel). Usada só como cor do container antes
- * do primeiro frame renderizar/enquanto mede o layout.
+ * `ffmpeg -vf fps=2` + pick de pixel). Usada como cor do container antes do
+ * primeiro frame renderizar/enquanto mede o layout — e é a mesma cor do
+ * `backgroundColor` do splash nativo em `app.json` (plugin
+ * `expo-splash-screen`), de propósito: o splash nativo (inevitável, roda
+ * antes do JS) funde direto no vídeo em vez de parecer uma tela própria. Se
+ * o vídeo mudar de cor de fundo, atualizar os dois juntos.
  */
 const VIDEO_BG = '#E94C91';
 
@@ -65,7 +69,11 @@ export function IntroVideo({ onFinish }: IntroVideoProps) {
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>();
 
   const player = useVideoPlayer(VIDEO_SOURCE, (p) => {
-    p.loop = true;
+    // Sem loop: a fala dela é pra acontecer uma vez só. Sem repetir, o player
+    // já para sozinho no último frame — que já tem o "START" desenhado nele
+    // (ver comentário no topo do arquivo), então continua parado e tocável
+    // sem precisar de nenhuma lógica extra de fim-de-vídeo.
+    p.loop = false;
     p.play();
   });
 

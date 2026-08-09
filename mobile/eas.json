@@ -15,21 +15,28 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://xiaolee-mobile-api-production.up.railway.app",
-        "EXPO_PUBLIC_WC_PROJECT_ID": "9b4b01ee7b671e892738dec91a6bae82"
+        "EXPO_PUBLIC_PRIVY_APP_ID": "cmslvjr0w005r0cjx2d8fncv3",
+        "EXPO_PUBLIC_PRIVY_CLIENT_ID": "client-WY6cDKY3ZYaXNSHzsDGmiedKw18UJATVTERaedFeLujxk"
       },
       "android": {
         "buildType": "apk"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://xiaolee-mobile-api-production.up.railway.app",
+        "EXPO_PUBLIC_PRIVY_APP_ID": "cmslvjr0w005r0cjx2d8fncv3",
+        "EXPO_PUBLIC_PRIVY_CLIENT_ID": "client-WY6cDKY3ZYaXNSHzsDGmiedKw18UJATVTERaedFeLujxk"
+      }
     },
     "production-apk": {
       "distribution": "internal",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://xiaolee-mobile-api-production.up.railway.app",
-        "EXPO_PUBLIC_WC_PROJECT_ID": "9b4b01ee7b671e892738dec91a6bae82"
+        "EXPO_PUBLIC_PRIVY_APP_ID": "cmslvjr0w005r0cjx2d8fncv3",
+        "EXPO_PUBLIC_PRIVY_CLIENT_ID": "client-WY6cDKY3ZYaXNSHzsDGmiedKw18UJATVTERaedFeLujxk"
       },
       "android": {
         "buildType": "apk"

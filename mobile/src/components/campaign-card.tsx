@@ -6,9 +6,9 @@ import { claimCampaignReward, joinCampaign, verifyCampaignTasks } from '@/api/ba
 import { ApiError } from '@/api/client';
 import { IconList } from '@/components/icons';
 import { CardShadow, Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { useWalletConnect } from '@/lib/walletconnect';
 import { formatDate, formatTokenAmount } from '@/lib/format';
 import { getSessionToken } from '@/lib/session';
+import { usePrivyWallet } from '@/lib/wallet';
 
 /**
  * Cartão de campanha — porta de `frontend/src/components/campaigns/CampaignCard.tsx`.
@@ -94,7 +94,7 @@ export function CampaignCard({
   const hasTasks = Boolean(campaign.profile_to_follow || campaign.tweet_id_to_engage);
 
   const step = stepOf(participation);
-  const { address, signMessage } = useWalletConnect();
+  const { address, signMessage } = usePrivyWallet();
   const [busy, setBusy] = useState(false);
   // Uma linha só de retorno. `tone` separa "a verificação reprovou" (informação
   // legítima, o usuário ainda não fez a tarefa) de "a chamada falhou".
@@ -119,7 +119,7 @@ export function CampaignCard({
           return;
         }
         // `session` é o mesmo valor que `apiFetch` já manda como Bearer
-        // (`getSessionToken`, gravado em minúsculas por `lib/walletconnect.tsx`
+        // (`getSessionToken`, gravado em minúsculas por `lib/wallet.tsx`
         // ao conectar) — a prova precisa citar exatamente esse texto, não o
         // endereço com o casing original, ou o backend recusa com 400 por não
         // bater com o prefixo esperado.

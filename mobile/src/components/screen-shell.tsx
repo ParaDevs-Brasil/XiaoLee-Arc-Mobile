@@ -30,7 +30,7 @@ export function ScreenShell({ children }: { children: ReactNode }) {
   const [panel, setPanel] = useState<OpenPanel>('none');
   const [walletSheet, setWalletSheet] = useState(false);
   const router = useRouter();
-  // A carteira É a identidade do app (`lib/walletconnect.tsx` grava a sessão
+  // A carteira É a identidade do app (`lib/wallet.tsx` grava a sessão
   // ao conectar) — não há mais um login separado dela para esperar aqui.
   const { address: wallet } = useWallet();
 

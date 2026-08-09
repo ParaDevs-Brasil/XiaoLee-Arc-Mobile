@@ -1,3 +1,14 @@
+// Precisam ser os primeiríssimos imports do arquivo — antes até de
+// `@privy-io/expo` na linha seguinte. Import ES module roda na ordem em que
+// aparece no arquivo que importa; `@privy-io/expo` toca `crypto` e encoding
+// de texto no escopo do módulo, assim que importado. Pôr o polyfill em
+// `lib/wallet.tsx` não adianta: este arquivo importa `@privy-io/expo` direto,
+// antes de chegar no `@/lib/wallet` lá embaixo. Mesmo papel que
+// `@walletconnect/react-native-compat` fazia antes, quando ainda existia.
+import 'react-native-get-random-values';
+import 'fast-text-encoding';
+import '@ethersproject/shims';
+
 import {
   Quicksand_400Regular,
   Quicksand_500Medium,
@@ -5,6 +16,7 @@ import {
   Quicksand_700Bold,
   useFonts,
 } from '@expo-google-fonts/quicksand';
+import { PrivyProvider } from '@privy-io/expo';
 import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -12,7 +24,16 @@ import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { Colors } from '@/constants/theme';
-import { WalletConnectProvider } from '@/lib/walletconnect';
+import { arcTestnetChain, PRIVY_CONFIG, WalletProvider } from '@/lib/wallet';
+
+/**
+ * `CHANGE_ME` deixa o app subir sem quebrar antes de o app do Privy existir —
+ * mesmo acordo que `EXPO_PUBLIC_WC_PROJECT_ID` tinha. Login social não
+ * funciona com o placeholder, mas o resto do app (telas, dados via sessão
+ * salva) sim.
+ */
+const PRIVY_APP_ID = process.env.EXPO_PUBLIC_PRIVY_APP_ID?.trim() || 'CHANGE_ME';
+const PRIVY_CLIENT_ID = process.env.EXPO_PUBLIC_PRIVY_CLIENT_ID?.trim() || 'CHANGE_ME';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -53,37 +74,51 @@ export default function RootLayout() {
           escuro suspenso), então o conteúdo da barra também não deve. */}
       <StatusBar style="dark" />
 
-      <WalletConnectProvider>
-        <ThemeProvider value={DefaultTheme}>
-          <Stack
-            screenOptions={{
-              headerStyle: { backgroundColor: Colors.light.card },
-              headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
-              contentStyle: { backgroundColor: Colors.light.bg },
-            }}
-          >
-            {/* Estas telas trazem o próprio HeaderBar (o wordmark do Figma) via
-                `ScreenShell`, então a barra nativa sairia duplicada. A volta
-                fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
-            <Stack.Screen name="index" options={{ headerShown: false }} />
-            <Stack.Screen name="traction" options={{ headerShown: false }} />
-            <Stack.Screen name="notifications" options={{ headerShown: false }} />
-            <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-            <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
-            <Stack.Screen name="wallet" options={{ headerShown: false }} />
-            <Stack.Screen name="transactions" options={{ headerShown: false }} />
-            <Stack.Screen name="history" options={{ headerShown: false }} />
-            {/* O formulário é a exceção: entra como modal e mantém a barra
-                nativa. Num formulário longo o usuário precisa de uma saída
-                sempre visível, e o wordmark do ScreenShell não é uma. */}
-            <Stack.Screen
-              name="campaigns/new"
-              options={{ presentation: 'modal', title: 'New Campaign' }}
-            />
-            <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
-          </Stack>
-        </ThemeProvider>
-      </WalletConnectProvider>
+      {/*
+        `supportedChains` é prop irmã de `config`, não filha — e não existe
+        `defaultChain`: a wallet embutida nasce no primeiro item de
+        `supportedChains` automaticamente (conferido contra
+        `PrivyProviderProps`/`PrivyConfig` em
+        `node_modules/@privy-io/expo/dist/index.d.ts`).
+      */}
+      <PrivyProvider
+        appId={PRIVY_APP_ID}
+        clientId={PRIVY_CLIENT_ID}
+        supportedChains={[arcTestnetChain]}
+        config={PRIVY_CONFIG}
+      >
+        <WalletProvider>
+          <ThemeProvider value={DefaultTheme}>
+            <Stack
+              screenOptions={{
+                headerStyle: { backgroundColor: Colors.light.card },
+                headerTitleStyle: { fontFamily: 'Quicksand_700Bold', color: Colors.light.ink },
+                contentStyle: { backgroundColor: Colors.light.bg },
+              }}
+            >
+              {/* Estas telas trazem o próprio HeaderBar (o wordmark do Figma) via
+                  `ScreenShell`, então a barra nativa sairia duplicada. A volta
+                  fica com o gesto do sistema e com o wordmark, que leva ao chat. */}
+              <Stack.Screen name="index" options={{ headerShown: false }} />
+              <Stack.Screen name="traction" options={{ headerShown: false }} />
+              <Stack.Screen name="notifications" options={{ headerShown: false }} />
+              <Stack.Screen name="dashboard" options={{ headerShown: false }} />
+              <Stack.Screen name="campaigns/index" options={{ headerShown: false }} />
+              <Stack.Screen name="wallet" options={{ headerShown: false }} />
+              <Stack.Screen name="transactions" options={{ headerShown: false }} />
+              <Stack.Screen name="history" options={{ headerShown: false }} />
+              {/* O formulário é a exceção: entra como modal e mantém a barra
+                  nativa. Num formulário longo o usuário precisa de uma saída
+                  sempre visível, e o wordmark do ScreenShell não é uma. */}
+              <Stack.Screen
+                name="campaigns/new"
+                options={{ presentation: 'modal', title: 'New Campaign' }}
+              />
+              <Stack.Screen name="diagnostics" options={{ title: 'Diagnóstico' }} />
+            </Stack>
+          </ThemeProvider>
+        </WalletProvider>
+      </PrivyProvider>
     </SafeAreaProvider>
   );
 }

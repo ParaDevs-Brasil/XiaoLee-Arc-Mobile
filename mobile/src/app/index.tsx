@@ -26,13 +26,11 @@ import { refreshChatSessions, setActiveChatSessionId } from '@/lib/chat-session'
 import { isOnChainTx, txExplorerUrl } from '@/lib/explorer';
 import { shortHash } from '@/lib/format';
 import { getWallet } from '@/lib/session';
-import { useWalletConnect } from '@/lib/walletconnect';
+import { usePrivyWallet } from '@/lib/wallet';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
-import { ArcNetworkSheet } from '@/components/arc-network-sheet';
 import {
   IconActivity,
-  IconAlert,
   IconChat,
   IconCheck,
   IconEdit,
@@ -201,7 +199,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboard();
   const scroller = useRef<ScrollView>(null);
-  const wc = useWalletConnect();
+  const wallet = usePrivyWallet();
   const { session, loading: sessionLoading } = useSession();
   // `undefined` enquanto a sessão ainda não foi lida do storage — esperar evita
   // carregar a conversa de convidado por um instante antes de trocar para a da
@@ -298,16 +296,16 @@ export default function ChatScreen() {
       // Mesmo contexto que o web manda em cada mensagem: sem isso o agente
       // não sabe qual carteira consultar e responde "conecte sua carteira".
       //
-      // A sessão viva do WalletConnect vem primeiro, e o SecureStore é só o
-      // fallback de quando o app reabre sem relay (a sessão do WC ainda não
-      // foi restabelecida, mas o endereço já foi gravado da última vez).
+      // A carteira embutida viva do Privy vem primeiro, e o SecureStore é só o
+      // fallback de quando o app reabre antes de o Privy restabelecer a sessão
+      // (o endereço já foi gravado da última vez).
       const stored = await getWallet();
-      const wallet = wc.address
-        ? { address: wc.address, chain: wc.chain ?? 'evm' }
+      const activeWallet = wallet.address
+        ? { address: wallet.address, chain: wallet.chain ?? 'arc' }
         : stored;
       const result = await sendChatMessage({
         message,
-        ...(wallet && { wallet_address: wallet.address, wallet_chain: wallet.chain }),
+        ...(activeWallet && { wallet_address: activeWallet.address, wallet_chain: activeWallet.chain }),
         ...(activeChatSessionId !== null && { session_id: activeChatSessionId }),
       });
       const reply =
@@ -481,10 +479,9 @@ function SignTxButton({
   message: Message;
   onSigned: (id: string, hash: string) => void;
 }) {
-  const { isConnected, hasArcNetwork, signAndRelay } = useWalletConnect();
+  const { isConnected, signAndRelay } = usePrivyWallet();
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState<string>();
-  const [arcSheet, setArcSheet] = useState(false);
 
   if (message.txHash) {
     // O relay devolve o hash real da transação EVM — sempre linkável, ao
@@ -514,32 +511,7 @@ function SignTxButton({
   }
 
   if (!isConnected) {
-    return <Text style={styles.txHint}>Connect a wallet to sign this transfer.</Text>;
-  }
-
-  /**
-   * Nem MetaMask nem Rabby aceitam cadastrar o Arc Testnet sozinhas por
-   * WalletConnect (ver `ArcNetworkSheet` — é resultado de teste, não algo que
-   * dá para contornar daqui). Sem isto, o único aviso ficava na tela Wallet,
-   * que ninguém visita antes de tentar assinar direto do chat — a pessoa só
-   * descobria o problema quando a carteira já tinha recusado a assinatura.
-   */
-  if (!hasArcNetwork) {
-    return (
-      <>
-        <Pressable
-          onPress={() => setArcSheet(true)}
-          style={({ pressed }) => [styles.arcWarn, pressed && styles.pressed]}
-          accessibilityRole="button"
-        >
-          <IconAlert size={14} color={Colors.light.warn} />
-          <Text style={styles.arcWarnText}>
-            Arc Testnet not detected. <Text style={styles.arcWarnLink}>Tap to add it.</Text>
-          </Text>
-        </Pressable>
-        <ArcNetworkSheet visible={arcSheet} onClose={() => setArcSheet(false)} />
-      </>
-    );
+    return <Text style={styles.txHint}>Sign in to sign this transfer.</Text>;
   }
 
   async function sign() {
@@ -1005,23 +977,6 @@ const styles = StyleSheet.create({
     color: Colors.light.danger,
     marginTop: Spacing.one,
   },
-  arcWarn: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two - 2,
-    padding: Spacing.two,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.light.warnSoft,
-    marginTop: Spacing.two - 2,
-  },
-  arcWarnText: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: Colors.light.ink2,
-  },
-  arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
   bubbleTextUser: {
     fontFamily: Fonts.medium,
     fontSize: 14,

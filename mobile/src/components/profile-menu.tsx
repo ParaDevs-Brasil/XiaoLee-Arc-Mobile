@@ -16,7 +16,7 @@ import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
  * Painel de perfil — frame "Xiaolee - Profile" (grupo `menu-profile`, 191x522).
  *
  * Cabeçalho com identidade, seis ações e o CTA de conectar carteira no rodapé.
- * A carteira é a única identidade do app (`lib/walletconnect.tsx`) — não há
+ * A carteira é a única identidade do app (`lib/wallet.tsx`) — não há
  * login separado dela para exibir aqui.
  */
 

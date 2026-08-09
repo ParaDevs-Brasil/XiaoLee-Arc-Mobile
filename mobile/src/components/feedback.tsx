@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import type { DimensionValue, StyleProp, ViewStyle } from 'react-native';
 import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { ConnectWalletSheet } from '@/components/connect-wallet-sheet';
 import type { IconProps } from '@/components/icons';
 import { IconWallet } from '@/components/icons';
 import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
-import { useWalletConnect } from '@/lib/walletconnect';
 
 /**
  * Os três estados que toda tela de dado tem antes (ou em vez) do conteúdo:
@@ -144,25 +144,28 @@ export function ErrorState({
  * Os estados vazios mandavam o usuário "para o chat", onde conectar não está à
  * vista: o botão mora no painel de perfil, atrás do avatar do header.
  * Instrução que aponta para lugar nenhum visível não é instrução — este botão
- * abre o modal no lugar onde o usuário já está.
+ * abre o sheet de login no lugar onde o usuário já está.
  *
- * Sem `busy`/`error` próprios: `openModal()` só abre a UI nativa do
- * WalletConnect, que tem seus próprios estados — não há chamada de rede daqui
- * para esperar ou que possa falhar.
+ * Dono do próprio estado de visibilidade: o Privy (SDK Expo) não tem um modal
+ * global pronto como o WalletConnect tinha — cada chamador do login monta seu
+ * próprio `ConnectWalletSheet`.
  */
 export function ConnectWalletButton({ label = 'Connect Wallet' }: { label?: string }) {
-  const { openModal } = useWalletConnect();
+  const [visible, setVisible] = useState(false);
 
   return (
-    <Pressable
-      onPress={openModal}
-      style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-    >
-      <IconWallet size={16} color={Colors.light.card} />
-      <Text style={styles.signInText}>{label}</Text>
-    </Pressable>
+    <>
+      <Pressable
+        onPress={() => setVisible(true)}
+        style={({ pressed }) => [styles.signIn, pressed && styles.pressed]}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+      >
+        <IconWallet size={16} color={Colors.light.card} />
+        <Text style={styles.signInText}>{label}</Text>
+      </Pressable>
+      <ConnectWalletSheet visible={visible} onClose={() => setVisible(false)} />
+    </>
   );
 }
 

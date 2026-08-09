@@ -1,3 +1,5 @@
+import * as Clipboard from 'expo-clipboard';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,10 +9,9 @@ import {
   listMyCampaigns,
   type UserCampaignParticipation,
 } from '@/api/backend';
-import { ArcNetworkSheet } from '@/components/arc-network-sheet';
+import { ConnectWalletSheet } from '@/components/connect-wallet-sheet';
 import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
 import {
-  IconAlert,
   IconCheck,
   IconClock,
   IconGift,
@@ -27,7 +28,7 @@ import { useSession } from '@/hooks/use-session';
 import { useWallet } from '@/hooks/use-wallet';
 import { formatTokenAmount, formatUSDC } from '@/lib/format';
 import { getSession } from '@/lib/session';
-import { useWalletConnect } from '@/lib/walletconnect';
+import { usePrivyWallet } from '@/lib/wallet';
 
 /**
  * Tela de Wallet — destino da primeira linha do `ProfileMenu`, que até aqui não
@@ -251,14 +252,14 @@ function TokenRow({ tally }: { tally: TokenTally }) {
  * A carteira de payout — o endereço para onde o agente manda USDC.
  *
  * Separada das recompensas acima de propósito: elas são do usuário pela sessão,
- * a carteira é o destino do dinheiro. Este card era a nota que dizia não haver
- * conector no mobile; agora há (WalletConnect, ver `lib/walletconnect.tsx`), e o
- * lugar de conectar é este.
+ * a carteira é o destino do dinheiro. A carteira embutida do Privy
+ * (`lib/wallet.tsx`) nasce direto no Arc — não existe mais o estado
+ * "conectado, mas na chain errada" que o WalletConnect tinha.
  */
 function WalletConnection() {
   const { address } = useWallet();
-  const { openModal, disconnect, hasArcNetwork } = useWalletConnect();
-  const [arcSheet, setArcSheet] = useState(false);
+  const { disconnect } = usePrivyWallet();
+  const [loginSheet, setLoginSheet] = useState(false);
 
   return (
     <SectionCard
@@ -277,25 +278,10 @@ function WalletConnection() {
               Remontar é o jeito barato de refazer sem duplicar o hook. */}
           <WalletBalance key={address} address={address} />
 
-          {/* Conectado não basta. Sem a rede Arc na carteira, assinar é recusado
-              com -32602 — e o usuário só descobriria isso no meio da
-              transferência, sem entender o motivo. */}
-          {hasArcNetwork ? null : (
-            <Pressable
-              onPress={() => setArcSheet(true)}
-              style={({ pressed }) => [styles.arcWarn, pressed && styles.pressed]}
-              accessibilityRole="button"
-            >
-              <IconAlert size={15} color={Colors.light.warn} />
-              <Text style={styles.arcWarnText}>
-                Arc Testnet not detected in your wallet.{' '}
-                <Text style={styles.arcWarnLink}>Tap here before using it.</Text>
-              </Text>
-            </Pressable>
-          )}
-          {/* Desconectar é a única saída dentro do app: a Rabby mobile não tem
-              tela de "connected dapps", então sem isto uma sessão presa só sai
-              limpando os dados do aplicativo. */}
+          <FaucetButton address={address} />
+
+          {/* Desconectar é a única saída dentro do app: sem isto uma sessão
+              presa só sai limpando os dados do aplicativo. */}
           <Pressable
             onPress={disconnect}
             style={({ pressed }) => [styles.disconnect, pressed && styles.pressed]}
@@ -307,22 +293,52 @@ function WalletConnection() {
       ) : (
         <>
           <Text style={styles.noteText}>
-            Connect a wallet on Arc to receive the USDC your campaign rewards pay out.
+            Sign in to get a wallet on Arc and receive the USDC your campaign rewards pay out.
           </Text>
           <Pressable
-            onPress={openModal}
+            onPress={() => setLoginSheet(true)}
             style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
             accessibilityRole="button"
           >
-            <Text style={styles.guestButtonText}>Connect Wallet</Text>
+            <Text style={styles.guestButtonText}>Sign in</Text>
           </Pressable>
         </>
       )}
 
       <Text style={styles.footer}>Secured by XiaoLee · USDC · x402</Text>
 
-      <ArcNetworkSheet visible={arcSheet} onClose={() => setArcSheet(false)} />
+      <ConnectWalletSheet visible={loginSheet} onClose={() => setLoginSheet(false)} />
     </SectionCard>
+  );
+}
+
+/**
+ * Atalho pro faucet de testnet da Circle — a API deles
+ * (`POST /v1/faucet/drips`) devolve 403 pra contas não upgradadas pra
+ * mainnet, então em vez de um pedido de um toque, copiamos o endereço e
+ * abrimos o faucet já pronto pro usuário colar. `Arc Testnet` já vem
+ * selecionado por padrão no dropdown deles.
+ */
+function FaucetButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function openFaucet() {
+    await Clipboard.setStringAsync(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    await WebBrowser.openBrowserAsync('https://faucet.circle.com/');
+  }
+
+  return (
+    <Pressable
+      onPress={openFaucet}
+      style={({ pressed }) => [styles.faucet, pressed && styles.pressed]}
+      accessibilityRole="button"
+    >
+      <Text style={styles.faucetText}>
+        {copied ? 'Address copied — paste it in the faucet' : 'Get testnet USDC'}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -492,23 +508,15 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two - 2,
   },
   disconnectText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.ink2 },
-  arcWarn: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two - 2,
-    padding: Spacing.two,
+  faucet: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 34,
     borderRadius: Radius.md,
-    backgroundColor: Colors.light.warnSoft,
+    backgroundColor: Colors.light.accentSoft,
     marginTop: Spacing.two - 2,
   },
-  arcWarnText: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: Colors.light.ink2,
-  },
-  arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
+  faucetText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.light.accent },
   footer: {
     fontFamily: Fonts.bold,
     fontSize: 9,

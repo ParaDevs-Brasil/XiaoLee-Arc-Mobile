@@ -126,8 +126,11 @@ export function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
     // é a mesma experiência do app web, então usa o mesmo contexto.
     // Trocar para "mobile" só depois que o backend tratar o valor explicitamente.
     json: { ...request, platform: 'web' },
-    // Timeout maior: a resposta depende de uma chamada a LLM.
-    timeoutMs: 60_000,
+    // Timeout maior: a resposta depende de uma chamada a LLM, e um turno com
+    // tool-calling (ex: criar campanha) é vários round-trips ao Claude em
+    // sequência, não um só — 60s já se mostrou curto demais numa resposta
+    // mais lenta da IA.
+    timeoutMs: 90_000,
   });
 }
 

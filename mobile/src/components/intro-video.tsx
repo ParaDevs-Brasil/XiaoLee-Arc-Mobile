@@ -169,7 +169,7 @@ export function IntroVideo({ onFinish }: IntroVideoProps) {
           accessibilityRole="button"
           accessibilityLabel="Skip intro"
         >
-          <Text style={styles.skipText} numberOfLines={1}>Skip</Text>
+          <Text style={styles.skipText}>Skip</Text>
         </Pressable>
       ) : null}
     </View>
@@ -188,17 +188,16 @@ const styles = StyleSheet.create({
   skip: {
     position: 'absolute',
     right: Spacing.three,
-    // `flexShrink`/`flexGrow: 0` + `alignSelf: 'flex-start'`: um `Pressable`
-    // absoluto não devia herdar squeeze de flex nenhum, mas sem isto o texto
-    // apareceu cortado ("Ski") em vez do "Skip" completo — trava a caixa no
-    // tamanho do conteúdo, sem chance de um pai flex espremer a largura.
-    flexShrink: 0,
-    flexGrow: 0,
-    alignSelf: 'flex-start',
+    // O texto saía cortado ("Ski"/"sk...") — parar de confiar em "encolhe pro
+    // conteúdo" numa view absoluta e travar uma largura mínima que cabe
+    // "Skip" com folga, não importa o que esteja espremendo o layout.
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two - 2,
     borderRadius: Radius.pill,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  skipText: { fontFamily: Fonts.bold, fontSize: 13, color: '#fff', flexShrink: 0 },
+  skipText: { fontFamily: Fonts.bold, fontSize: 13, color: '#fff' },
 });

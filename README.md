@@ -13,9 +13,15 @@
 <p align="center">
   <a href="https://xiaolee-landing-production.up.railway.app">Landing page</a> ·
   <a href="https://xiaolee-landing-production.up.railway.app/assets/xiaolee.apk">Download the app</a> ·
-  <a href="../../releases">Releases</a> ·
-  <a href="docs/API_REFERENCE.md">API reference</a>
+  <a href="https://xiaolee-frontend-production.up.railway.app">Web version</a> ·
+  <a href="../../releases">Releases</a>
 </p>
+
+---
+
+Xiaolee ships in two flavors that don't share infrastructure: **this repo** is the mobile app (Expo) and its
+backend; the **web app** linked above lives in a separate repository with its own backend. Same agent, same
+idea, different codebases — a fix here isn't automatically live there.
 
 ---
 
@@ -39,6 +45,20 @@ never touch a transaction hash or a form.
   One brain, four front doors.
 - **PT/EN, automatically** — Xiaolee mirrors whichever language you write to her in, no toggle required (there's
   one anyway, for the UI chrome).
+
+## How to use it
+
+1. **Download and open the app** — [grab the APK](https://xiaolee-landing-production.up.railway.app/assets/xiaolee.apk)
+   or use the [web version](https://xiaolee-frontend-production.up.railway.app). First open plays her intro,
+   then drops you straight into chat.
+2. **Say hi** — a wallet is created for you automatically, no seed phrase to write down.
+3. **Ask about your money** — "what's my balance", "send 5 USDC to @friend", "swap this for that". She asks for
+   confirmation before anything moves; you sign it.
+4. **Running a campaign?** Tell her the budget, the criteria, and how long it runs. She'll ask for whatever's
+   missing and put it live when you confirm.
+5. **Joining one?** Tell her you're in. Do the tasks the campaign asks for, tell her you're done, and she
+   verifies and prepares your claim — you just sign to receive.
+6. **Switch languages any time** — write to her in Portuguese or English, she replies in kind.
 
 ## How it works
 
@@ -132,10 +152,6 @@ thing that happens — no separate splash step, no jump cut between stages.
 
 ## Repository layout
 
-This repo is the **mobile-first** home of Xiaolee: the Expo app is the flagship client, and the FastAPI backend
-here serves it (plus Telegram and X). The web app has its own repository and backend — they don't share
-infrastructure, so a fix here isn't automatically live there.
-
 | Path | What's in it |
 |---|---|
 | [`mobile/`](mobile/) | The flagship client — Expo/React Native, Privy embedded wallet, expo-router |
@@ -182,26 +198,6 @@ See [`mobile/README.md`](mobile/README.md) for the mobile-specific setup, and
 make test-backend          # pytest
 make ci-local               # lint + test + build, same as CI
 ```
-
-## Deploy
-
-Backend and landing run on **Railway**; the legacy web frontend on **Render**. The backend is a manual
-`railway up` deploy (mobile app + Telegram + X all point at it); the landing page deploys the same way,
-independent of `git push` — updating `landing/index.html` doesn't go live until someone runs `railway up
---service xiaolee-landing`.
-
-Production builds of the mobile app ship through EAS (`eas build --profile production-apk`); tagging
-`mobile-vX.Y.Z` triggers a GitHub Actions release that builds, publishes a GitHub Release with the signed APK,
-and updates the landing page's download link on `main`.
-
-| Variable | Where | Purpose |
-|---|---|---|
-| `CIRCLE_API_KEY`, `CIRCLE_WALLET_ID` | Backend | Arc/Circle USDC payouts |
-| `ANTHROPIC_API_KEY` | Backend | Claude — powers the agent's tool-calling loop |
-| `DATABASE_URL` | Backend | PostgreSQL in production; empty falls back to SQLite |
-| `REDIS_URL` | Backend | Rate limiting; empty falls back to in-memory |
-| `EXPO_PUBLIC_API_URL` | Mobile | Baked in at build time — **never** put secrets here |
-| `EXPO_PUBLIC_PRIVY_APP_ID`, `EXPO_PUBLIC_PRIVY_CLIENT_ID` | Mobile | Privy embedded wallet |
 
 ## Security
 

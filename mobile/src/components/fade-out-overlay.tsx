@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, type ViewStyle } from 'react-native';
 
-const FADE_MS = 400;
+const DEFAULT_FADE_MS = 400;
 
 interface FadeOutOverlayProps {
   /** Parent flips this to `true` to start the dissolve — stays mounted until it finishes. */
@@ -9,6 +9,8 @@ interface FadeOutOverlayProps {
   /** Fired once opacity hits 0 — safe for the parent to actually unmount now. */
   onFadedOut: () => void;
   zIndex: number;
+  /** Ex.: loading → chat pede um dissolve mais longo que vídeo → loading. */
+  durationMs?: number;
   children: React.ReactNode;
 }
 
@@ -18,19 +20,25 @@ interface FadeOutOverlayProps {
  * camada de baixo (a próxima) já está montada e visível o tempo todo; só
  * esta aqui anima, revelando-a por baixo aos poucos.
  */
-export function FadeOutOverlay({ fadeOut, onFadedOut, zIndex, children }: FadeOutOverlayProps) {
+export function FadeOutOverlay({
+  fadeOut,
+  onFadedOut,
+  zIndex,
+  durationMs = DEFAULT_FADE_MS,
+  children,
+}: FadeOutOverlayProps) {
   const opacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     if (!fadeOut) return;
     Animated.timing(opacity, {
       toValue: 0,
-      duration: FADE_MS,
+      duration: durationMs,
       useNativeDriver: true,
     }).start(({ finished }) => {
       if (finished) onFadedOut();
     });
-  }, [fadeOut, onFadedOut, opacity]);
+  }, [fadeOut, onFadedOut, opacity, durationMs]);
 
   const style: ViewStyle = { ...StyleSheet.absoluteFill, zIndex };
 

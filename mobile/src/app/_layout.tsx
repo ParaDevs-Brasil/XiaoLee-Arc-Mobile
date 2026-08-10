@@ -160,7 +160,12 @@ export default function RootLayout() {
           `stage` chega em 'ready', junto com o loading começar a sumir, pra
           já estar pronto por baixo quando o fade dele terminar. */}
       {!loadingGone && (stage === 'loading' || stage === 'ready') ? (
-        <FadeOutOverlay zIndex={100} fadeOut={stage === 'ready'} onFadedOut={() => setLoadingGone(true)}>
+        <FadeOutOverlay
+          zIndex={100}
+          fadeOut={stage === 'ready'}
+          onFadedOut={() => setLoadingGone(true)}
+          durationMs={700}
+        >
           <LoadingScreen onFinish={() => setStage('ready')} />
         </FadeOutOverlay>
       ) : null}

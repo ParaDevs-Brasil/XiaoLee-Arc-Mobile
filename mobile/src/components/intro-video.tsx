@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Fonts, Radius, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
 import { hasSeenIntro, markIntroSeen } from '@/lib/intro';
 
 /**
@@ -188,9 +188,6 @@ const styles = StyleSheet.create({
   skip: {
     position: 'absolute',
     right: Spacing.three,
-    // O texto saía cortado ("Ski"/"sk...") — parar de confiar em "encolhe pro
-    // conteúdo" numa view absoluta e travar uma largura mínima que cabe
-    // "Skip" com folga, não importa o que esteja espremendo o layout.
     minWidth: 64,
     alignItems: 'center',
     justifyContent: 'center',
@@ -199,5 +196,12 @@ const styles = StyleSheet.create({
     borderRadius: Radius.pill,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  skipText: { fontFamily: Fonts.bold, fontSize: 13, color: '#fff' },
+  // Sem `fontFamily: Fonts.bold` de propósito: este botão pode renderizar
+  // antes do Quicksand terminar de carregar (`IntroVideo` não espera
+  // `fontsLoaded`, ver comentário em `_layout.tsx`). Nesse caso o RN mede o
+  // layout com a fonte de sistema e, quando o Quicksand troca depois, o
+  // texto fica mais largo sem o box ser recalculado — cortando "Skip". Peso
+  // bold nativo evita essa corrida (era a causa real do corte em produção,
+  // não largura insuficiente).
+  skipText: { fontWeight: '700', fontSize: 13, color: '#fff' },
 });

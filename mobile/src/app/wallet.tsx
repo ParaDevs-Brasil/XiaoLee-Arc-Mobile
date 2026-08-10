@@ -222,8 +222,9 @@ function WalletHero({
   usdc: TokenTally | undefined;
   otherTokens: TokenTally[];
 }) {
-  const { data: balance, loading } = useBackendData(() =>
-    address ? getAddressBalance(address) : Promise.resolve(null),
+  const { data: balance, loading } = useBackendData(
+    () => (address ? getAddressBalance(address) : Promise.resolve(null)),
+    { pollMs: 5000 },
   );
 
   const value = !address
@@ -379,7 +380,7 @@ function FaucetButton({ address }: { address: string }) {
  * carteira nem esconder o botão de desconectar.
  */
 function WalletBalance({ address }: { address: string }) {
-  const { data, error, loading } = useBackendData(() => getAddressBalance(address));
+  const { data, error, loading } = useBackendData(() => getAddressBalance(address), { pollMs: 5000 });
 
   if (loading) return <Text style={styles.balanceLoading}>Loading balance…</Text>;
   if (error || data === null) return <Text style={styles.balanceError}>Balance unavailable</Text>;

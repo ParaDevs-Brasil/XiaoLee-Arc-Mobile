@@ -86,6 +86,14 @@ export function IntroVideo({ onFinish }: IntroVideoProps) {
     onFinish();
   }
 
+  // Sem loop, o player emite isto uma vez só quando chega no fim — segue pro
+  // chat sozinho, sem esperar o toque em "START". O botão continua aí (ver
+  // `startHit` abaixo) pra quem quiser pular antes do vídeo terminar.
+  useEffect(() => {
+    const subscription = player.addListener('playToEnd', finish);
+    return () => subscription.remove();
+  }, [player]);
+
   function onLayout(event: LayoutChangeEvent) {
     const { width, height } = event.nativeEvent.layout;
     setContainerSize({ width, height });
@@ -161,7 +169,7 @@ export function IntroVideo({ onFinish }: IntroVideoProps) {
           accessibilityRole="button"
           accessibilityLabel="Skip intro"
         >
-          <Text style={styles.skipText}>Skip</Text>
+          <Text style={styles.skipText} numberOfLines={1}>Skip</Text>
         </Pressable>
       ) : null}
     </View>
@@ -180,10 +188,17 @@ const styles = StyleSheet.create({
   skip: {
     position: 'absolute',
     right: Spacing.three,
-    paddingHorizontal: Spacing.three - 2,
+    // `flexShrink`/`flexGrow: 0` + `alignSelf: 'flex-start'`: um `Pressable`
+    // absoluto não devia herdar squeeze de flex nenhum, mas sem isto o texto
+    // apareceu cortado ("Ski") em vez do "Skip" completo — trava a caixa no
+    // tamanho do conteúdo, sem chance de um pai flex espremer a largura.
+    flexShrink: 0,
+    flexGrow: 0,
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing.three,
     paddingVertical: Spacing.two - 2,
     borderRadius: Radius.pill,
     backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  skipText: { fontFamily: Fonts.bold, fontSize: 13, color: '#fff' },
+  skipText: { fontFamily: Fonts.bold, fontSize: 13, color: '#fff', flexShrink: 0 },
 });

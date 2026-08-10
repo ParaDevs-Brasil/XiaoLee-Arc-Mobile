@@ -21,6 +21,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
@@ -960,7 +961,13 @@ async def create_campaign(
         tweet_id_to_engage=payload.tweet_id_to_engage,
     )
     db.add(new_campaign)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # `Campaign.name` é unique — sem isto o form (ou o chat) mandava um
+        # 500 cru pro usuário em vez de "esse nome já existe".
+        await db.rollback()
+        return {"success": False, "error": f"A campaign named '{payload.title}' already exists — pick a different title."}
     await db.refresh(new_campaign)
 
     return {"success": True, "message": "Campaign created successfully!", "campaign": _campaign_to_dict(new_campaign)}

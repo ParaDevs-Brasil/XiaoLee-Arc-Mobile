@@ -6,7 +6,7 @@ import { getCachedSession, getSession, subscribeSession, type Session } from '@/
  * Sessão guardada, lida do armazenamento seguro.
  *
  * Assina a fonte reativa de `lib/session` em vez de ler o storage por conta
- * própria. Quem grava é `lib/walletconnect.tsx`, ao conectar a carteira — e é
+ * própria. Quem grava é `lib/wallet.tsx`, ao conectar a carteira — e é
  * o aviso de `saveSession` que faz esta tela, e todas as outras já montadas,
  * sair do estado de convidado na hora. Lendo só na montagem, como antes, a
  * tela atrás do painel de perfil seguia mostrando "No wallet connected" até o

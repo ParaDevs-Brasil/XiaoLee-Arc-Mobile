@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 
 /**
  * Token de sessão — vai como `Bearer` em todas as chamadas autenticadas do
- * backend. É o endereço da carteira conectada (`lib/walletconnect.tsx`
+ * backend. É o endereço da carteira conectada (`lib/wallet.tsx`
  * grava aqui ao conectar): não há login separado, a carteira é a conta.
  *
  * No web (`expo start --web`) o SecureStore não existe; caímos para

@@ -126,8 +126,11 @@ export function sendChatMessage(request: ChatRequest): Promise<ChatResponse> {
     // é a mesma experiência do app web, então usa o mesmo contexto.
     // Trocar para "mobile" só depois que o backend tratar o valor explicitamente.
     json: { ...request, platform: 'web' },
-    // Timeout maior: a resposta depende de uma chamada a LLM.
-    timeoutMs: 60_000,
+    // Timeout maior: a resposta depende de uma chamada a LLM, e um turno com
+    // tool-calling (ex: criar campanha) é vários round-trips ao Claude em
+    // sequência, não um só — 60s já se mostrou curto demais numa resposta
+    // mais lenta da IA.
+    timeoutMs: 90_000,
   });
 }
 
@@ -317,6 +320,27 @@ interface BalancePayload {
 export async function getAddressBalance(address: string): Promise<number | null> {
   const payload = await apiFetch<BalancePayload>(`/v1/arc/balance/${address}`);
   return payload.usdc_balance ?? null;
+}
+
+/**
+ * `GET /v1/arc/usdc/transfers/{address}` — transferências USDC relayadas
+ * (`relay-authorization`, o "send N usdc to..." do chat) que envolvem esse
+ * endereço, enviadas ou recebidas (`server/routes/arc_routes.py`).
+ *
+ * Mesma natureza pública de `getAddressBalance`: quem prova o envio é a
+ * assinatura EIP-3009 no momento do relay, não uma sessão aqui.
+ */
+export interface ArcTransfer {
+  tx_hash: string;
+  from_address: string;
+  to_address: string;
+  amount_usdc: number;
+  direction: 'in' | 'out';
+  created_at: string;
+}
+
+export async function listArcTransfers(address: string): Promise<ArcTransfer[]> {
+  return apiFetch<ArcTransfer[]>(`/v1/arc/usdc/transfers/${address}`);
 }
 
 const TREASURY_CHAINS: TreasuryChain[] = ['arc', 'solana', 'stellar'];

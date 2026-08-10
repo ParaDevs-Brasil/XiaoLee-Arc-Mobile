@@ -1,3 +1,5 @@
+import * as Clipboard from 'expo-clipboard';
+import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -7,10 +9,9 @@ import {
   listMyCampaigns,
   type UserCampaignParticipation,
 } from '@/api/backend';
-import { ArcNetworkSheet } from '@/components/arc-network-sheet';
+import { ConnectWalletSheet } from '@/components/connect-wallet-sheet';
 import { EmptyState, ErrorState, ConnectWalletButton, Skeleton } from '@/components/feedback';
 import {
-  IconAlert,
   IconCheck,
   IconClock,
   IconGift,
@@ -27,34 +28,26 @@ import { useSession } from '@/hooks/use-session';
 import { useWallet } from '@/hooks/use-wallet';
 import { formatTokenAmount, formatUSDC } from '@/lib/format';
 import { getSession } from '@/lib/session';
-import { useWalletConnect } from '@/lib/walletconnect';
+import { usePrivyWallet } from '@/lib/wallet';
 
 /**
  * Tela de Wallet — destino da primeira linha do `ProfileMenu`, que até aqui não
  * levava a lugar nenhum.
  *
- * Porta `frontend/src/components/navbar/Wallet.tsx`, mas **não pela fonte de
- * dados dele**, e essa é a diferença que vale declarar.
+ * O número grande do topo (`WalletHero`) é o saldo USDC on-chain real da
+ * carteira embutida do Privy (`GET /v1/arc/balance/{address}`) — o que o
+ * usuário pode efetivamente gastar, não só o que já foi marcado como
+ * resgatado em campanha. Sem carteira conectada ainda não há endereço para
+ * consultar, e aí cai pro total resgatado por campanha (ver `WalletHero`).
  *
- * O painel do web mostra duas coisas: o saldo USDC on-chain de uma carteira
- * conectada (`GET /v1/arc/balance/{address}`) e uma lista de tokens vinda de
- * `UserData.balances`. Nenhuma das duas existe aqui:
+ * O resto da tela — `Rewards by token` — segue vindo de `GET /campaigns/me`:
+ * token, valor por participante e estado de cada participação. `balances` do
+ * dossiê de `GET /user/{id}` não é usado porque o backend devolve lista vazia
+ * literal ali (`campaigns_routes.py:555`).
  *
- *  1. Não há endereço. O web conecta por extensão de navegador (EIP-6963,
- *     Freighter); no mobile isso exigiria WalletConnect, que não está nas
- *     dependências. Sem endereço, aquela rota não tem o que consultar.
- *  2. `balances` vem do dossiê de `GET /user/{id}`, que o backend devolve como
- *     lista vazia literal (`campaigns_routes.py:555`) — junto com `swaps`,
- *     `transactions` e `chat_history`. Portar aquilo renderizaria vazio para
- *     sempre.
- *
- * O que o usuário realmente tem no XiaoLee hoje são as recompensas das
- * campanhas, e essas são reais: `GET /campaigns/me` devolve token, valor por
- * participante e o estado de cada participação. É daí que esta tela vive.
- *
- * O total é por token, nunca somado entre tokens. O web soma `valueUSD`, um
- * campo que o backend nunca preenche — somar USDC com um token de campanha de
- * terceiro precisaria de preço, e não há cotação para esses.
+ * O total por campanha é por token, nunca somado entre tokens. O web soma
+ * `valueUSD`, um campo que o backend nunca preenche — somar USDC com um token
+ * de campanha de terceiro precisaria de preço, e não há cotação para esses.
  */
 
 /** O trilho do produto é USDC (ver `ARC_LEPTON_ARCHITECTURE.md`); o resto é token de campanha. */
@@ -112,6 +105,7 @@ export default function WalletScreen() {
   // Barra de gestos do Android come o fim da lista sem este inset.
   const insets = useSafeAreaInsets();
   const { hasSession } = useSession();
+  const { address } = useWallet();
   const { data, error, loading, refreshing, reload } = useBackendData(fetchRewards);
 
   const campaigns = data ?? [];
@@ -156,16 +150,10 @@ export default function WalletScreen() {
 
         {data && hasSession ? (
           <>
-            <StatCard
-              size="lg"
-              Icon={IconWallet}
-              label="USDC claimed"
-              value={`$${formatUSDC(usdc?.claimed ?? 0)}`}
-              sub={heroSubLabel(usdc, otherTokens)}
-            />
+            <WalletHero key={address ?? 'no-wallet'} address={address} usdc={usdc} otherTokens={otherTokens} />
 
             <View style={styles.strip}>
-              <MiniStat Icon={IconCheck} label="Claimed" value={String(counts.claimed)} />
+              <MiniStat Icon={IconCheck} label="Claimed" value={`$${formatUSDC(usdc?.claimed ?? 0)}`} />
               <MiniStat Icon={IconGift} label="Claimable" value={String(counts.claimable)} />
               <MiniStat Icon={IconClock} label="Pending" value={String(counts.pending)} />
             </View>
@@ -219,6 +207,43 @@ function heroSubLabel(usdc: TokenTally | undefined, others: TokenTally[]): strin
   return parts.length > 0 ? parts.join(' · ') : 'Settled on Arc Testnet';
 }
 
+/**
+ * O número grande do topo. Saldo on-chain real quando há carteira conectada —
+ * é o que o usuário pode efetivamente gastar, não só o que as campanhas já
+ * marcaram como resgatado. Sem carteira ainda não há endereço para consultar,
+ * então cai pro total resgatado por campanha como antes.
+ */
+function WalletHero({
+  address,
+  usdc,
+  otherTokens,
+}: {
+  address: string | undefined;
+  usdc: TokenTally | undefined;
+  otherTokens: TokenTally[];
+}) {
+  const { data: balance, loading } = useBackendData(
+    () => (address ? getAddressBalance(address) : Promise.resolve(null)),
+    { pollMs: 5000 },
+  );
+
+  const value = !address
+    ? `$${formatUSDC(usdc?.claimed ?? 0)}`
+    : loading
+      ? '—'
+      : `$${formatUSDC(balance ?? 0)}`;
+
+  return (
+    <StatCard
+      size="lg"
+      Icon={IconWallet}
+      label="USDC balance"
+      value={value}
+      sub={heroSubLabel(usdc, otherTokens)}
+    />
+  );
+}
+
 function TokenRow({ tally }: { tally: TokenTally }) {
   const total = tally.claimed + tally.claimable + tally.pending;
 
@@ -251,14 +276,14 @@ function TokenRow({ tally }: { tally: TokenTally }) {
  * A carteira de payout — o endereço para onde o agente manda USDC.
  *
  * Separada das recompensas acima de propósito: elas são do usuário pela sessão,
- * a carteira é o destino do dinheiro. Este card era a nota que dizia não haver
- * conector no mobile; agora há (WalletConnect, ver `lib/walletconnect.tsx`), e o
- * lugar de conectar é este.
+ * a carteira é o destino do dinheiro. A carteira embutida do Privy
+ * (`lib/wallet.tsx`) nasce direto no Arc — não existe mais o estado
+ * "conectado, mas na chain errada" que o WalletConnect tinha.
  */
 function WalletConnection() {
   const { address } = useWallet();
-  const { openModal, disconnect, hasArcNetwork } = useWalletConnect();
-  const [arcSheet, setArcSheet] = useState(false);
+  const { disconnect } = usePrivyWallet();
+  const [loginSheet, setLoginSheet] = useState(false);
 
   return (
     <SectionCard
@@ -277,25 +302,10 @@ function WalletConnection() {
               Remontar é o jeito barato de refazer sem duplicar o hook. */}
           <WalletBalance key={address} address={address} />
 
-          {/* Conectado não basta. Sem a rede Arc na carteira, assinar é recusado
-              com -32602 — e o usuário só descobriria isso no meio da
-              transferência, sem entender o motivo. */}
-          {hasArcNetwork ? null : (
-            <Pressable
-              onPress={() => setArcSheet(true)}
-              style={({ pressed }) => [styles.arcWarn, pressed && styles.pressed]}
-              accessibilityRole="button"
-            >
-              <IconAlert size={15} color={Colors.light.warn} />
-              <Text style={styles.arcWarnText}>
-                Arc Testnet not detected in your wallet.{' '}
-                <Text style={styles.arcWarnLink}>Tap here before using it.</Text>
-              </Text>
-            </Pressable>
-          )}
-          {/* Desconectar é a única saída dentro do app: a Rabby mobile não tem
-              tela de "connected dapps", então sem isto uma sessão presa só sai
-              limpando os dados do aplicativo. */}
+          <FaucetButton address={address} />
+
+          {/* Desconectar é a única saída dentro do app: sem isto uma sessão
+              presa só sai limpando os dados do aplicativo. */}
           <Pressable
             onPress={disconnect}
             style={({ pressed }) => [styles.disconnect, pressed && styles.pressed]}
@@ -310,7 +320,7 @@ function WalletConnection() {
             Connect a wallet on Arc to receive the USDC your campaign rewards pay out.
           </Text>
           <Pressable
-            onPress={openModal}
+            onPress={() => setLoginSheet(true)}
             style={({ pressed }) => [styles.guestButton, pressed && styles.pressed]}
             accessibilityRole="button"
           >
@@ -321,8 +331,38 @@ function WalletConnection() {
 
       <Text style={styles.footer}>Secured by XiaoLee · USDC · x402</Text>
 
-      <ArcNetworkSheet visible={arcSheet} onClose={() => setArcSheet(false)} />
+      <ConnectWalletSheet visible={loginSheet} onClose={() => setLoginSheet(false)} />
     </SectionCard>
+  );
+}
+
+/**
+ * Atalho pro faucet de testnet da Circle — a API deles
+ * (`POST /v1/faucet/drips`) devolve 403 pra contas não upgradadas pra
+ * mainnet, então em vez de um pedido de um toque, copiamos o endereço e
+ * abrimos o faucet já pronto pro usuário colar. `Arc Testnet` já vem
+ * selecionado por padrão no dropdown deles.
+ */
+function FaucetButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function openFaucet() {
+    await Clipboard.setStringAsync(address);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    await WebBrowser.openBrowserAsync('https://faucet.circle.com/');
+  }
+
+  return (
+    <Pressable
+      onPress={openFaucet}
+      style={({ pressed }) => [styles.faucet, pressed && styles.pressed]}
+      accessibilityRole="button"
+    >
+      <Text style={styles.faucetText}>
+        {copied ? 'Address copied — paste it in the faucet' : 'Get testnet USDC'}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -340,7 +380,7 @@ function WalletConnection() {
  * carteira nem esconder o botão de desconectar.
  */
 function WalletBalance({ address }: { address: string }) {
-  const { data, error, loading } = useBackendData(() => getAddressBalance(address));
+  const { data, error, loading } = useBackendData(() => getAddressBalance(address), { pollMs: 5000 });
 
   if (loading) return <Text style={styles.balanceLoading}>Loading balance…</Text>;
   if (error || data === null) return <Text style={styles.balanceError}>Balance unavailable</Text>;
@@ -492,23 +532,15 @@ const styles = StyleSheet.create({
     marginTop: Spacing.two - 2,
   },
   disconnectText: { fontFamily: Fonts.medium, fontSize: 12, color: Colors.light.ink2 },
-  arcWarn: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two - 2,
-    padding: Spacing.two,
+  faucet: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 34,
     borderRadius: Radius.md,
-    backgroundColor: Colors.light.warnSoft,
+    backgroundColor: Colors.light.accentSoft,
     marginTop: Spacing.two - 2,
   },
-  arcWarnText: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: Colors.light.ink2,
-  },
-  arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
+  faucetText: { fontFamily: Fonts.bold, fontSize: 12, color: Colors.light.accent },
   footer: {
     fontFamily: Fonts.bold,
     fontSize: 9,

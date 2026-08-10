@@ -83,10 +83,16 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     });
   } catch (error) {
     const aborted = error instanceof Error && error.name === 'AbortError';
+    // A URL do backend é detalhe de infra, não precisa aparecer pra quem só
+    // quer saber se deu certo — um amigo do usuário viu essa mensagem crua
+    // com "xiaolee-mobile-api..." depois de um /chat que estourou o timeout
+    // por demorar na resposta da IA, mas cuja campanha foi criada mesmo
+    // assim do lado do servidor. Log técnico fica só no console.
+    console.warn(`[apiFetch] ${path} failed`, { aborted, timeoutMs, API_URL, error });
     throw new ApiError(
       aborted
-        ? `Backend não respondeu em ${timeoutMs / 1000}s (${API_URL})`
-        : `Não foi possível alcançar o backend em ${API_URL}`,
+        ? 'A resposta demorou demais — pode já ter acontecido do lado do servidor. Confira antes de tentar de novo.'
+        : 'Não foi possível alcançar o servidor. Confira sua conexão e tenta de novo.',
       null,
       true,
     );

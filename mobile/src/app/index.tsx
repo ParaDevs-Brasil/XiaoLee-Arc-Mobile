@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useRef, useState, type RefObject } from 'react';
 import {
   ActivityIndicator,
@@ -13,7 +14,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getChatSessionMessages, sendChatMessage, type ChatSessionMessage } from '@/api/backend';
+import {
+  claimCampaignReward,
+  getChatSessionMessages,
+  sendChatMessage,
+  type ChatSessionMessage,
+} from '@/api/backend';
 import { ApiError } from '@/api/client';
 import {
   animationFromBackend,
@@ -22,15 +28,14 @@ import {
 } from '@/lib/avatar-animation';
 import { appendChatMessage, loadChatHistory, type StoredMessage } from '@/lib/chat-history';
 import { refreshChatSessions, setActiveChatSessionId } from '@/lib/chat-session';
+import { isOnChainTx, txExplorerUrl } from '@/lib/explorer';
 import { shortHash } from '@/lib/format';
-import { getWallet } from '@/lib/session';
-import { useWalletConnect } from '@/lib/walletconnect';
+import { getSessionToken, getWallet } from '@/lib/session';
+import { usePrivyWallet } from '@/lib/wallet';
 
 import { AnimatedAvatar } from '@/components/animated-avatar';
-import { ArcNetworkSheet } from '@/components/arc-network-sheet';
 import {
   IconActivity,
-  IconAlert,
   IconChat,
   IconCheck,
   IconEdit,
@@ -124,12 +129,28 @@ interface Message {
   transfer?: PendingTransfer;
   /** Hash devolvido pela carteira, quando já assinou. */
   txHash?: string;
+  /**
+   * Resgate que o backend preparou para esta mensagem (`execution.claim`),
+   * quando a intenção era resgatar recompensa de campanha (`prepare_campaign_claim`
+   * — ver `OrchestrationService`). Mesmo acordo do `transfer`: some depois de
+   * resgatado, preso à mensagem que o originou.
+   */
+  claim?: PendingClaim;
+  /** Recibo devolvido pelo backend, quando já resgatou. */
+  claimReceiptId?: string;
 }
 
 /** O que o usuário vai autorizar: destino e valor, como o backend os preparou. */
 interface PendingTransfer {
   to: string;
   amountUsdc: number;
+}
+
+/** O que o usuário vai resgatar, como o backend preparou (`prepare_campaign_claim`). */
+interface PendingClaim {
+  campaignId: number;
+  amount: number;
+  token: string;
 }
 
 /**
@@ -144,6 +165,19 @@ function transferFrom(execution: Record<string, unknown> | undefined): PendingTr
   const t = execution.transfer as { to?: string; amount_usdc?: number } | undefined;
   if (!t?.to || !t.amount_usdc || t.amount_usdc <= 0) return undefined;
   return { to: t.to, amountUsdc: t.amount_usdc };
+}
+
+/**
+ * Espelho de `transferFrom` para `prepare_campaign_claim`. Não usamos o
+ * `proof_message` que o backend devolve aqui — o `ClaimButton` monta o dele
+ * próprio na hora de assinar (mesmo texto, timestamp fresco), exatamente como
+ * `campaign-card.tsx` já faz para o claim pela tela de Campaigns.
+ */
+function claimFrom(execution: Record<string, unknown> | undefined): PendingClaim | undefined {
+  if (!execution || execution.status !== 'claim_ready') return undefined;
+  const c = execution.claim as { campaign_id?: number; amount?: number; token?: string } | undefined;
+  if (!c?.campaign_id || !c.amount || c.amount <= 0 || !c.token) return undefined;
+  return { campaignId: c.campaign_id, amount: c.amount, token: c.token };
 }
 
 function now(): string {
@@ -199,7 +233,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboard();
   const scroller = useRef<ScrollView>(null);
-  const wc = useWalletConnect();
+  const wallet = usePrivyWallet();
   const { session, loading: sessionLoading } = useSession();
   // `undefined` enquanto a sessão ainda não foi lida do storage — esperar evita
   // carregar a conversa de convidado por um instante antes de trocar para a da
@@ -264,12 +298,21 @@ export default function ChatScreen() {
   /**
    * Troca o botão pelo hash na mensagem que foi assinada.
    *
-   * Limpar o `transfer` é o que impede assinar o mesmo pedido duas vezes — o web
-   * faz igual (`ChatPanel.tsx:181`).
+   * `transfer` fica — quem impede assinar o mesmo pedido duas vezes é o
+   * `txHash` (o `SignTxButton` já sai cedo quando ele existe). Mantém o
+   * `transfer.to` vivo depois de assinado, pra continuar mostrando o
+   * endereço de destino clicável no lugar do botão.
    */
   function markSigned(id: string, hash: string) {
     setMessages((current) =>
-      current.map((m) => (m.id === id ? { ...m, transfer: undefined, txHash: hash } : m)),
+      current.map((m) => (m.id === id ? { ...m, txHash: hash } : m)),
+    );
+  }
+
+  /** Mesmo acordo de `markSigned`, para o botão de claim. */
+  function markClaimed(id: string, receiptId: string) {
+    setMessages((current) =>
+      current.map((m) => (m.id === id ? { ...m, claimReceiptId: receiptId } : m)),
     );
   }
 
@@ -296,16 +339,16 @@ export default function ChatScreen() {
       // Mesmo contexto que o web manda em cada mensagem: sem isso o agente
       // não sabe qual carteira consultar e responde "conecte sua carteira".
       //
-      // A sessão viva do WalletConnect vem primeiro, e o SecureStore é só o
-      // fallback de quando o app reabre sem relay (a sessão do WC ainda não
-      // foi restabelecida, mas o endereço já foi gravado da última vez).
+      // A carteira embutida viva do Privy vem primeiro, e o SecureStore é só o
+      // fallback de quando o app reabre antes de o Privy restabelecer a sessão
+      // (o endereço já foi gravado da última vez).
       const stored = await getWallet();
-      const wallet = wc.address
-        ? { address: wc.address, chain: wc.chain ?? 'evm' }
+      const activeWallet = wallet.address
+        ? { address: wallet.address, chain: wallet.chain ?? 'arc' }
         : stored;
       const result = await sendChatMessage({
         message,
-        ...(wallet && { wallet_address: wallet.address, wallet_chain: wallet.chain }),
+        ...(activeWallet && { wallet_address: activeWallet.address, wallet_chain: activeWallet.chain }),
         ...(activeChatSessionId !== null && { session_id: activeChatSessionId }),
       });
       const reply =
@@ -326,6 +369,7 @@ export default function ChatScreen() {
           text: reply,
           time: now(),
           transfer: transferFrom(result.execution),
+          claim: claimFrom(result.execution),
         },
       ]);
       // O texto gravado é o mesmo que foi para a bolha, fallback incluído —
@@ -432,7 +476,12 @@ export default function ChatScreen() {
             ) : (
               <>
                 {messages.map((message) => (
-                  <Bubble key={message.id} message={message} onSigned={markSigned} />
+                  <Bubble
+                    key={message.id}
+                    message={message}
+                    onSigned={markSigned}
+                    onClaimed={markClaimed}
+                  />
                 ))}
                 {sending ? <Typing /> : null}
               </>
@@ -479,47 +528,39 @@ function SignTxButton({
   message: Message;
   onSigned: (id: string, hash: string) => void;
 }) {
-  const { isConnected, hasArcNetwork, signAndRelay } = useWalletConnect();
+  const { isConnected, signAndRelay } = usePrivyWallet();
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState<string>();
-  const [arcSheet, setArcSheet] = useState(false);
 
   if (message.txHash) {
-    return (
+    // O relay devolve o hash real da transação EVM — sempre linkável, ao
+    // contrário do `related_signature` do Helius (Solana) que aparece em
+    // Transactions. `isOnChainTx` é só uma segunda trava, não um caso
+    // esperado de falha.
+    const linkable = isOnChainTx(message.txHash);
+    const badge = (
       <View style={styles.txDone}>
         <IconCheck size={14} color={Colors.light.success} />
         <Text style={styles.txDoneText}>Sent · {shortHash(message.txHash)}</Text>
       </View>
     );
+
+    if (!linkable) return badge;
+
+    return (
+      <Pressable
+        onPress={() => WebBrowser.openBrowserAsync(txExplorerUrl(message.txHash!)).catch(() => {})}
+        style={({ pressed }) => pressed && styles.pressed}
+        accessibilityRole="link"
+        accessibilityLabel={`Sent ${shortHash(message.txHash)} — open the transaction in the Arc explorer`}
+      >
+        {badge}
+      </Pressable>
+    );
   }
 
   if (!isConnected) {
     return <Text style={styles.txHint}>Connect a wallet to sign this transfer.</Text>;
-  }
-
-  /**
-   * Nem MetaMask nem Rabby aceitam cadastrar o Arc Testnet sozinhas por
-   * WalletConnect (ver `ArcNetworkSheet` — é resultado de teste, não algo que
-   * dá para contornar daqui). Sem isto, o único aviso ficava na tela Wallet,
-   * que ninguém visita antes de tentar assinar direto do chat — a pessoa só
-   * descobria o problema quando a carteira já tinha recusado a assinatura.
-   */
-  if (!hasArcNetwork) {
-    return (
-      <>
-        <Pressable
-          onPress={() => setArcSheet(true)}
-          style={({ pressed }) => [styles.arcWarn, pressed && styles.pressed]}
-          accessibilityRole="button"
-        >
-          <IconAlert size={14} color={Colors.light.warn} />
-          <Text style={styles.arcWarnText}>
-            Arc Testnet not detected. <Text style={styles.arcWarnLink}>Tap to add it.</Text>
-          </Text>
-        </Pressable>
-        <ArcNetworkSheet visible={arcSheet} onClose={() => setArcSheet(false)} />
-      </>
-    );
   }
 
   async function sign() {
@@ -529,6 +570,9 @@ function SignTxButton({
     try {
       const { to, amountUsdc } = message.transfer;
       onSigned(message.id, await signAndRelay(to, amountUsdc));
+      // A recompensa visual do "deu certo" — mesma personagem que já reage a
+      // tudo no chat, não uma animação nova só pra isto.
+      avatarAnimation.play('xiaolee_cheer');
     } catch (err) {
       // Erro de carteira vem como `{code, message}` puro, não Error — por isso
       // não dá para usar `instanceof` aqui.
@@ -564,12 +608,101 @@ function SignTxButton({
   );
 }
 
+/**
+ * Espelho de `SignTxButton` para o resgate de campanha (`prepare_campaign_claim`
+ * no backend). A prova é montada aqui, com timestamp fresco, e não a que veio
+ * em `execution.claim` — mesmo texto e mesma regra que `campaign-card.tsx` já
+ * usa para o claim pela tela de Campaigns; `_verify_claim_proof` só confere o
+ * prefixo, então o `|ts:...` no fim não importa pra validação.
+ */
+function ClaimButton({
+  message,
+  onClaimed,
+}: {
+  message: Message;
+  onClaimed: (id: string, receiptId: string) => void;
+}) {
+  const { address, signMessage } = usePrivyWallet();
+  const [claiming, setClaiming] = useState(false);
+  const [error, setError] = useState<string>();
+
+  if (message.claimReceiptId) {
+    return (
+      <View style={styles.txDone}>
+        <IconCheck size={14} color={Colors.light.success} />
+        <Text style={styles.txDoneText}>
+          Claimed{message.claim ? ` · ${message.claim.amount} ${message.claim.token}` : ''}
+        </Text>
+      </View>
+    );
+  }
+
+  if (!address) {
+    return <Text style={styles.txHint}>Connect a wallet to claim this reward.</Text>;
+  }
+  // Recaptura o valor já narrowed acima: TS não propaga a checagem de
+  // `address` para dentro de `claim()`, uma function declaration à parte.
+  const walletAddress = address;
+
+  async function claim() {
+    if (!message.claim) return;
+    setClaiming(true);
+    setError(undefined);
+    try {
+      const session = await getSessionToken();
+      if (!session) throw new Error('Connect a wallet to claim.');
+      const proofMessage =
+        `XiaoLee Devnet claim|campaign:${message.claim.campaignId}|` +
+        `session:${session}|wallet:${walletAddress}|ts:${Date.now()}`;
+      const signature = await signMessage(proofMessage);
+      const result = await claimCampaignReward(
+        message.claim.campaignId, walletAddress, proofMessage, signature,
+      );
+      onClaimed(message.id, result.receiptId ?? 'claimed');
+      avatarAnimation.play('xiaolee_cheer');
+    } catch (err) {
+      const detail =
+        err && typeof err === 'object' && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : String(err);
+      setError(detail);
+    } finally {
+      setClaiming(false);
+    }
+  }
+
+  return (
+    <>
+      <Pressable
+        onPress={claim}
+        disabled={claiming}
+        style={({ pressed }) => [styles.signButton, pressed && styles.signButtonPressed]}
+        accessibilityRole="button"
+      >
+        {claiming ? (
+          <ActivityIndicator size="small" color={Colors.light.card} />
+        ) : (
+          <>
+            <IconGift size={15} color={Colors.light.card} />
+            <Text style={styles.signButtonText}>
+              Claim {message.claim?.amount} {message.claim?.token}
+            </Text>
+          </>
+        )}
+      </Pressable>
+      {error ? <Text style={styles.txError}>{error}</Text> : null}
+    </>
+  );
+}
+
 function Bubble({
   message,
   onSigned,
+  onClaimed,
 }: {
   message: Message;
   onSigned: (id: string, hash: string) => void;
+  onClaimed: (id: string, receiptId: string) => void;
 }) {
   const mine = message.author === 'user';
 
@@ -600,6 +733,9 @@ function Bubble({
           <Text style={styles.bubbleText}>{message.text}</Text>
           {message.transfer || message.txHash ? (
             <SignTxButton message={message} onSigned={onSigned} />
+          ) : null}
+          {message.claim || message.claimReceiptId ? (
+            <ClaimButton message={message} onClaimed={onClaimed} />
           ) : null}
         </View>
         <View style={styles.meta}>
@@ -985,23 +1121,6 @@ const styles = StyleSheet.create({
     color: Colors.light.danger,
     marginTop: Spacing.one,
   },
-  arcWarn: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: Spacing.two - 2,
-    padding: Spacing.two,
-    borderRadius: Radius.md,
-    backgroundColor: Colors.light.warnSoft,
-    marginTop: Spacing.two - 2,
-  },
-  arcWarnText: {
-    flex: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 12,
-    lineHeight: 17,
-    color: Colors.light.ink2,
-  },
-  arcWarnLink: { fontFamily: Fonts.bold, color: Colors.light.warn },
   bubbleTextUser: {
     fontFamily: Fonts.medium,
     fontSize: 14,

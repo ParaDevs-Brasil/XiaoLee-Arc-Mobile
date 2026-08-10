@@ -223,6 +223,19 @@ class SettledPayment(Base):
     settled_at:     Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
+class ArcTransfer(Base):
+    """Transferência USDC no Arc relayada via `POST /v1/arc/usdc/relay-authorization`
+    (autorização EIP-3009 assinada pelo usuário, gas pago pela treasury). A rota é
+    pública — quem autoriza é a assinatura, não uma sessão —, então o endereço da
+    wallet é a chave de consulta, não um user_id."""
+    __tablename__ = 'arc_transfers'
+
+    from_address: Mapped[str] = mapped_column(String(42), index=True)
+    to_address:   Mapped[str] = mapped_column(String(42), index=True)
+    amount_usdc:  Mapped[float] = mapped_column(Numeric(20, 8))
+    tx_hash:      Mapped[str] = mapped_column(String(66), unique=True, index=True)
+
+
 class CctpTransfer(Base):
     """Transferência CCTP real (burn->attest->receive) em qualquer domain suportado pela Circle
     (EVM, Solana domain 5, Stellar domain 27). Generaliza o BridgeState/BridgeStep in-memory de

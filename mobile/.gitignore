@@ -44,3 +44,6 @@ example
 
 # local env files
 .env
+
+# build artifacts (APKs from local eas build)
+builds/

@@ -1,8 +1,11 @@
+import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DropdownPanel, PanelRow, type PanelItem } from '@/components/dropdown-panel';
 import {
+  IconCheck,
   IconClipboard,
   IconClock,
   IconDownload,
@@ -16,7 +19,7 @@ import { Colors, Fonts, Radius, Spacing } from '@/constants/theme';
  * Painel de perfil — frame "Xiaolee - Profile" (grupo `menu-profile`, 191x522).
  *
  * Cabeçalho com identidade, seis ações e o CTA de conectar carteira no rodapé.
- * A carteira é a única identidade do app (`lib/walletconnect.tsx`) — não há
+ * A carteira é a única identidade do app (`lib/wallet.tsx`) — não há
  * login separado dela para exibir aqui.
  */
 
@@ -80,6 +83,7 @@ export function ProfileMenu({ visible, onDismiss, walletAddress, onConnectWallet
             {walletAddress ? 'Wallet' : 'Connect a wallet to get started'}
           </Text>
         </View>
+        {walletAddress ? <CopyAddressButton address={walletAddress} /> : null}
       </View>
 
       {ACTIONS.map(({ href, ...item }) => (
@@ -123,8 +127,45 @@ export function ProfileMenu({ visible, onDismiss, walletAddress, onConnectWallet
   );
 }
 
+/** Copia o endereço completo (não o abreviado) pro clipboard. */
+function CopyAddressButton({ address }: { address: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function copy() {
+    await Clipboard.setStringAsync(address);
+    setCopied(true);
+    // Volta sozinho: um "copiado" permanente mente na próxima vez que o
+    // usuário abre o painel.
+    setTimeout(() => setCopied(false), 1500);
+  }
+
+  return (
+    <Pressable
+      onPress={copy}
+      hitSlop={Spacing.two}
+      style={({ pressed }) => [styles.copyButton, pressed && styles.pressed]}
+      accessibilityRole="button"
+      accessibilityLabel="Copy wallet address"
+    >
+      {copied ? (
+        <IconCheck size={16} color={Colors.light.success} />
+      ) : (
+        <IconClipboard size={16} color={Colors.light.ink3} />
+      )}
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   identity: { flexDirection: 'row', alignItems: 'center', gap: Spacing.two + 2 },
+  copyButton: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: Radius.md,
+    backgroundColor: Colors.light.bg,
+  },
   avatar: {
     width: 44,
     height: 44,

@@ -23,6 +23,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { FadeOutOverlay } from '@/components/fade-out-overlay';
 import { IntroVideo } from '@/components/intro-video';
 import { LoadingScreen } from '@/components/loading-screen';
 import { Colors } from '@/constants/theme';
@@ -48,6 +49,12 @@ export default function RootLayout() {
   // cara do splash nativo) → chat — pedido explícito, o loading sozinho não
   // é mais a primeira coisa que o usuário vê.
   const [stage, setStage] = useState<'video' | 'loading' | 'ready'>('video');
+  // Cada camada some com um dissolve (`FadeOutOverlay`) em vez de sumir de
+  // uma vez — a próxima já está montada por baixo quando a de cima começa a
+  // desaparecer, então `stage` avançar não basta pra desmontar a anterior:
+  // só quando o próprio fade termina (`onFadedOut`) é que ela some de fato.
+  const [videoGone, setVideoGone] = useState(false);
+  const [loadingGone, setLoadingGone] = useState(false);
 
   // Quicksand é a fonte do produto (ver constants/theme.ts). Sem esperar por
   // ela, o app pisca na fonte de sistema antes de trocar.
@@ -147,8 +154,21 @@ export default function RootLayout() {
         </WalletProvider>
       </PrivyProvider>
 
-      {stage === 'video' ? <IntroVideo onFinish={() => setStage('loading')} /> : null}
-      {stage === 'loading' ? <LoadingScreen onFinish={() => setStage('ready')} /> : null}
+      {/* Ordem de baixo pra cima: loading, depois vídeo — cada uma dissolve
+          revelando a de baixo, que já está montada e visível antes do fade
+          começar (ver `FadeOutOverlay`). O Stack (chat) já monta assim que
+          `stage` chega em 'ready', junto com o loading começar a sumir, pra
+          já estar pronto por baixo quando o fade dele terminar. */}
+      {!loadingGone && (stage === 'loading' || stage === 'ready') ? (
+        <FadeOutOverlay zIndex={100} fadeOut={stage === 'ready'} onFadedOut={() => setLoadingGone(true)}>
+          <LoadingScreen onFinish={() => setStage('ready')} />
+        </FadeOutOverlay>
+      ) : null}
+      {!videoGone ? (
+        <FadeOutOverlay zIndex={101} fadeOut={stage !== 'video'} onFadedOut={() => setVideoGone(true)}>
+          <IntroVideo onFinish={() => setStage('loading')} />
+        </FadeOutOverlay>
+      ) : null}
     </SafeAreaProvider>
   );
 }
